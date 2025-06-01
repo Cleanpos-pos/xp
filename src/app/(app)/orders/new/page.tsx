@@ -14,17 +14,17 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Label } from "@/components/ui/label"; // Import Label directly
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { mockCustomers, mockServices } from "@/lib/data";
-import type { ServiceItem } from "@/types";
+import type { ServiceItem, Customer } from "@/types";
 import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -41,8 +41,10 @@ type OrderCreationStage = "form" | "paymentOptions" | "paymentProcessing";
 export default function NewOrderPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [stage, setStage] = React.useState<OrderCreationStage>("form");
   const [createdOrderDetails, setCreatedOrderDetails] = React.useState<{ id: string; message: string; totalAmount: number } | null>(null);
+  const [selectedCustomerName, setSelectedCustomerName] = React.useState<string | null>(null);
 
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
@@ -53,6 +55,21 @@ export default function NewOrderPage() {
       notes: "",
     },
   });
+
+  React.useEffect(() => {
+    const customerIdFromQuery = searchParams.get('customerId');
+    if (customerIdFromQuery) {
+      const customer = mockCustomers.find(c => c.id === customerIdFromQuery);
+      if (customer) {
+        form.setValue('customerId', customerIdFromQuery);
+        setSelectedCustomerName(customer.name);
+      } else {
+        console.warn(`Customer ID ${customerIdFromQuery} from query params not found.`);
+        toast({title: "Customer Not Found", description: "The customer ID from the previous page was not found. Please select a customer.", variant: "destructive"});
+      }
+    }
+  }, [searchParams, form, toast]);
+
 
   const { fields, append, remove, update } = useFieldArray({
     control: form.control,
@@ -94,6 +111,17 @@ export default function NewOrderPage() {
   };
 
   const watchedItems = form.watch("items");
+  const watchedCustomerId = form.watch("customerId");
+
+  React.useEffect(() => {
+    if (watchedCustomerId) {
+      const customer = mockCustomers.find(c => c.id === watchedCustomerId);
+      setSelectedCustomerName(customer ? customer.name : null);
+    } else {
+      setSelectedCustomerName(null);
+    }
+  }, [watchedCustomerId]);
+  
   const orderTotal = React.useMemo(() => {
     return watchedItems.reduce((sum, item) => {
       return sum + (item.unitPrice * item.quantity);
@@ -130,8 +158,11 @@ export default function NewOrderPage() {
       dueDate: undefined,
       notes: "",
     });
+    setSelectedCustomerName(null); // Reset selected customer name
     setStage("form");
     setCreatedOrderDetails(null);
+    // Clear query params to prevent re-selection if user navigates back then forward
+    router.replace('/orders/new', undefined); 
   };
 
   const handleProceedToPayment = () => {
@@ -145,21 +176,25 @@ export default function NewOrderPage() {
       title: "Payment Processed (Mocked)",
       description: `Payment for order ${createdOrderDetails.id} of $${createdOrderDetails.totalAmount.toFixed(2)} was successful.`,
     });
-    // In a real app, you'd update the order's paymentStatus here via a server action.
     router.push(`/orders/${createdOrderDetails.id}`);
     resetFormAndStage();
   }
 
   const handlePayLater = () => {
     if (!createdOrderDetails) return;
-    // Order payment status remains as is (likely 'Unpaid')
     router.push(`/orders/${createdOrderDetails.id}`);
     resetFormAndStage();
   };
 
   const handleCreateAnotherOrder = () => {
     resetFormAndStage();
+    router.push('/find-or-add-customer'); // Go back to customer selection
   };
+  
+  const handleGoToDashboard = () => {
+    router.push('/dashboard');
+  };
+
 
   if (stage === "paymentOptions" && createdOrderDetails) {
     return (
@@ -181,9 +216,12 @@ export default function NewOrderPage() {
             </Button>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-center">
+        <CardFooter className="flex-col space-y-2 items-center">
           <Button onClick={handleCreateAnotherOrder} variant="link">
             Create Another Order
+          </Button>
+          <Button onClick={handleGoToDashboard} variant="link" size="sm">
+            Go to Dashboard
           </Button>
         </CardFooter>
       </Card>
@@ -202,7 +240,6 @@ export default function NewOrderPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* This is a mock payment form. No real validation or processing. */}
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="cardNumberMock">Card Number</Label>
@@ -243,7 +280,7 @@ export default function NewOrderPage() {
       <div className="lg:col-span-2 space-y-6">
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="font-headline text-2xl">Select Services</CardTitle>
+            <CardTitle className="font-headline text-2xl">Select Services for {selectedCustomerName || 'Customer'}</CardTitle>
             <CardDescription>Choose a category, then click a service to add it to the order.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -300,7 +337,15 @@ export default function NewOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Customer</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          const cust = mockCustomers.find(c => c.id === value);
+                          setSelectedCustomerName(cust ? cust.name : null);
+                        }} 
+                        value={field.value} // ensure value is controlled
+                        disabled={!!searchParams.get('customerId')} // Disable if customerId came from query
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select a customer" />
@@ -314,6 +359,9 @@ export default function NewOrderPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {!!searchParams.get('customerId') && (
+                        <FormDescription>Customer pre-selected. To change, go back to customer search.</FormDescription>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -435,8 +483,8 @@ export default function NewOrderPage() {
                         <span>Total:</span>
                         <span>${orderTotal.toFixed(2)}</span>
                     </div>
-                    <Button type="submit" disabled={form.formState.isSubmitting || fields.length === 0} className="w-full">
-                    {form.formState.isSubmitting ? "Creating Order..." : "Create Order"}
+                    <Button type="submit" disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId} className="w-full">
+                    {form.formState.isSubmitting ? "Creating Order..." : (watchedCustomerId ? "Create Order" : "Select Customer First")}
                     </Button>
                 </div>
               </form>

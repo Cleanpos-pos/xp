@@ -37,16 +37,16 @@ export default function NewCustomerPage() {
 
   async function onSubmit(data: CreateCustomerInput) {
     const result = await createCustomerAction(data);
-    if (result.success) {
+    if (result.success && result.customerId) {
       toast({
         title: "Customer Created",
         description: result.message,
       });
-      router.push(`/customers`); // Or redirect to the new customer's detail page if one exists
+      router.push(`/orders/new?customerId=${result.customerId}`); 
     } else {
       toast({
         title: "Error",
-        description: "Failed to create customer. Please check the form.",
+        description: result.errors ? JSON.stringify(result.errors) : "Failed to create customer. Please check the form.",
         variant: "destructive",
       });
     }
@@ -117,7 +117,7 @@ export default function NewCustomerPage() {
               )}
             />
             <Button type="submit" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Adding Customer..." : "Add Customer"}
+              {form.formState.isSubmitting ? "Adding Customer..." : "Add Customer & Start Order"}
             </Button>
           </form>
         </Form>

@@ -39,7 +39,7 @@ export default function RootLoginPage() {
         title: "Login Successful",
         description: result.message,
       });
-      router.push("/dashboard"); // Redirect to dashboard
+      router.push("/find-or-add-customer"); // Redirect to find/add customer page
     } else {
       if (result.errors) {
          // Field-specific errors
