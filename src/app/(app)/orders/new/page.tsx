@@ -24,7 +24,7 @@ import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock } from "lucide-react";
+import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,13 +35,13 @@ interface ServicesByCategory {
   [category: string]: ServiceItem[];
 }
 
-type OrderCreationStage = "form" | "paymentOptions";
+type OrderCreationStage = "form" | "paymentOptions" | "paymentProcessing";
 
 export default function NewOrderPage() {
   const { toast } = useToast();
   const router = useRouter();
   const [stage, setStage] = React.useState<OrderCreationStage>("form");
-  const [createdOrderDetails, setCreatedOrderDetails] = React.useState<{ id: string; message: string } | null>(null);
+  const [createdOrderDetails, setCreatedOrderDetails] = React.useState<{ id: string; message: string; totalAmount: number } | null>(null);
 
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
@@ -106,7 +106,11 @@ export default function NewOrderPage() {
         title: "Order Created",
         description: result.message,
       });
-      setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created successfully!" });
+      setCreatedOrderDetails({ 
+        id: result.orderId, 
+        message: result.message || "Order created successfully!",
+        totalAmount: orderTotal 
+      });
       setStage("paymentOptions");
     } else {
       toast({
@@ -129,18 +133,25 @@ export default function NewOrderPage() {
     setCreatedOrderDetails(null);
   };
 
-  const handlePayNow = () => {
+  const handleProceedToPayment = () => {
+    if (!createdOrderDetails) return;
+    setStage("paymentProcessing");
+  };
+  
+  const handleConfirmMockPayment = () => {
     if (!createdOrderDetails) return;
     toast({
       title: "Payment Processed (Mocked)",
-      description: `Order ${createdOrderDetails.id} marked as paid.`,
+      description: `Payment for order ${createdOrderDetails.id} of $${createdOrderDetails.totalAmount.toFixed(2)} was successful.`,
     });
+    // In a real app, you'd update the order's paymentStatus here via a server action.
     router.push(`/orders/${createdOrderDetails.id}`);
     resetFormAndStage();
-  };
+  }
 
   const handlePayLater = () => {
     if (!createdOrderDetails) return;
+    // Order payment status remains as is (likely 'Unpaid')
     router.push(`/orders/${createdOrderDetails.id}`);
     resetFormAndStage();
   };
@@ -159,9 +170,10 @@ export default function NewOrderPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">Order ID: {createdOrderDetails.id}</p>
+          <p className="font-semibold text-lg">Total: ${createdOrderDetails.totalAmount.toFixed(2)}</p>
           <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 justify-center">
-            <Button onClick={handlePayNow} className="w-full sm:w-auto">
-              <CheckCircle className="mr-2 h-4 w-4" /> Pay Now
+            <Button onClick={handleProceedToPayment} className="w-full sm:w-auto">
+              <CreditCard className="mr-2 h-4 w-4" /> Pay Now
             </Button>
             <Button onClick={handlePayLater} variant="outline" className="w-full sm:w-auto">
               <Clock className="mr-2 h-4 w-4" /> Pay Later
@@ -176,6 +188,52 @@ export default function NewOrderPage() {
       </Card>
     );
   }
+
+  if (stage === "paymentProcessing" && createdOrderDetails) {
+    return (
+      <Card className="max-w-lg mx-auto shadow-lg">
+        <CardHeader>
+          <CardTitle className="font-headline text-2xl flex items-center">
+            <CreditCard className="mr-2 h-6 w-6" /> Process Payment
+          </CardTitle>
+          <CardDescription>
+            Order ID: {createdOrderDetails.id} - Total: ${createdOrderDetails.totalAmount.toFixed(2)}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* This is a mock payment form. No real validation or processing. */}
+          <div className="space-y-4">
+            <FormItem>
+              <FormLabel>Card Number</FormLabel>
+              <Input type="text" placeholder="•••• •••• •••• ••••" />
+            </FormItem>
+            <div className="grid grid-cols-2 gap-4">
+              <FormItem>
+                <FormLabel>Expiry Date (MM/YY)</FormLabel>
+                <Input type="text" placeholder="MM/YY" />
+              </FormItem>
+              <FormItem>
+                <FormLabel>CVV</FormLabel>
+                <Input type="text" placeholder="•••" />
+              </FormItem>
+            </div>
+          </div>
+          <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 justify-end">
+            <Button onClick={handleConfirmMockPayment} className="w-full sm:w-auto">
+              Confirm Mock Payment
+            </Button>
+            <Button onClick={handlePayLater} variant="outline" className="w-full sm:w-auto">
+              Cancel & Pay Later
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground text-center">
+            This is a simulated payment screen. No actual payment will be processed.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
 
   const categoryNames = Object.keys(servicesByCategory);
 
@@ -345,7 +403,7 @@ export default function NewOrderPage() {
                         <PopoverContent className="w-auto p-0" align="start">
                           <Calendar
                             mode="single"
-                            selected={field.value}
+                            selected={field.value ? new Date(field.value) : undefined}
                             onSelect={(date) => field.onChange(date)}
                             disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
                             initialFocus
