@@ -5,19 +5,19 @@ export type Customer = {
   phone?: string;
   email?: string;
   address?: string;
-  loyalty_status?: 'None' | 'Bronze' | 'Silver' | 'Gold'; // Changed to snake_case
-  price_band?: 'Standard' | 'Band A' | 'Band B' | 'Band C'; // Changed to snake_case
-  orderHistory?: Order[]; // This would need a separate table and relation in a real setup
-  created_at: string; // Supabase returns ISO string
-  updated_at: string; // Supabase returns ISO string
+  loyalty_status?: 'None' | 'Bronze' | 'Silver' | 'Gold';
+  price_band?: 'Standard' | 'Band A' | 'Band B' | 'Band C';
+  orderHistory?: Order[];
+  created_at: string;
+  updated_at: string;
 };
 
 export type ServiceItem = {
   id: string;
-  name: string; // e.g., "Men's Shirt", "Suit 2-Piece"
+  name: string;
   description?: string;
   price: number;
-  category: string; // e.g., "Dry Cleaning", "Laundry", "Alterations"
+  category: string;
 };
 
 export type OrderItem = {
@@ -27,10 +27,10 @@ export type OrderItem = {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  notes?: string; // e.g., "Heavy starch", "Repair left cuff"
+  notes?: string;
 };
 
-export type OrderStatus = 
+export type OrderStatus =
   | "Received"
   | "Processing"
   | "Cleaning"
@@ -39,7 +39,7 @@ export type OrderStatus =
   | "Completed"
   | "Cancelled";
 
-export type PaymentStatus = 
+export type PaymentStatus =
   | "Paid"
   | "Unpaid"
   | "Processing Payment"
@@ -47,34 +47,49 @@ export type PaymentStatus =
 
 export type Order = {
   id: string;
-  orderNumber: string; // User-friendly order number, e.g., "XP-001023"
+  orderNumber: string;
   customerId: string;
-  customerName: string; // Denormalized for quick display
+  customerName: string;
   items: OrderItem[];
   totalAmount: number;
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
-  created_at: string; // Supabase returns ISO string
-  updated_at: string; // Supabase returns ISO string
-  dueDate?: string; // Dates also likely ISO strings or need conversion
-  notes?: string; // General order notes
+  created_at: string;
+  updated_at: string;
+  dueDate?: string;
+  notes?: string;
 };
 
 export type InventoryItem = {
   id: string;
   name: string;
   quantity: number;
-  unit: string; // e.g., "liters", "kg", "pieces"
+  unit: string;
   lowStockThreshold?: number;
-  lastRestocked?: string; // Date
+  lastRestocked?: string;
 };
 
 export type ReportData = {
   sales: number;
   orderVolume: number;
-  // Add more metrics as needed
 };
 
-// Note: StaffCredentials interface moved to mock-auth-store.ts for co-location
-// but conceptually it's a type that will be updated there to match DB.
-    
+// New types for hierarchical catalog management
+export type CatalogEntryType = 'category' | 'item';
+
+export interface CatalogEntry {
+  id: string;
+  name: string;
+  parentId: string | null; // null for top-level categories
+  type: CatalogEntryType;
+  price?: number; // For items
+  description?: string; // For items or categories
+  sortOrder: number; // To handle manual sorting later
+  created_at?: string; // ISO string
+  updated_at?: string; // ISO string
+}
+
+// For displaying hierarchy in UI
+export interface CatalogHierarchyNode extends CatalogEntry {
+  children: CatalogHierarchyNode[];
+}
