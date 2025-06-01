@@ -12,7 +12,6 @@ declare global {
   var mockOrdersStore: Order[] | undefined;
   // eslint-disable-next-line no-var
   var mockInventoryStore: InventoryItem[] | undefined;
-  // var mockCatalogEntriesStore: CatalogEntry[] | undefined; // Removed, will use Supabase
 }
 
 
@@ -77,7 +76,11 @@ export async function getCustomers(): Promise<Customer[]> {
     console.error('Error fetching customers from Supabase:', error);
     throw error;
   }
-  return (data as Customer[]) || [];
+  return ((data || []) as Customer[]).map(c => ({
+    ...c,
+    created_at: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
+    updated_at: c.updated_at ? new Date(c.updated_at).toISOString() : new Date().toISOString(),
+  }));
 }
 
 export async function getCustomerById(id: string): Promise<Customer | undefined> {
@@ -91,11 +94,15 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
     console.error('Error fetching customer by ID from Supabase:', error);
     throw error;
   }
-  return data as Customer | undefined;
+  if (!data) return undefined;
+  return {
+    ...data,
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString(),
+    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : new Date().toISOString(),
+  } as Customer;
 }
 
 export async function createCustomer(customerData: CreateCustomerInput): Promise<Customer> {
-  // Map from CreateCustomerInput (camelCase) to database schema (snake_case)
   const customerToInsert = {
     name: customerData.name,
     phone: customerData.phone || null,
@@ -115,7 +122,11 @@ export async function createCustomer(customerData: CreateCustomerInput): Promise
     console.error('Error adding customer to Supabase:', error);
     throw error;
   }
-  return data as Customer;
+  return {
+    ...data,
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString(),
+    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : new Date().toISOString(),
+  } as Customer;
 }
 
 // Mock Data Functions (for services, orders, inventory - to be migrated later)
@@ -153,21 +164,21 @@ export async function getCatalogEntries(): Promise<CatalogEntry[]> {
   const { data, error } = await supabase
     .from('catalog_entries')
     .select('*')
-    .order('sort_order', { ascending: true }); // Order by sort_order
+    .order('sort_order', { ascending: true });
 
   if (error) {
     console.error('Error fetching catalog entries from Supabase:', error);
     throw error;
   }
-  // Ensure price is number or undefined, not string from numeric db type
   return (data || []).map(entry => ({
     ...entry,
-    price: entry.price !== null ? parseFloat(entry.price) : undefined,
+    price: entry.price !== null && entry.price !== undefined ? parseFloat(entry.price) : undefined,
+    created_at: entry.created_at ? new Date(entry.created_at).toISOString() : undefined,
+    updated_at: entry.updated_at ? new Date(entry.updated_at).toISOString() : undefined,
   })) as CatalogEntry[];
 }
 
 export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_at' | 'updated_at' | 'sort_order'>): Promise<CatalogEntry> {
-  // Calculate sort_order: count existing siblings
   let countResult;
   if (entry.parent_id) {
     countResult = await supabase
@@ -182,7 +193,7 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
   }
 
   if (countResult.error) {
-    console.error('Error counting siblings for sort_order:', countResult.error);
+    console.error('Supabase error counting siblings for sort_order:', countResult.error);
     throw countResult.error;
   }
 
@@ -192,10 +203,12 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
     name: entry.name,
     parent_id: entry.parent_id,
     type: entry.type,
-    price: entry.type === 'item' ? entry.price : null, // Ensure price is null for categories
+    price: entry.type === 'item' ? entry.price : null,
     description: entry.description,
     sort_order: sort_order,
   };
+
+  console.log("Attempting to insert into Supabase catalog_entries:", JSON.stringify(entryToInsert, null, 2));
 
   const { data, error } = await supabase
     .from('catalog_entries')
@@ -204,11 +217,22 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
     .single();
 
   if (error) {
-    console.error('Error adding catalog entry to Supabase:', error);
+    console.error('Supabase error adding catalog entry:', JSON.stringify(error, null, 2));
     throw error;
   }
-  // Ensure price is number or undefined after insert
-  return { ...data, price: data.price !== null ? parseFloat(data.price) : undefined } as CatalogEntry;
+
+  if (!data) {
+    console.error('Supabase returned no data and no error after inserting catalog entry. Entry data attempted:', JSON.stringify(entryToInsert, null, 2));
+    throw new Error('Failed to add catalog entry: Supabase returned no data after insert. This may be due to RLS policies or other database constraints.');
+  }
+  
+  console.log("Successfully inserted catalog entry, Supabase returned:", JSON.stringify(data, null, 2));
+  return {
+    ...data,
+    price: data.price !== null && data.price !== undefined ? parseFloat(data.price) : undefined,
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : undefined,
+    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : undefined,
+  } as CatalogEntry;
 }
 
 
@@ -216,7 +240,7 @@ export function buildCatalogHierarchy(entries: CatalogEntry[], parent_id: string
   if (!entries) return [];
   return entries
     .filter(entry => entry.parent_id === parent_id)
-    .sort((a, b) => a.sort_order - b.sort_order)
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) // Added null check for sort_order
     .map(entry => ({
       ...entry,
       children: buildCatalogHierarchy(entries, entry.id),

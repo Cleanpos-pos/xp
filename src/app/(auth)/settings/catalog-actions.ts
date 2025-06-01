@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache";
 
 export const AddCatalogEntrySchema = z.object({
   name: z.string().min(1, "Name must be at least 1 character").max(100, "Name too long"),
-  parent_id: z.string().nullable(), // Changed from parentId
+  parent_id: z.string().uuid("Invalid parent ID format.").nullable(),
   type: z.enum(["category", "item"]),
   price: z.coerce.number().optional(),
   description: z.string().max(500, "Description too long").optional(),
@@ -44,9 +44,9 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
   }
 
   try {
-    const newEntry = await addCatalogEntry({ // addCatalogEntry in data.ts now uses Supabase
+    const newEntry = await addCatalogEntry({ 
       name,
-      parent_id, // Pass parent_id
+      parent_id, 
       type: type as CatalogEntryType, 
       price: type === "item" ? price : undefined,
       description,
@@ -54,17 +54,19 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
     revalidatePath("/settings"); 
     return { success: true, message: `${type === 'category' ? 'Category' : 'Item'} "${name}" added successfully.`, newEntry };
   } catch (error: any) {
-    console.error("Error in addCatalogEntryAction:", error);
-    return { success: false, message: error.message || `Failed to add ${type}.` };
+    const inputDataForLog = { name, parent_id, type, price, description };
+    console.error("Error in addCatalogEntryAction. Input data was:", JSON.stringify(inputDataForLog, null, 2));
+    console.error("Caught error details in action:", error); // Log the full error object
+    return { success: false, message: error.message || `Failed to add ${type}. Please check server logs for more details.` };
   }
 }
 
 export async function getCatalogHierarchyAction(): Promise<CatalogHierarchyNode[]> {
   try {
-    const hierarchy = await getFullCatalogHierarchy(); // getFullCatalogHierarchy in data.ts now uses Supabase
+    const hierarchy = await getFullCatalogHierarchy(); 
     return hierarchy;
   } catch (error) {
-    console.error("Error fetching catalog hierarchy:", error);
+    console.error("Error fetching catalog hierarchy in action:", error);
     return [];
   }
 }
