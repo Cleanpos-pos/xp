@@ -12,7 +12,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart"
-import { Bar, XAxis, YAxis, CartesianGrid, Pie, Cell, Line, PieChart } from "recharts" // Added PieChart here
+import { Bar, XAxis, YAxis, CartesianGrid, Pie, Cell, Line, PieChart, LineChart } from "recharts" // Added PieChart and LineChart here
 
 const chartDataSales = [
   { month: "January", sales: Math.floor(Math.random() * 5000) + 1000 },
@@ -151,3 +151,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+
