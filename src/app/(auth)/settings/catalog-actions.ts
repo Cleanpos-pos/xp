@@ -1,31 +1,15 @@
 
 "use server";
 
-import { z } from "zod";
-import { addCatalogEntry, getFullCatalogHierarchy } from "@/lib/data"; // Uses Supabase now
-import type { CatalogEntry, CatalogEntryType, CatalogHierarchyNode } from "@/types";
+import { addCatalogEntry, getFullCatalogHierarchy } from "@/lib/data";
+import type { CatalogEntryType, CatalogHierarchyNode } from "@/types";
 import { revalidatePath } from "next/cache";
-
-export const AddCatalogEntrySchema = z.object({
-  name: z.string().min(1, "Name must be at least 1 character").max(100, "Name too long"),
-  parent_id: z.string().uuid("Invalid parent ID format.").nullable(),
-  type: z.enum(["category", "item"]),
-  price: z.coerce.number().optional(),
-  description: z.string().max(500, "Description too long").optional(),
-});
-
-export type AddCatalogEntryInput = z.infer<typeof AddCatalogEntrySchema>;
-
-export interface ActionResult {
-  success: boolean;
-  message?: string;
-  errors?: z.ZodIssue[];
-  newEntry?: CatalogEntry;
-}
+import { type AddCatalogEntryInput, type ActionResult, AddCatalogEntrySchema } from "./catalog.schema";
 
 export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise<ActionResult> {
   const validationResult = AddCatalogEntrySchema.safeParse(data);
   if (!validationResult.success) {
+    console.error("Validation failed in addCatalogEntryAction:", JSON.stringify(validationResult.error.issues, null, 2));
     return {
       success: false,
       errors: validationResult.error.issues,
@@ -44,28 +28,35 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
   }
 
   try {
-    const newEntry = await addCatalogEntry({ 
+    // The addCatalogEntry function in lib/data.ts expects Omit<CatalogEntry, 'id' | 'created_at' | 'updated_at' | 'sort_order'>
+    // It internally calculates sort_order.
+    const newEntryData = {
       name,
-      parent_id, 
-      type: type as CatalogEntryType, 
-      price: type === "item" ? price : undefined,
+      parent_id,
+      type: type as CatalogEntryType, // Zod enum ensures this is valid
+      price: type === "item" ? price : undefined, // Price only for items
       description,
-    });
-    revalidatePath("/settings"); 
+      // sort_order will be handled by addCatalogEntry in lib/data.ts
+    };
+    
+    const newEntry = await addCatalogEntry(newEntryData as any); // Cast as any if precise Omit type causes issues, or refine type
+    
+    revalidatePath("/settings");
     revalidatePath("/services");
     revalidatePath("/orders/new");
+
     return { success: true, message: `${type === 'category' ? 'Category' : 'Item'} "${name}" added successfully.`, newEntry };
   } catch (error: any) {
     const inputDataForLog = { name, parent_id, type, price, description };
     console.error("Error in addCatalogEntryAction. Input data was:", JSON.stringify(inputDataForLog, null, 2));
-    console.error("Caught error details in action:", error); 
+    console.error("Caught error details in action:", error);
     return { success: false, message: error.message || `Failed to add ${type}. Please check server logs for more details.` };
   }
 }
 
 export async function getCatalogHierarchyAction(): Promise<CatalogHierarchyNode[]> {
   try {
-    const hierarchy = await getFullCatalogHierarchy(); 
+    const hierarchy = await getFullCatalogHierarchy();
     return hierarchy;
   } catch (error) {
     console.error("Error fetching catalog hierarchy in action:", error);

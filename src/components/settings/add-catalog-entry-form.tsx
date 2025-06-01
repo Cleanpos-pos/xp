@@ -17,11 +17,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { AddCatalogEntrySchema, type AddCatalogEntryInput } from "@/app/(auth)/settings/catalog-actions";
+import { AddCatalogEntrySchema, type AddCatalogEntryInput } from "@/app/(auth)/settings/catalog.schema";
 import type { CatalogEntryType } from "@/types";
 
 interface AddCatalogEntryFormProps {
-  parent_id: string | null; // Changed from parentId
+  parent_id: string | null;
   defaultType?: CatalogEntryType;
   onSuccess: () => void;
   submitAction: (data: AddCatalogEntryInput) => Promise<{ success: boolean; message?: string; errors?: any }>;
@@ -32,7 +32,7 @@ export function AddCatalogEntryForm({ parent_id, defaultType = "category", onSuc
     resolver: zodResolver(AddCatalogEntrySchema),
     defaultValues: {
       name: "",
-      parent_id: parent_id, // Use parent_id
+      parent_id: parent_id,
       type: defaultType,
       price: 0,
       description: "",
