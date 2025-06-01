@@ -1,5 +1,6 @@
 
 import type { Order, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus } from '@/types';
+import type { CreateCustomerInput } from '@/app/(app)/customers/new/customer.schema';
 
 const commonDate = new Date();
 
@@ -35,9 +36,9 @@ export const mockOrders: Order[] = [
     totalAmount: 32.50,
     status: 'Ready for Pickup' as OrderStatus,
     paymentStatus: 'Paid' as PaymentStatus,
-    createdAt: new Date(commonDate.setDate(commonDate.getDate() - 3)),
-    updatedAt: new Date(commonDate.setDate(commonDate.getDate() - 1)),
-    dueDate: new Date(commonDate.setDate(commonDate.getDate() + 2)),
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)),
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 2)),
   },
   {
     id: 'order2',
@@ -50,9 +51,9 @@ export const mockOrders: Order[] = [
     totalAmount: 24.00,
     status: 'Cleaning' as OrderStatus,
     paymentStatus: 'Unpaid' as PaymentStatus,
-    createdAt: new Date(commonDate.setDate(commonDate.getDate() - 2)),
-    updatedAt: new Date(commonDate.setDate(commonDate.getDate() - 1)),
-    dueDate: new Date(commonDate.setDate(commonDate.getDate() + 3)),
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 2)),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)),
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 3)),
   },
   {
     id: 'order3',
@@ -65,8 +66,8 @@ export const mockOrders: Order[] = [
     totalAmount: 10.00,
     status: 'Completed' as OrderStatus,
     paymentStatus: 'Paid' as PaymentStatus,
-    createdAt: new Date(commonDate.setDate(commonDate.getDate() - 7)),
-    updatedAt: new Date(commonDate.setDate(commonDate.getDate() - 5)),
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 7)),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 5)),
   },
    {
     id: 'order4',
@@ -79,9 +80,9 @@ export const mockOrders: Order[] = [
     totalAmount: 25.00,
     status: 'Received' as OrderStatus,
     paymentStatus: 'Unpaid' as PaymentStatus,
-    createdAt: new Date(commonDate.setDate(commonDate.getDate() - 1)),
-    updatedAt: new Date(commonDate.setDate(commonDate.getDate() - 1)),
-    dueDate: new Date(commonDate.setDate(commonDate.getDate() + 4)),
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 1)),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)),
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 4)),
   },
 ];
 
@@ -96,25 +97,34 @@ export function getCustomerById(id: string): Customer | undefined {
   return mockCustomers.find(c => c.id === id);
 }
 
+export function addMockCustomer(customerData: CreateCustomerInput): Customer {
+  const newCustomerId = `cust-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  const newCustomer: Customer = {
+    id: newCustomerId,
+    name: customerData.name,
+    phone: customerData.phone,
+    email: customerData.email,
+    address: customerData.address,
+    createdAt: new Date(),
+  };
+  mockCustomers.push(newCustomer);
+  console.log("Added new customer to mock store:", newCustomer);
+  console.log("Current mockCustomers:", mockCustomers);
+  return newCustomer;
+}
+
 export function getOrderById(id: string): Order | undefined {
   const order = mockOrders.find(o => o.id === id);
-  // Simulate payment status for newly created orders if not set (for mock purposes)
   if (order && !order.paymentStatus) {
-    // This is a simplification. In a real app, createOrderAction would set this.
-    // For "Pay Now" in mock, the toast indicates payment, but the data here won't reflect it dynamically
-    // unless we rebuild the mockOrders array or fetch from a "DB".
-    // Let's default to 'Unpaid' if not specified in mock data.
     order.paymentStatus = 'Unpaid';
   }
   return order;
 }
 
-export function getServiceById(id: string): ServiceItem | undefined {
+export function getServiceById(id:string): ServiceItem | undefined {
   return mockServices.find(s => s.id === id);
 }
 
 export function getInventoryItemById(id: string): InventoryItem | undefined {
   return mockInventory.find(i => i.id === id);
 }
-
-    

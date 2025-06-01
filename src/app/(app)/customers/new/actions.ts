@@ -2,6 +2,7 @@
 "use server";
 
 import { type CreateCustomerInput, CreateCustomerSchema } from "./customer.schema";
+import { addMockCustomer } from "@/lib/data";
 
 export async function createCustomerAction(data: CreateCustomerInput) {
   const validationResult = CreateCustomerSchema.safeParse(data);
@@ -13,14 +14,15 @@ export async function createCustomerAction(data: CreateCustomerInput) {
     };
   }
 
-  console.log("New customer data:", validationResult.data);
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Add to the in-memory mock store
+  const newCustomer = addMockCustomer(validationResult.data);
 
-  const mockCustomerId = `cust-${Math.floor(Math.random() * 1000)}`;
+  // Simulate some delay if needed, though addMockCustomer is synchronous
+  // await new Promise(resolve => setTimeout(resolve, 100)); 
 
   return {
     success: true,
-    message: `Customer ${validationResult.data.name} created successfully!`,
-    customerId: mockCustomerId,
+    message: `Customer ${newCustomer.name} created successfully!`,
+    customerId: newCustomer.id, // Use the ID from the newly added customer
   };
 }
