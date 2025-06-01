@@ -56,19 +56,39 @@ export default function NewOrderPage() {
     },
   });
 
+  // Effect to pre-select customer based on query parameter
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
     if (customerIdFromQuery) {
       const customer = mockCustomers.find(c => c.id === customerIdFromQuery);
       if (customer) {
-        form.setValue('customerId', customerIdFromQuery);
-        setSelectedCustomerName(customer.name);
+        form.setValue('customerId', customerIdFromQuery, { shouldValidate: true });
+        // selectedCustomerName will be updated by the effect below watching form.watch("customerId")
       } else {
         console.warn(`Customer ID ${customerIdFromQuery} from query params not found.`);
         toast({title: "Customer Not Found", description: "The customer ID from the previous page was not found. Please select a customer.", variant: "destructive"});
+        form.setValue('customerId', ''); // Clear if invalid ID from query
+      }
+    } else {
+      // If no customerId in query (e.g. user navigated back after params were cleared),
+      // ensure the form value for customerId is also clear if it was somehow set.
+      if (form.getValues('customerId')) {
+        form.setValue('customerId', '');
       }
     }
   }, [searchParams, form, toast]);
+
+  const watchedCustomerId = form.watch("customerId");
+
+  // Effect to update selectedCustomerName whenever the customerId in the form changes
+  React.useEffect(() => {
+    if (watchedCustomerId) {
+      const customer = mockCustomers.find(c => c.id === watchedCustomerId);
+      setSelectedCustomerName(customer ? customer.name : null);
+    } else {
+      setSelectedCustomerName(null);
+    }
+  }, [watchedCustomerId]);
 
 
   const { fields, append, remove, update } = useFieldArray({
@@ -111,16 +131,6 @@ export default function NewOrderPage() {
   };
 
   const watchedItems = form.watch("items");
-  const watchedCustomerId = form.watch("customerId");
-
-  React.useEffect(() => {
-    if (watchedCustomerId) {
-      const customer = mockCustomers.find(c => c.id === watchedCustomerId);
-      setSelectedCustomerName(customer ? customer.name : null);
-    } else {
-      setSelectedCustomerName(null);
-    }
-  }, [watchedCustomerId]);
   
   const orderTotal = React.useMemo(() => {
     return watchedItems.reduce((sum, item) => {
@@ -158,10 +168,9 @@ export default function NewOrderPage() {
       dueDate: undefined,
       notes: "",
     });
-    setSelectedCustomerName(null); // Reset selected customer name
+    // selectedCustomerName will be reset by the watchedCustomerId effect
     setStage("form");
     setCreatedOrderDetails(null);
-    // Clear query params to prevent re-selection if user navigates back then forward
     router.replace('/orders/new', undefined); 
   };
 
@@ -188,7 +197,7 @@ export default function NewOrderPage() {
 
   const handleCreateAnotherOrder = () => {
     resetFormAndStage();
-    router.push('/find-or-add-customer'); // Go back to customer selection
+    router.push('/find-or-add-customer');
   };
   
   const handleGoToDashboard = () => {
@@ -338,13 +347,9 @@ export default function NewOrderPage() {
                     <FormItem>
                       <FormLabel>Customer</FormLabel>
                       <Select 
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          const cust = mockCustomers.find(c => c.id === value);
-                          setSelectedCustomerName(cust ? cust.name : null);
-                        }} 
-                        value={field.value} // ensure value is controlled
-                        disabled={!!searchParams.get('customerId')} // Disable if customerId came from query
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                        disabled={!!searchParams.get('customerId')}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -359,9 +364,15 @@ export default function NewOrderPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {!!searchParams.get('customerId') && (
-                        <FormDescription>Customer pre-selected. To change, go back to customer search.</FormDescription>
-                      )}
+                      <FormDescription>
+                        {searchParams.get('customerId') && selectedCustomerName
+                          ? `Selected: ${selectedCustomerName}. To change, go back.`
+                          : !searchParams.get('customerId')
+                          ? 'Select a customer for this order.'
+                          : searchParams.get('customerId') && !selectedCustomerName
+                          ? 'Attempting to load pre-selected customer...'
+                          : ''}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -495,3 +506,4 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
