@@ -27,12 +27,7 @@ import { useRouter } from "next/navigation";
 import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -113,7 +108,6 @@ export default function NewOrderPage() {
       });
       setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created successfully!" });
       setStage("paymentOptions");
-      // Don't reset form here, do it when user chooses an action
     } else {
       toast({
         title: "Error",
@@ -183,24 +177,30 @@ export default function NewOrderPage() {
     );
   }
 
+  const categoryNames = Object.keys(servicesByCategory);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       <div className="lg:col-span-2 space-y-6">
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-2xl">Select Services</CardTitle>
-            <CardDescription>Choose services by category. Click a service to add it to the order.</CardDescription>
+            <CardDescription>Choose a category, then click a service to add it to the order.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Accordion type="multiple" className="w-full space-y-2" defaultValue={Object.keys(servicesByCategory)}>
-              {Object.entries(servicesByCategory).map(([category, servicesInCat]) => (
-                <AccordionItem value={category} key={category} className="border bg-muted/20 rounded-md">
-                  <AccordionTrigger className="px-4 py-3 text-lg font-medium hover:no-underline">
-                    {category}
-                  </AccordionTrigger>
-                  <AccordionContent className="p-1">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3">
-                      {servicesInCat.map((service) => (
+            {categoryNames.length > 0 ? (
+              <Tabs defaultValue={categoryNames[0]} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">
+                  {categoryNames.map((category) => (
+                    <TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">
+                      {category}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {categoryNames.map((category) => (
+                  <TabsContent key={category} value={category}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
+                      {servicesByCategory[category].map((service) => (
                         <Button
                           key={service.id}
                           variant="outline"
@@ -212,10 +212,12 @@ export default function NewOrderPage() {
                         </Button>
                       ))}
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            ) : (
+              <p>No services available.</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -386,6 +388,5 @@ export default function NewOrderPage() {
     </div>
   );
 }
-    
 
     
