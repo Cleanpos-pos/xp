@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockCustomers } from '@/lib/data';
+import { getMockCustomers } from '@/lib/data';
 import type { Customer } from '@/types';
 import Link from 'next/link';
 import { Search, UserPlus, ArrowRight, Users } from 'lucide-react';
@@ -16,6 +16,7 @@ export default function FindOrAddCustomerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const allCustomers = getMockCustomers(); // Get all customers once
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
@@ -24,7 +25,7 @@ export default function FindOrAddCustomerPage() {
       return;
     }
     const lowerSearchTerm = searchTerm.toLowerCase();
-    const results = mockCustomers.filter(customer =>
+    const results = allCustomers.filter(customer =>
       customer.name.toLowerCase().includes(lowerSearchTerm) ||
       (customer.phone && customer.phone.includes(searchTerm)) ||
       (customer.email && customer.email.toLowerCase().includes(lowerSearchTerm))

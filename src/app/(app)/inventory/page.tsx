@@ -1,16 +1,18 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { mockInventory } from '@/lib/data';
+import { getMockInventory } from '@/lib/data';
 import type { InventoryItem } from '@/types';
 import { Package, Edit, MoreHorizontal, AlertTriangle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 export default function InventoryPage() {
-  const inventory: InventoryItem[] = mockInventory;
+  const inventory: InventoryItem[] = getMockInventory();
 
   const getStockLevel = (item: InventoryItem) => {
     if (!item.lowStockThreshold) return 'normal';

@@ -2,15 +2,27 @@
 import type { Order, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus } from '@/types';
 import type { CreateCustomerInput } from '@/app/(app)/customers/new/customer.schema';
 
+// Define types for our global stores
+declare global {
+  // eslint-disable-next-line no-var
+  var mockCustomersStore: Customer[] | undefined;
+  // eslint-disable-next-line no-var
+  var mockServicesStore: ServiceItem[] | undefined;
+  // eslint-disable-next-line no-var
+  var mockOrdersStore: Order[] | undefined;
+  // eslint-disable-next-line no-var
+  var mockInventoryStore: InventoryItem[] | undefined;
+}
+
 const commonDate = new Date();
 
-export const mockCustomers: Customer[] = [
-  { id: 'cust1', name: 'John Doe', phone: '555-1234', email: 'john.doe@example.com', createdAt: new Date(commonDate.setDate(commonDate.getDate() - 10)) },
-  { id: 'cust2', name: 'Jane Smith', phone: '555-5678', email: 'jane.smith@example.com', createdAt: new Date(commonDate.setDate(commonDate.getDate() - 5)) },
-  { id: 'cust3', name: 'Alice Brown', phone: '555-8765', createdAt: new Date(commonDate.setDate(commonDate.getDate() - 20)) },
+const initialCustomers: Customer[] = [
+  { id: 'cust1', name: 'John Doe', phone: '555-1234', email: 'john.doe@example.com', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 10)) },
+  { id: 'cust2', name: 'Jane Smith', phone: '555-5678', email: 'jane.smith@example.com', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 5)) },
+  { id: 'cust3', name: 'Alice Brown', phone: '555-8765', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 20)) },
 ];
 
-export const mockServices: ServiceItem[] = [
+const initialServices: ServiceItem[] = [
   { id: 'serv1', name: "Men's Shirt - Hanger", price: 3.50, category: 'Laundry' },
   { id: 'serv2', name: 'Suit 2-Piece', price: 15.00, category: 'Dry Cleaning' },
   { id: 'serv3', name: 'Dress - Plain', price: 12.00, category: 'Dry Cleaning' },
@@ -23,7 +35,7 @@ export const mockServices: ServiceItem[] = [
 
 const generateOrderNumber = (index: number) => `XP-${String(1000 + index).padStart(6, '0')}`;
 
-export const mockOrders: Order[] = [
+const initialOrders: Order[] = [
   {
     id: 'order1',
     orderNumber: generateOrderNumber(1),
@@ -86,15 +98,36 @@ export const mockOrders: Order[] = [
   },
 ];
 
-export const mockInventory: InventoryItem[] = [
+const initialInventory: InventoryItem[] = [
   { id: 'inv1', name: 'Dry Cleaning Solvent', quantity: 50, unit: 'liters', lowStockThreshold: 20 },
   { id: 'inv2', name: 'Hangers - Wire', quantity: 850, unit: 'pieces', lowStockThreshold: 200 },
   { id: 'inv3', name: 'Garment Bags - Clear', quantity: 400, unit: 'pieces', lowStockThreshold: 100 },
   { id: 'inv4', name: 'Laundry Detergent', quantity: 25, unit: 'kg', lowStockThreshold: 5 },
 ];
 
+// Initialize stores on globalThis if they don't exist
+if (!global.mockCustomersStore) {
+  global.mockCustomersStore = [...initialCustomers];
+}
+if (!global.mockServicesStore) {
+  global.mockServicesStore = [...initialServices];
+}
+if (!global.mockOrdersStore) {
+  global.mockOrdersStore = [...initialOrders];
+}
+if (!global.mockInventoryStore) {
+  global.mockInventoryStore = [...initialInventory];
+}
+
+// Export functions that access these global stores
+export const getMockCustomers = (): Customer[] => global.mockCustomersStore!;
+export const getMockServices = (): ServiceItem[] => global.mockServicesStore!;
+export const getMockOrders = (): Order[] => global.mockOrdersStore!;
+export const getMockInventory = (): InventoryItem[] => global.mockInventoryStore!;
+
+
 export function getCustomerById(id: string): Customer | undefined {
-  return mockCustomers.find(c => c.id === id);
+  return global.mockCustomersStore!.find(c => c.id === id);
 }
 
 export function addMockCustomer(customerData: CreateCustomerInput): Customer {
@@ -102,19 +135,19 @@ export function addMockCustomer(customerData: CreateCustomerInput): Customer {
   const newCustomer: Customer = {
     id: newCustomerId,
     name: customerData.name,
-    phone: customerData.phone,
-    email: customerData.email,
-    address: customerData.address,
+    phone: customerData.phone || undefined, // ensure optional fields are undefined if empty
+    email: customerData.email || undefined,
+    address: customerData.address || undefined,
     createdAt: new Date(),
   };
-  mockCustomers.push(newCustomer);
-  console.log("Added new customer to mock store:", newCustomer);
-  console.log("Current mockCustomers:", mockCustomers);
+  global.mockCustomersStore!.push(newCustomer);
+  console.log("Added new customer to global mock store:", newCustomer);
+  console.log("Current global mockCustomersStore length:", global.mockCustomersStore!.length);
   return newCustomer;
 }
 
 export function getOrderById(id: string): Order | undefined {
-  const order = mockOrders.find(o => o.id === id);
+  const order = global.mockOrdersStore!.find(o => o.id === id);
   if (order && !order.paymentStatus) {
     order.paymentStatus = 'Unpaid';
   }
@@ -122,9 +155,9 @@ export function getOrderById(id: string): Order | undefined {
 }
 
 export function getServiceById(id:string): ServiceItem | undefined {
-  return mockServices.find(s => s.id === id);
+  return global.mockServicesStore!.find(s => s.id === id);
 }
 
 export function getInventoryItemById(id: string): InventoryItem | undefined {
-  return mockInventory.find(i => i.id === id);
+  return global.mockInventoryStore!.find(i => i.id === id);
 }

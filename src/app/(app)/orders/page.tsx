@@ -1,9 +1,10 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { mockOrders } from '@/lib/data';
+import { getMockOrders } from '@/lib/data';
 import type { Order, OrderStatus } from '@/types';
 import { Eye, Pencil, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -12,13 +13,13 @@ import { format } from 'date-fns';
 function getStatusBadgeVariant(status: OrderStatus): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
     case 'Completed':
-      return 'default'; // Or a success variant if defined
+      return 'default'; 
     case 'Ready for Pickup':
-      return 'secondary'; // Visually distinct, perhaps primary color based
+      return 'secondary'; 
     case 'Cleaning':
     case 'Alterations':
     case 'Processing':
-      return 'outline'; // Yellowish or bluish based on accent/primary
+      return 'outline'; 
     case 'Received':
       return 'outline';
     case 'Cancelled':
@@ -28,20 +29,19 @@ function getStatusBadgeVariant(status: OrderStatus): "default" | "secondary" | "
   }
 }
 
-// Custom styles for badges to match theme better
 const statusColors: Record<OrderStatus, string> = {
-  Received: "bg-blue-100 text-blue-700 border-blue-300", // Softer blue
-  Processing: "bg-yellow-100 text-yellow-700 border-yellow-300", // Muted yellow accent
+  Received: "bg-blue-100 text-blue-700 border-blue-300",
+  Processing: "bg-yellow-100 text-yellow-700 border-yellow-300",
   Cleaning: "bg-indigo-100 text-indigo-700 border-indigo-300",
   Alterations: "bg-purple-100 text-purple-700 border-purple-300",
-  "Ready for Pickup": "bg-green-100 text-green-700 border-green-300", // Success like
-  Completed: "bg-gray-200 text-gray-800 border-gray-400", // Neutral
-  Cancelled: "bg-red-100 text-red-700 border-red-300", // Destructive like
+  "Ready for Pickup": "bg-green-100 text-green-700 border-green-300",
+  Completed: "bg-gray-200 text-gray-800 border-gray-400", 
+  Cancelled: "bg-red-100 text-red-700 border-red-300", 
 };
 
 
 export default function OrderTrackingPage() {
-  const orders: Order[] = mockOrders;
+  const orders: Order[] = getMockOrders();
 
   return (
     <Card className="shadow-lg">

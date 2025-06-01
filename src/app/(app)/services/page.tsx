@@ -1,15 +1,16 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { mockServices } from '@/lib/data';
+import { getMockServices } from '@/lib/data';
 import type { ServiceItem } from '@/types';
 import { Tag, DollarSign, Edit, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 
 export default function ServicesPage() {
-  const services: ServiceItem[] = mockServices;
+  const services: ServiceItem[] = getMockServices();
 
   return (
     <Card className="shadow-lg">

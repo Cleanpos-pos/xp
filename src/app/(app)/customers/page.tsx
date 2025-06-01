@@ -1,15 +1,16 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { mockCustomers } from '@/lib/data';
+import { getMockCustomers } from '@/lib/data';
 import type { Customer } from '@/types';
 import { Eye, Pencil, MoreHorizontal, Phone, Mail } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 
 export default function CustomersPage() {
-  const customers: Customer[] = mockCustomers;
+  const customers: Customer[] = getMockCustomers();
 
   return (
     <Card className="shadow-lg">

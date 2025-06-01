@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { mockCustomers, mockServices } from "@/lib/data";
+import { getMockCustomers, getMockServices, getCustomerById } from "@/lib/data";
 import type { ServiceItem, Customer } from "@/types";
 import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
@@ -46,6 +46,10 @@ export default function NewOrderPage() {
   const [createdOrderDetails, setCreatedOrderDetails] = React.useState<{ id: string; message: string; totalAmount: number } | null>(null);
   const [selectedCustomerName, setSelectedCustomerName] = React.useState<string | null>(null);
 
+  const allCustomers = React.useMemo(() => getMockCustomers(), []);
+  const allServices = React.useMemo(() => getMockServices(), []);
+
+
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
     defaultValues: {
@@ -56,22 +60,19 @@ export default function NewOrderPage() {
     },
   });
 
-  // Effect to pre-select customer based on query parameter
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
     if (customerIdFromQuery) {
-      const customer = mockCustomers.find(c => c.id === customerIdFromQuery);
+      const customer = getCustomerById(customerIdFromQuery); // Uses the updated getCustomerById
       if (customer) {
         form.setValue('customerId', customerIdFromQuery, { shouldValidate: true });
-        // selectedCustomerName will be updated by the effect below watching form.watch("customerId")
+        // selectedCustomerName will be updated by the effect below
       } else {
         console.warn(`Customer ID ${customerIdFromQuery} from query params not found.`);
         toast({title: "Customer Not Found", description: "The customer ID from the previous page was not found. Please select a customer.", variant: "destructive"});
-        form.setValue('customerId', ''); // Clear if invalid ID from query
+        form.setValue('customerId', ''); 
       }
     } else {
-      // If no customerId in query (e.g. user navigated back after params were cleared),
-      // ensure the form value for customerId is also clear if it was somehow set.
       if (form.getValues('customerId')) {
         form.setValue('customerId', '');
       }
@@ -80,10 +81,9 @@ export default function NewOrderPage() {
 
   const watchedCustomerId = form.watch("customerId");
 
-  // Effect to update selectedCustomerName whenever the customerId in the form changes
   React.useEffect(() => {
     if (watchedCustomerId) {
-      const customer = mockCustomers.find(c => c.id === watchedCustomerId);
+      const customer = getCustomerById(watchedCustomerId);
       setSelectedCustomerName(customer ? customer.name : null);
     } else {
       setSelectedCustomerName(null);
@@ -97,7 +97,7 @@ export default function NewOrderPage() {
   });
 
   const servicesByCategory = React.useMemo(() => {
-    return mockServices.reduce((acc, service) => {
+    return allServices.reduce((acc, service) => {
       const category = service.category || "Other";
       if (!acc[category]) {
         acc[category] = [];
@@ -105,7 +105,7 @@ export default function NewOrderPage() {
       acc[category].push(service);
       return acc;
     }, {} as ServicesByCategory);
-  }, []);
+  }, [allServices]);
 
   const handleServiceItemClick = (service: ServiceItem) => {
     const currentItems = form.getValues("items");
@@ -168,7 +168,6 @@ export default function NewOrderPage() {
       dueDate: undefined,
       notes: "",
     });
-    // selectedCustomerName will be reset by the watchedCustomerId effect
     setStage("form");
     setCreatedOrderDetails(null);
     router.replace('/orders/new', undefined); 
@@ -357,7 +356,7 @@ export default function NewOrderPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {mockCustomers.map((customer) => (
+                          {allCustomers.map((customer) => (
                             <SelectItem key={customer.id} value={customer.id}>
                               {customer.name} ({customer.phone || 'No phone'})
                             </SelectItem>
@@ -506,4 +505,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
