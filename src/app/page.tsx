@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { LogIn, KeyRound, UserCheck, Users } from "lucide-react";
 import type { StaffCredentials } from "@/lib/mock-auth-store";
 import { Separator } from "@/components/ui/separator";
+import Link from 'next/link';
 
 export default function RootLoginPage() {
   const { toast } = useToast();
