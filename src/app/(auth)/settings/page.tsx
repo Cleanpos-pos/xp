@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AddStaffSchema, type AddStaffInput, addStaffAction } from "./actions";
+import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
+import { addStaffAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Cog } from "lucide-react";
 import Link from "next/link";

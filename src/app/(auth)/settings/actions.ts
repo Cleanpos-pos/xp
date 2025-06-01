@@ -1,16 +1,8 @@
 
 "use server";
 
-import { z } from "zod";
 import { addStaff as addStaffToStore } from "@/lib/mock-auth-store";
-
-export const AddStaffSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  loginId: z.string().min(3, "Login ID must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-export type AddStaffInput = z.infer<typeof AddStaffSchema>;
+import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 
 export async function addStaffAction(data: AddStaffInput) {
   const validationResult = AddStaffSchema.safeParse(data);
@@ -36,4 +28,3 @@ export async function addStaffAction(data: AddStaffInput) {
     message: `Staff member ${validationResult.data.name} with Login ID ${validationResult.data.loginId} added.`,
   };
 }
-
