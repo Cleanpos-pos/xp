@@ -1,7 +1,7 @@
 
 "use client";
 
-import * as React from "react";
+import *ాలుReact from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { Trash2, CalendarIcon, ShoppingCart } from "lucide-react";
+import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -40,15 +40,19 @@ interface ServicesByCategory {
   [category: string]: ServiceItem[];
 }
 
+type OrderCreationStage = "form" | "paymentOptions";
+
 export default function NewOrderPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [stage, setStage] = React.useState<OrderCreationStage>("form");
+  const [createdOrderDetails, setCreatedOrderDetails] = React.useState<{ id: string; message: string } | null>(null);
 
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
     defaultValues: {
       customerId: "",
-      items: [], // Start with an empty array for items
+      items: [],
       dueDate: undefined,
       notes: "",
     },
@@ -102,20 +106,81 @@ export default function NewOrderPage() {
 
   async function onSubmit(data: CreateOrderInput) {
     const result = await createOrderAction(data);
-    if (result.success) {
+    if (result.success && result.orderId) {
       toast({
         title: "Order Created",
         description: result.message,
       });
-      router.push(`/orders/${result.orderId}`);
+      setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created successfully!" });
+      setStage("paymentOptions");
+      // Don't reset form here, do it when user chooses an action
     } else {
       toast({
         title: "Error",
-        description: "Failed to create order. Please check the form or ensure at least one item is added.",
+        description: result.errors ? JSON.stringify(result.errors) : "Failed to create order. Please check the form or ensure at least one item is added.",
         variant: "destructive",
       });
       console.error("Form submission errors:", result.errors);
     }
+  }
+
+  const resetFormAndStage = () => {
+    form.reset({
+      customerId: "",
+      items: [],
+      dueDate: undefined,
+      notes: "",
+    });
+    setStage("form");
+    setCreatedOrderDetails(null);
+  };
+
+  const handlePayNow = () => {
+    if (!createdOrderDetails) return;
+    toast({
+      title: "Payment Processed (Mocked)",
+      description: `Order ${createdOrderDetails.id} marked as paid.`,
+    });
+    router.push(`/orders/${createdOrderDetails.id}`);
+    resetFormAndStage();
+  };
+
+  const handlePayLater = () => {
+    if (!createdOrderDetails) return;
+    router.push(`/orders/${createdOrderDetails.id}`);
+    resetFormAndStage();
+  };
+
+  const handleCreateAnotherOrder = () => {
+    resetFormAndStage();
+  };
+
+  if (stage === "paymentOptions" && createdOrderDetails) {
+    return (
+      <Card className="max-w-md mx-auto shadow-lg text-center">
+        <CardHeader>
+          <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
+          <CardTitle className="font-headline text-2xl mt-4">Order Successfully Created!</CardTitle>
+          <CardDescription>{createdOrderDetails.message}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground">Order ID: {createdOrderDetails.id}</p>
+          <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 justify-center">
+            <Button onClick={handlePayNow} className="w-full sm:w-auto">
+              <CheckCircle className="mr-2 h-4 w-4" /> Pay Now
+            </Button>
+            <Button onClick={handlePayLater} variant="outline" className="w-full sm:w-auto">
+              <Clock className="mr-2 h-4 w-4" /> Pay Later
+            </Button>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-center">
+          <Button onClick={handleCreateAnotherOrder} variant="link">
+            Create Another Order
+          </Button>
+        </CardFooter>
+      </Card>
+    );
   }
 
   return (
@@ -127,7 +192,7 @@ export default function NewOrderPage() {
             <CardDescription>Choose services by category. Click a service to add it to the order.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Accordion type="multiple" className="w-full space-y-2">
+            <Accordion type="multiple" className="w-full space-y-2" defaultValue={Object.keys(servicesByCategory)}>
               {Object.entries(servicesByCategory).map(([category, servicesInCat]) => (
                 <AccordionItem value={category} key={category} className="border bg-muted/20 rounded-md">
                   <AccordionTrigger className="px-4 py-3 text-lg font-medium hover:no-underline">
@@ -194,7 +259,7 @@ export default function NewOrderPage() {
                 />
 
                 {fields.length > 0 && (
-                  <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
+                  <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-2">
                     {fields.map((field, index) => (
                       <Card key={field.id} className="p-3 space-y-3 bg-background border rounded-md shadow-sm">
                         <div>
@@ -321,3 +386,5 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
+    

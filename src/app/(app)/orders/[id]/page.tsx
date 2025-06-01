@@ -1,10 +1,11 @@
+
 import { mockOrders, getOrderById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash } from 'lucide-react';
-import type { OrderItem, OrderStatus } from '@/types';
+import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert } from 'lucide-react';
+import type { OrderItem, OrderStatus, PaymentStatus } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 
@@ -28,6 +29,32 @@ const statusColors: Record<OrderStatus, string> = {
   Completed: "bg-gray-200 text-gray-800 border-gray-400",
   Cancelled: "bg-red-100 text-red-700 border-red-300",
 };
+
+function getPaymentStatusBadgeVariant(status?: PaymentStatus): "default" | "secondary" | "destructive" | "outline" {
+  if (!status) return "outline";
+  switch (status) {
+    case 'Paid': return 'default'; // success like
+    case 'Unpaid': return 'destructive';
+    case 'Processing Payment': return 'secondary';
+    case 'Refunded': return 'outline';
+    default: return 'outline';
+  }
+}
+
+const paymentStatusColors: Record<PaymentStatus, string> = {
+  Paid: "bg-green-100 text-green-700 border-green-300",
+  Unpaid: "bg-red-100 text-red-700 border-red-300",
+  "Processing Payment": "bg-yellow-100 text-yellow-700 border-yellow-300",
+  Refunded: "bg-gray-100 text-gray-700 border-gray-300",
+};
+
+const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
+  Paid: ShieldCheck,
+  Unpaid: ShieldAlert,
+  "Processing Payment": CreditCard,
+  Refunded: DollarSign, // Could be more specific like Undo
+}
+
 
 export default function OrderDetailsPage({ params }: { params: { id: string } }) {
   const order = getOrderById(params.id);
@@ -54,6 +81,9 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     );
   }
 
+  const PaymentIcon = order.paymentStatus ? paymentStatusIcons[order.paymentStatus] : ShieldAlert;
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -75,9 +105,17 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
               <CardTitle className="text-2xl font-headline">Order {order.orderNumber}</CardTitle>
               <CardDescription>Details for order placed on {format(new Date(order.createdAt), 'MMMM dd, yyyy')}</CardDescription>
             </div>
-            <Badge variant={getStatusBadgeVariant(order.status)} className={`${statusColors[order.status]} text-sm px-3 py-1`}>
-              {order.status}
-            </Badge>
+            <div className="flex flex-col items-end gap-2">
+              <Badge variant={getStatusBadgeVariant(order.status)} className={`${statusColors[order.status]} text-sm px-3 py-1`}>
+                {order.status}
+              </Badge>
+              {order.paymentStatus && (
+                <Badge variant={getPaymentStatusBadgeVariant(order.paymentStatus)} className={`${paymentStatusColors[order.paymentStatus]} text-xs px-2 py-0.5`}>
+                   <PaymentIcon className="mr-1 h-3 w-3" />
+                  {order.paymentStatus}
+                </Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="grid md:grid-cols-3 gap-6">
@@ -140,3 +178,5 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     </div>
   );
 }
+
+    

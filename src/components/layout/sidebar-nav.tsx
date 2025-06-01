@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -12,6 +13,7 @@ import {
   FileText,
   Archive,
   Settings,
+  Search,
 } from 'lucide-react';
 import {
   SidebarMenu,
@@ -23,8 +25,9 @@ import {
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/orders/new', label: 'Order Entry', icon: ClipboardPlus },
+  { href: '/orders/new', label: 'New Order', icon: ClipboardPlus },
   { href: '/orders', label: 'Order Tracking', icon: Shirt },
+  { href: '/find-ticket', label: 'Find Ticket', icon: Search },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/services', label: 'Services', icon: Tags },
   { href: '/reports', label: 'Reports', icon: FileText },
@@ -77,3 +80,5 @@ export function SidebarNav() {
     </>
   );
 }
+
+    

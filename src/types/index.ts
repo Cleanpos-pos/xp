@@ -1,3 +1,4 @@
+
 export type Customer = {
   id: string;
   name: string;
@@ -35,6 +36,12 @@ export type OrderStatus =
   | "Completed"
   | "Cancelled";
 
+export type PaymentStatus = 
+  | "Paid"
+  | "Unpaid"
+  | "Processing Payment"
+  | "Refunded";
+
 export type Order = {
   id: string;
   orderNumber: string; // User-friendly order number, e.g., "XP-001023"
@@ -43,6 +50,7 @@ export type Order = {
   items: OrderItem[];
   totalAmount: number;
   status: OrderStatus;
+  paymentStatus?: PaymentStatus;
   createdAt: Date;
   updatedAt: Date;
   dueDate?: Date;
@@ -63,3 +71,5 @@ export type ReportData = {
   orderVolume: number;
   // Add more metrics as needed
 };
+
+    

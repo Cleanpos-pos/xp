@@ -1,4 +1,5 @@
-import type { Order, Customer, ServiceItem, InventoryItem, OrderStatus } from '@/types';
+
+import type { Order, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus } from '@/types';
 
 const commonDate = new Date();
 
@@ -14,6 +15,9 @@ export const mockServices: ServiceItem[] = [
   { id: 'serv3', name: 'Dress - Plain', price: 12.00, category: 'Dry Cleaning' },
   { id: 'serv4', name: 'Pants Hemming', price: 10.00, category: 'Alterations' },
   { id: 'serv5', name: 'Comforter - Queen', price: 25.00, category: 'Dry Cleaning' },
+  { id: 'serv6', name: "Women's Blouse", price: 7.00, category: 'Laundry' },
+  { id: 'serv7', name: 'Tablecloth', price: 10.00, category: 'Specialty Items' },
+  { id: 'serv8', name: 'Zipper Replacement', price: 18.00, category: 'Alterations' },
 ];
 
 const generateOrderNumber = (index: number) => `XP-${String(1000 + index).padStart(6, '0')}`;
@@ -30,6 +34,7 @@ export const mockOrders: Order[] = [
     ],
     totalAmount: 32.50,
     status: 'Ready for Pickup' as OrderStatus,
+    paymentStatus: 'Paid' as PaymentStatus,
     createdAt: new Date(commonDate.setDate(commonDate.getDate() - 3)),
     updatedAt: new Date(commonDate.setDate(commonDate.getDate() - 1)),
     dueDate: new Date(commonDate.setDate(commonDate.getDate() + 2)),
@@ -44,6 +49,7 @@ export const mockOrders: Order[] = [
     ],
     totalAmount: 24.00,
     status: 'Cleaning' as OrderStatus,
+    paymentStatus: 'Unpaid' as PaymentStatus,
     createdAt: new Date(commonDate.setDate(commonDate.getDate() - 2)),
     updatedAt: new Date(commonDate.setDate(commonDate.getDate() - 1)),
     dueDate: new Date(commonDate.setDate(commonDate.getDate() + 3)),
@@ -58,6 +64,7 @@ export const mockOrders: Order[] = [
     ],
     totalAmount: 10.00,
     status: 'Completed' as OrderStatus,
+    paymentStatus: 'Paid' as PaymentStatus,
     createdAt: new Date(commonDate.setDate(commonDate.getDate() - 7)),
     updatedAt: new Date(commonDate.setDate(commonDate.getDate() - 5)),
   },
@@ -71,6 +78,7 @@ export const mockOrders: Order[] = [
     ],
     totalAmount: 25.00,
     status: 'Received' as OrderStatus,
+    paymentStatus: 'Unpaid' as PaymentStatus,
     createdAt: new Date(commonDate.setDate(commonDate.getDate() - 1)),
     updatedAt: new Date(commonDate.setDate(commonDate.getDate() - 1)),
     dueDate: new Date(commonDate.setDate(commonDate.getDate() + 4)),
@@ -89,7 +97,16 @@ export function getCustomerById(id: string): Customer | undefined {
 }
 
 export function getOrderById(id: string): Order | undefined {
-  return mockOrders.find(o => o.id === id);
+  const order = mockOrders.find(o => o.id === id);
+  // Simulate payment status for newly created orders if not set (for mock purposes)
+  if (order && !order.paymentStatus) {
+    // This is a simplification. In a real app, createOrderAction would set this.
+    // For "Pay Now" in mock, the toast indicates payment, but the data here won't reflect it dynamically
+    // unless we rebuild the mockOrders array or fetch from a "DB".
+    // Let's default to 'Unpaid' if not specified in mock data.
+    order.paymentStatus = 'Unpaid';
+  }
+  return order;
 }
 
 export function getServiceById(id: string): ServiceItem | undefined {
@@ -99,3 +116,5 @@ export function getServiceById(id: string): ServiceItem | undefined {
 export function getInventoryItemById(id: string): InventoryItem | undefined {
   return mockInventory.find(i => i.id === id);
 }
+
+    
