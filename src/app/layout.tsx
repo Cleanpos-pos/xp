@@ -24,7 +24,7 @@ export default function RootAuthLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
-        <title>XP Clean</title> {/* General title, can be more specific per page if needed */}
+        <title>XP Clean</title>
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
@@ -36,8 +36,6 @@ export default function RootAuthLayout({
               <span className="font-bold text-xl font-headline">XP Clean</span>
             </Link>
           </div>
-          {/* Show Cog icon if not on settings page and not on the root login page (if desired to only show on /settings access point) */}
-          {/* For now, always show if not settings, as / is login. */}
           {!isSettingsPage && (
             <div className="absolute top-6 right-6">
               <Link href="/settings" passHref>
