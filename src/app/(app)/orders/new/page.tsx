@@ -63,17 +63,22 @@ export default function NewOrderPage() {
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
     if (customerIdFromQuery) {
-      const customer = getCustomerById(customerIdFromQuery); 
+      const customer = getCustomerById(customerIdFromQuery);
       if (customer) {
         form.setValue('customerId', customerIdFromQuery, { shouldValidate: true });
+        setSelectedCustomerName(customer.name); // Directly set the name here
       } else {
         console.warn(`Customer ID ${customerIdFromQuery} from query params not found.`);
         toast({title: "Customer Not Found", description: "The customer ID from the previous page was not found. Please select a customer.", variant: "destructive"});
-        form.setValue('customerId', ''); 
+        form.setValue('customerId', '');
+        setSelectedCustomerName(null); // Clear name if customer not found
       }
     } else {
+      // If no customerId in query, and form has one (e.g. back navigation without query), clear it.
+      // Also clear name if customerId is being cleared.
       if (form.getValues('customerId')) {
         form.setValue('customerId', '');
+        setSelectedCustomerName(null);
       }
     }
   }, [searchParams, form, toast]);
@@ -81,13 +86,19 @@ export default function NewOrderPage() {
   const watchedCustomerId = form.watch("customerId");
 
   React.useEffect(() => {
+    // This effect primarily syncs selectedCustomerName if customerId changes through other means
+    // or is cleared. For initial load from query param, the above effect is more direct.
     if (watchedCustomerId) {
       const customer = getCustomerById(watchedCustomerId);
-      setSelectedCustomerName(customer ? customer.name : null);
+      if (customer && customer.name !== selectedCustomerName) {
+        setSelectedCustomerName(customer.name);
+      } else if (!customer) {
+        setSelectedCustomerName(null);
+      }
     } else {
       setSelectedCustomerName(null);
     }
-  }, [watchedCustomerId]);
+  }, [watchedCustomerId, selectedCustomerName]); // Added selectedCustomerName to dep to avoid stale closures if logic gets more complex
 
 
   const { fields, append, remove, update } = useFieldArray({
@@ -169,6 +180,7 @@ export default function NewOrderPage() {
     });
     setStage("form");
     setCreatedOrderDetails(null);
+    setSelectedCustomerName(null); // Also reset selected customer name
     router.replace('/orders/new', undefined); 
   };
 
@@ -364,10 +376,10 @@ export default function NewOrderPage() {
                       </Select>
                       <FormDescription>
                         {searchParams.get('customerId') && selectedCustomerName
-                          ? `Selected: ${selectedCustomerName}. To change, go back.`
-                          : !searchParams.get('customerId')
+                          ? `Selected: ${selectedCustomerName}. To change, go back to find/add customer.`
+                          : !searchParams.get('customerId') && !watchedCustomerId
                           ? 'Select a customer for this order.'
-                          : searchParams.get('customerId') && !selectedCustomerName
+                          : searchParams.get('customerId') && !selectedCustomerName && !form.formState.errors.customerId
                           ? 'Attempting to load pre-selected customer...'
                           : ''}
                       </FormDescription>
