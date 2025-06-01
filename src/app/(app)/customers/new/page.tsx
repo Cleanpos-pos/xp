@@ -132,7 +132,7 @@ export default function NewCustomerPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Loyalty Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value || "None"}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select loyalty status" />
@@ -154,7 +154,7 @@ export default function NewCustomerPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Price Band</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value || "Standard"}>
+                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select price band" />
