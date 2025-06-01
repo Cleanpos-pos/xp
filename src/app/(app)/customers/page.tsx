@@ -3,9 +3,10 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { getMockCustomers } from '@/lib/data';
 import type { Customer } from '@/types';
-import { Eye, Pencil, MoreHorizontal, Phone, Mail } from 'lucide-react';
+import { Eye, Pencil, MoreHorizontal, Phone, Mail, Star, Tag } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 
@@ -29,6 +30,7 @@ export default function CustomersPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Contact</TableHead>
+              <TableHead>Details</TableHead>
               <TableHead>Joined Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -40,6 +42,20 @@ export default function CustomersPage() {
                 <TableCell>
                   {customer.phone && <div className="flex items-center text-sm"><Phone className="w-3 h-3 mr-1.5 text-muted-foreground" /> {customer.phone}</div>}
                   {customer.email && <div className="flex items-center text-sm text-muted-foreground"><Mail className="w-3 h-3 mr-1.5" /> {customer.email}</div>}
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col gap-1">
+                    {customer.loyaltyStatus && customer.loyaltyStatus !== "None" && (
+                      <Badge variant="secondary" className="flex items-center w-fit">
+                        <Star className="w-3 h-3 mr-1" /> {customer.loyaltyStatus}
+                      </Badge>
+                    )}
+                    {customer.priceBand && customer.priceBand !== "Standard" && (
+                      <Badge variant="outline" className="flex items-center w-fit">
+                        <Tag className="w-3 h-3 mr-1" /> {customer.priceBand}
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>{format(new Date(customer.createdAt), 'MMM dd, yyyy')}</TableCell>
                 <TableCell className="text-right">

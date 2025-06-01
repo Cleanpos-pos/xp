@@ -17,9 +17,9 @@ declare global {
 const commonDate = new Date();
 
 const initialCustomers: Customer[] = [
-  { id: 'cust1', name: 'John Doe', phone: '555-1234', email: 'john.doe@example.com', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 10)) },
-  { id: 'cust2', name: 'Jane Smith', phone: '555-5678', email: 'jane.smith@example.com', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 5)) },
-  { id: 'cust3', name: 'Alice Brown', phone: '555-8765', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 20)) },
+  { id: 'cust1', name: 'John Doe', phone: '555-1234', email: 'john.doe@example.com', loyaltyStatus: 'Gold', priceBand: 'Band A', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 10)) },
+  { id: 'cust2', name: 'Jane Smith', phone: '555-5678', email: 'jane.smith@example.com', loyaltyStatus: 'Silver', priceBand: 'Standard', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 5)) },
+  { id: 'cust3', name: 'Alice Brown', phone: '555-8765', loyaltyStatus: 'None', priceBand: 'Standard', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 20)) },
 ];
 
 const initialServices: ServiceItem[] = [
@@ -135,9 +135,11 @@ export function addMockCustomer(customerData: CreateCustomerInput): Customer {
   const newCustomer: Customer = {
     id: newCustomerId,
     name: customerData.name,
-    phone: customerData.phone || undefined, // ensure optional fields are undefined if empty
+    phone: customerData.phone || undefined, 
     email: customerData.email || undefined,
     address: customerData.address || undefined,
+    loyaltyStatus: customerData.loyaltyStatus || "None",
+    priceBand: customerData.priceBand || "Standard",
     createdAt: new Date(),
   };
   global.mockCustomersStore!.push(newCustomer);

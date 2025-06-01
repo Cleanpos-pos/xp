@@ -5,6 +5,8 @@ export type Customer = {
   phone?: string;
   email?: string;
   address?: string;
+  loyaltyStatus?: 'None' | 'Bronze' | 'Silver' | 'Gold'; // Added
+  priceBand?: 'Standard' | 'Band A' | 'Band B' | 'Band C'; // Added
   orderHistory?: Order[];
   createdAt: Date;
 };

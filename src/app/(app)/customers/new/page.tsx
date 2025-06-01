@@ -15,11 +15,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateCustomerSchema, type CreateCustomerInput } from "./customer.schema";
 import { createCustomerAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+
+const loyaltyStatuses = ["None", "Bronze", "Silver", "Gold"] as const;
+const priceBands = ["Standard", "Band A", "Band B", "Band C"] as const;
+
 
 export default function NewCustomerPage() {
   const { toast } = useToast();
@@ -32,6 +37,8 @@ export default function NewCustomerPage() {
       phone: "",
       email: "",
       address: "",
+      loyaltyStatus: "None",
+      priceBand: "Standard",
     },
   });
 
@@ -74,32 +81,34 @@ export default function NewCustomerPage() {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone Number (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="tel" placeholder="e.g., 555-123-4567" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email Address (Optional)</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="e.g., john.doe@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number (Optional)</FormLabel>
+                    <FormControl>
+                      <Input type="tel" placeholder="e.g., 555-123-4567" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address (Optional)</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="e.g., john.doe@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="address"
@@ -116,6 +125,52 @@ export default function NewCustomerPage() {
                 </FormItem>
               )}
             />
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <FormField
+                  control={form.control}
+                  name="loyaltyStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Loyalty Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value || "None"}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select loyalty status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {loyaltyStatuses.map(status => (
+                            <SelectItem key={status} value={status}>{status}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="priceBand"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price Band</FormLabel>
+                       <Select onValueChange={field.onChange} defaultValue={field.value || "Standard"}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select price band" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {priceBands.map(band => (
+                            <SelectItem key={band} value={band}>{band}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+            </div>
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "Adding Customer..." : "Add Customer & Start Order"}
             </Button>
