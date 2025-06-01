@@ -8,3 +8,9 @@ export const AddStaffSchema = z.object({
 });
 
 export type AddStaffInput = z.infer<typeof AddStaffSchema>;
+
+export const ToggleQuickLoginSchema = z.object({
+  loginId: z.string().min(1, "Login ID is required"),
+  enable: z.boolean(),
+});
+export type ToggleQuickLoginInput = z.infer<typeof ToggleQuickLoginSchema>;

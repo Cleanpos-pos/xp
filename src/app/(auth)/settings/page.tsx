@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -15,14 +16,36 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
-import { addStaffAction } from "./actions";
+import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog } from "lucide-react";
+import { Users, Cog, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import type { StaffCredentials } from "@/lib/mock-auth-store";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function SettingsPage() {
   const { toast } = useToast();
+  const [staffList, setStaffList] = React.useState<StaffCredentials[]>([]);
+  const [isLoadingStaff, setIsLoadingStaff] = React.useState(true);
+
+  const fetchStaff = React.useCallback(async () => {
+    setIsLoadingStaff(true);
+    try {
+      const list = await getAllStaffAction();
+      setStaffList(list);
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to load staff list.", variant: "destructive" });
+    } finally {
+      setIsLoadingStaff(false);
+    }
+  }, [toast]);
+
+  React.useEffect(() => {
+    fetchStaff();
+  }, [fetchStaff]);
 
   const form = useForm<AddStaffInput>({
     resolver: zodResolver(AddStaffSchema),
@@ -33,20 +56,21 @@ export default function SettingsPage() {
     },
   });
 
-  async function onSubmit(data: AddStaffInput) {
+  async function onAddStaffSubmit(data: AddStaffInput) {
     const result = await addStaffAction(data);
     if (result.success) {
       toast({
         title: "Staff Action",
         description: result.message,
       });
-      form.reset(); // Reset form after successful submission
+      form.reset();
+      fetchStaff(); // Refresh staff list
     } else {
-      if (result.errors) {
-        if (result.errors.name) form.setError("name", { message: result.errors.name.join(', ') });
-        if (result.errors.loginId) form.setError("loginId", { message: result.errors.loginId.join(', ') });
-        if (result.errors.password) form.setError("password", { message: result.errors.password.join(', ') });
-      }
+      // Error handling for form fields
+      if (result.errors?.name) form.setError("name", { message: result.errors.name.join(', ') });
+      if (result.errors?.loginId) form.setError("loginId", { message: result.errors.loginId.join(', ') });
+      if (result.errors?.password) form.setError("password", { message: result.errors.password.join(', ') });
+      
       toast({
         title: "Error",
         description: result.message || "Failed to add staff. Please check the form.",
@@ -55,6 +79,22 @@ export default function SettingsPage() {
     }
   }
 
+  const handleQuickLoginToggle = async (loginId: string, enable: boolean) => {
+    const result = await toggleQuickLoginAction({ loginId, enable });
+    if (result.success) {
+      toast({ title: "Quick Login Updated", description: result.message });
+      // Optimistically update local state or re-fetch
+      setStaffList(prevList => 
+        prevList.map(staff => 
+          staff.loginId === loginId ? { ...staff, enableQuickLogin: enable } : staff
+        )
+      );
+      // Or fetchStaff(); for guaranteed consistency but potentially slower UI response
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="w-full max-w-3xl space-y-8">
       <div className="flex items-center justify-between">
@@ -62,7 +102,7 @@ export default function SettingsPage() {
           <Cog className="h-8 w-8" />
           <h1 className="text-3xl font-bold font-headline">Settings</h1>
         </div>
-        <Link href="/login" passHref>
+        <Link href="/" passHref>
             <Button variant="outline" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Login
             </Button>
@@ -72,13 +112,13 @@ export default function SettingsPage() {
       <Card className="shadow-xl">
         <CardHeader>
           <CardTitle className="font-headline text-2xl flex items-center">
-            <Users className="mr-2 h-6 w-6" /> Staff Management
+            <Users className="mr-2 h-6 w-6" /> Add New Staff
           </CardTitle>
           <CardDescription>Add new staff members to the system.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onAddStaffSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="name"
@@ -126,15 +166,45 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
       
-      {/* Placeholder for listing staff or other settings in the future */}
-      {/* 
-      <Card>
-        <CardHeader><CardTitle>Current Staff</CardTitle></CardHeader>
+      <Card className="shadow-xl">
+        <CardHeader>
+          <CardTitle className="font-headline text-2xl flex items-center">
+            <KeyRound className="mr-2 h-6 w-6" /> Manage Staff Quick Login
+          </CardTitle>
+          <CardDescription>Enable or disable quick login for staff members.</CardDescription>
+        </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Staff listing will appear here.</p>
+          {isLoadingStaff ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </div>
+          ) : staffList.length > 0 ? (
+            <ul className="space-y-4">
+              {staffList.map((staff) => (
+                <li key={staff.loginId} className="flex items-center justify-between p-3 border rounded-md bg-background shadow-sm">
+                  <div>
+                    <p className="font-medium">{staff.name}</p>
+                    <p className="text-sm text-muted-foreground">ID: {staff.loginId}</p>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id={`quick-login-${staff.loginId}`}
+                      checked={!!staff.enableQuickLogin}
+                      onCheckedChange={(checked) => handleQuickLoginToggle(staff.loginId, checked)}
+                      aria-label={`Enable quick login for ${staff.name}`}
+                    />
+                    <Label htmlFor={`quick-login-${staff.loginId}`} className="text-sm">
+                      Enable Quick Login
+                    </Label>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-muted-foreground">No staff members found. Add staff using the form above.</p>
+          )}
         </CardContent>
       </Card>
-      */}
     </div>
   );
 }

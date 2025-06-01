@@ -1,8 +1,13 @@
 
 "use server";
 
-import { addStaff as addStaffToStore } from "@/lib/mock-auth-store";
-import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
+import { 
+  addStaff as addStaffToStore, 
+  getAllStaff as getAllStaffFromStore,
+  updateStaffQuickLoginStatus,
+  type StaffCredentials
+} from "@/lib/mock-auth-store";
+import { type AddStaffInput, AddStaffSchema, type ToggleQuickLoginInput, ToggleQuickLoginSchema } from "./settings.schema";
 
 export async function addStaffAction(data: AddStaffInput) {
   const validationResult = AddStaffSchema.safeParse(data);
@@ -15,16 +20,34 @@ export async function addStaffAction(data: AddStaffInput) {
     };
   }
 
-  // Check if staff already exists in our mock store
-  // Note: findStaff is not imported here to avoid circular dependency if it were in the same file or complex setup
-  // For this simple mock store, we can rely on the store's own logic or duplicate a simple check if needed.
-  // The addStaffToStore function in mock-auth-store already has a basic check.
-
   addStaffToStore(validationResult.data);
-  // await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay - can be removed if not needed
 
   return {
     success: true,
-    message: `Staff member ${validationResult.data.name} with Login ID ${validationResult.data.loginId} added.`,
+    message: `Staff member ${validationResult.data.name} with Login ID ${validationResult.data.loginId} added. Quick login is initially disabled.`,
+  };
+}
+
+export async function getAllStaffAction(): Promise<StaffCredentials[]> {
+  return getAllStaffFromStore();
+}
+
+export async function toggleQuickLoginAction(data: ToggleQuickLoginInput) {
+  const validationResult = ToggleQuickLoginSchema.safeParse(data);
+  if (!validationResult.success) {
+    return { success: false, message: "Invalid input for quick login toggle." };
+  }
+
+  const success = updateStaffQuickLoginStatus(validationResult.data.loginId, validationResult.data.enable);
+  
+  if (success) {
+    return { 
+      success: true, 
+      message: `Quick login for ${validationResult.data.loginId} ${validationResult.data.enable ? 'enabled' : 'disabled'}.` 
+    };
+  }
+  return { 
+    success: false, 
+    message: "Failed to update quick login status. Staff member not found." 
   };
 }
