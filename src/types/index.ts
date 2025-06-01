@@ -80,11 +80,11 @@ export type CatalogEntryType = 'category' | 'item';
 export interface CatalogEntry {
   id: string;
   name: string;
-  parentId: string | null; // null for top-level categories
+  parent_id: string | null; // null for top-level categories, matches DB
   type: CatalogEntryType;
   price?: number; // For items
   description?: string; // For items or categories
-  sortOrder: number; // To handle manual sorting later
+  sort_order: number; // To handle manual sorting later
   created_at?: string; // ISO string
   updated_at?: string; // ISO string
 }

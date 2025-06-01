@@ -1,10 +1,10 @@
 
-import type { Order, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus, CatalogEntry, CatalogHierarchyNode } from '@/types';
+import type { Order, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus, CatalogEntry, CatalogHierarchyNode, CatalogEntryType } from '@/types';
 import type { CreateCustomerInput } from '@/app/(app)/customers/new/customer.schema';
 import { supabase } from './supabase';
 
 
-// Define types for our global stores for mock data (non-customer, non-staff)
+// Define types for our global stores for mock data (non-customer, non-staff, non-catalog)
 declare global {
   // eslint-disable-next-line no-var
   var mockServicesStore: ServiceItem[] | undefined;
@@ -12,8 +12,7 @@ declare global {
   var mockOrdersStore: Order[] | undefined;
   // eslint-disable-next-line no-var
   var mockInventoryStore: InventoryItem[] | undefined;
-  // eslint-disable-next-line no-var
-  var mockCatalogEntriesStore: CatalogEntry[] | undefined;
+  // var mockCatalogEntriesStore: CatalogEntry[] | undefined; // Removed, will use Supabase
 }
 
 
@@ -56,18 +55,6 @@ const initialInventory: InventoryItem[] = [
   { id: 'inv4', name: 'Laundry Detergent', quantity: 25, unit: 'kg', lowStockThreshold: 5, lastRestocked: new Date().toISOString() },
 ];
 
-const initialCatalogEntries: CatalogEntry[] = [
-  { id: 'cat_drycleaning', name: 'Dry Cleaning', parentId: null, type: 'category', sortOrder: 0, created_at: new Date().toISOString() },
-  { id: 'cat_mens', name: 'Mens', parentId: 'cat_drycleaning', type: 'category', sortOrder: 0, created_at: new Date().toISOString() },
-  { id: 'cat_womens', name: 'Womens', parentId: 'cat_drycleaning', type: 'category', sortOrder: 1, created_at: new Date().toISOString() },
-  { id: 'item_mens_trousers_linen', name: 'Linen Trousers', parentId: 'cat_mens', type: 'item', price: 8.99, sortOrder: 0, description: 'Delicate linen trousers cleaning.', created_at: new Date().toISOString() },
-  { id: 'item_mens_trousers_standard', name: 'Standard Trousers', parentId: 'cat_mens', type: 'item', price: 5.99, sortOrder: 1, created_at: new Date().toISOString() },
-  { id: 'item_suit_2pc', name: 'Suit 2-Piece', parentId: 'cat_mens', type: 'item', price: 15.00, sortOrder: 2, created_at: new Date().toISOString() },
-  { id: 'item_womens_dress_plain', name: 'Dress - Plain', parentId: 'cat_womens', type: 'item', price: 12.00, sortOrder: 0, created_at: new Date().toISOString() },
-  { id: 'cat_laundry', name: 'Laundry', parentId: null, type: 'category', sortOrder: 1, created_at: new Date().toISOString() },
-  { id: 'item_laundry_shirt_hanger', name: "Men's Shirt - Hanger", parentId: 'cat_laundry', type: 'item', price: 3.50, sortOrder: 0, created_at: new Date().toISOString() },
-];
-
 
 if (!global.mockServicesStore) {
   global.mockServicesStore = [...initialServices];
@@ -78,15 +65,6 @@ if (!global.mockOrdersStore) {
 if (!global.mockInventoryStore) {
   global.mockInventoryStore = [...initialInventory];
 }
-
-// Helper to ensure catalog store is initialized and accessible
-const getSafeCatalogStore = (): CatalogEntry[] => {
-  if (!global.mockCatalogEntriesStore) {
-    global.mockCatalogEntriesStore = [...initialCatalogEntries];
-  }
-  return global.mockCatalogEntriesStore;
-};
-
 
 // Customer Data Functions (using Supabase)
 export async function getCustomers(): Promise<Customer[]> {
@@ -170,39 +148,75 @@ export function getInventoryItemById(id: string): InventoryItem | undefined {
   return global.mockInventoryStore!.find(i => i.id === id);
 }
 
-// Catalog Entry Mock Functions
+// Catalog Entry Functions (using Supabase)
 export async function getCatalogEntries(): Promise<CatalogEntry[]> {
-  // Simulate async operation
-  await new Promise(resolve => setTimeout(resolve, 50)); // Reduced timeout
-  const store = getSafeCatalogStore();
-  return [...store]; // Return a copy
-}
+  const { data, error } = await supabase
+    .from('catalog_entries')
+    .select('*')
+    .order('sort_order', { ascending: true }); // Order by sort_order
 
-export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_at' | 'updated_at' | 'sortOrder'> & { parentId: string | null }): Promise<CatalogEntry> {
-  const store = getSafeCatalogStore();
-  const safeName = String(entry.name || 'unnamed_entry'); // Ensure name is a string for ID generation
-  const newId = `${entry.type}_${safeName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}_${Date.now()}`;
-  
-  const siblings = store.filter(e => e.parentId === entry.parentId);
-  const newEntry: CatalogEntry = {
+  if (error) {
+    console.error('Error fetching catalog entries from Supabase:', error);
+    throw error;
+  }
+  // Ensure price is number or undefined, not string from numeric db type
+  return (data || []).map(entry => ({
     ...entry,
-    name: safeName, // Use the sanitized name
-    id: newId,
-    sortOrder: siblings.length, // Simple sort order for now
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-  store.push(newEntry);
-  // Simulate async operation
-  await new Promise(resolve => setTimeout(resolve, 50)); // Reduced timeout
-  return newEntry;
+    price: entry.price !== null ? parseFloat(entry.price) : undefined,
+  })) as CatalogEntry[];
 }
 
-export function buildCatalogHierarchy(entries: CatalogEntry[], parentId: string | null = null): CatalogHierarchyNode[] {
-  if (!entries) return []; // Guard against undefined entries array
+export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_at' | 'updated_at' | 'sort_order'>): Promise<CatalogEntry> {
+  // Calculate sort_order: count existing siblings
+  let countResult;
+  if (entry.parent_id) {
+    countResult = await supabase
+      .from('catalog_entries')
+      .select('id', { count: 'exact', head: true })
+      .eq('parent_id', entry.parent_id);
+  } else {
+    countResult = await supabase
+      .from('catalog_entries')
+      .select('id', { count: 'exact', head: true })
+      .is('parent_id', null);
+  }
+
+  if (countResult.error) {
+    console.error('Error counting siblings for sort_order:', countResult.error);
+    throw countResult.error;
+  }
+
+  const sort_order = countResult.count || 0;
+
+  const entryToInsert = {
+    name: entry.name,
+    parent_id: entry.parent_id,
+    type: entry.type,
+    price: entry.type === 'item' ? entry.price : null, // Ensure price is null for categories
+    description: entry.description,
+    sort_order: sort_order,
+  };
+
+  const { data, error } = await supabase
+    .from('catalog_entries')
+    .insert(entryToInsert)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding catalog entry to Supabase:', error);
+    throw error;
+  }
+  // Ensure price is number or undefined after insert
+  return { ...data, price: data.price !== null ? parseFloat(data.price) : undefined } as CatalogEntry;
+}
+
+
+export function buildCatalogHierarchy(entries: CatalogEntry[], parent_id: string | null = null): CatalogHierarchyNode[] {
+  if (!entries) return [];
   return entries
-    .filter(entry => entry.parentId === parentId)
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .filter(entry => entry.parent_id === parent_id)
+    .sort((a, b) => a.sort_order - b.sort_order)
     .map(entry => ({
       ...entry,
       children: buildCatalogHierarchy(entries, entry.id),
@@ -213,5 +227,3 @@ export async function getFullCatalogHierarchy(): Promise<CatalogHierarchyNode[]>
   const allEntries = await getCatalogEntries();
   return buildCatalogHierarchy(allEntries);
 }
-
-    

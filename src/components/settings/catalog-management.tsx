@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface RenderNodeProps {
   node: CatalogHierarchyNode;
-  onAddEntry: (parentId: string, type: CatalogEntryType) => void;
+  onAddEntry: (parent_id: string, type: CatalogEntryType) => void; // Changed from parentId
   level: number;
 }
 
@@ -44,16 +44,13 @@ function CatalogNodeDisplay({ node, onAddEntry, level }: RenderNodeProps) {
       <AccordionTrigger className="px-4 py-3 hover:bg-muted/50 rounded-t-md">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center">
-            {/* Placeholder for drag handle */}
-            {/* <GripVertical className="h-5 w-5 text-muted-foreground mr-2 cursor-grab" /> */}
             <span className="font-medium">{node.name}</span>
             {node.type === "item" && node.price !== undefined && (
-              <span className="ml-2 text-sm text-muted-foreground">${node.price.toFixed(2)}</span>
+              <span className="ml-2 text-sm text-muted-foreground">${Number(node.price).toFixed(2)}</span>
             )}
           </div>
           <div className="flex items-center space-x-1">
-            {/* <Button variant="ghost" size="icon" className="h-7 w-7"><Edit3 className="h-4 w-4" /></Button> */}
-            {/* <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button> */}
+            {/* Future Edit/Delete buttons */}
           </div>
         </div>
       </AccordionTrigger>
@@ -92,7 +89,7 @@ function CatalogNodeDisplay({ node, onAddEntry, level }: RenderNodeProps) {
                   <DialogTitle>Add New {addFormType === 'category' ? 'Sub-category' : 'Item/Service'} to {node.name}</DialogTitle>
                 </DialogHeader>
                 <AddCatalogEntryForm
-                  parentId={node.id}
+                  parent_id={node.id} // Pass parent_id
                   defaultType={addFormType}
                   onSuccess={() => {
                     handleAddSuccess();
@@ -167,7 +164,7 @@ export function CatalogManagementTab() {
             <DialogTitle>Add New Top-Level Category</DialogTitle>
           </DialogHeader>
           <AddCatalogEntryForm
-            parentId={null}
+            parent_id={null} // Pass parent_id as null
             defaultType="category"
             onSuccess={handleAddSuccess}
             submitAction={addCatalogEntryAction}

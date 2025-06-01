@@ -21,18 +21,18 @@ import { AddCatalogEntrySchema, type AddCatalogEntryInput } from "@/app/(auth)/s
 import type { CatalogEntryType } from "@/types";
 
 interface AddCatalogEntryFormProps {
-  parentId: string | null;
+  parent_id: string | null; // Changed from parentId
   defaultType?: CatalogEntryType;
   onSuccess: () => void;
   submitAction: (data: AddCatalogEntryInput) => Promise<{ success: boolean; message?: string; errors?: any }>;
 }
 
-export function AddCatalogEntryForm({ parentId, defaultType = "category", onSuccess, submitAction }: AddCatalogEntryFormProps) {
+export function AddCatalogEntryForm({ parent_id, defaultType = "category", onSuccess, submitAction }: AddCatalogEntryFormProps) {
   const form = useForm<AddCatalogEntryInput>({
     resolver: zodResolver(AddCatalogEntrySchema),
     defaultValues: {
       name: "",
-      parentId: parentId,
+      parent_id: parent_id, // Use parent_id
       type: defaultType,
       price: 0,
       description: "",
@@ -52,14 +52,13 @@ export function AddCatalogEntryForm({ parentId, defaultType = "category", onSucc
     if (result.success) {
       form.reset({
         name: "",
-        parentId: parentId, // Keep parentId for potentially adding another under the same parent
+        parent_id: parent_id, // Keep parent_id for potentially adding another under the same parent
         type: defaultType,
         price: 0,
         description: "",
       });
       onSuccess(); // Callback to refresh list or close modal
     } else {
-      // Handle errors, potentially setting form errors if structured that way
       console.error("Failed to add catalog entry:", result.message, result.errors);
       if (result.errors && Array.isArray(result.errors)) {
         result.errors.forEach((err: any) => {
@@ -69,7 +68,6 @@ export function AddCatalogEntryForm({ parentId, defaultType = "category", onSucc
           }
         });
       }
-       // Fallback for general error message
       if (result.message && !result.errors) {
          form.setError("root", { message: result.message });
       }

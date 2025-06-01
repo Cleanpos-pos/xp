@@ -2,13 +2,13 @@
 "use server";
 
 import { z } from "zod";
-import { addCatalogEntry, getFullCatalogHierarchy } from "@/lib/data";
+import { addCatalogEntry, getFullCatalogHierarchy } from "@/lib/data"; // Uses Supabase now
 import type { CatalogEntry, CatalogEntryType, CatalogHierarchyNode } from "@/types";
 import { revalidatePath } from "next/cache";
 
 export const AddCatalogEntrySchema = z.object({
   name: z.string().min(1, "Name must be at least 1 character").max(100, "Name too long"),
-  parentId: z.string().nullable(),
+  parent_id: z.string().nullable(), // Changed from parentId
   type: z.enum(["category", "item"]),
   price: z.coerce.number().optional(),
   description: z.string().max(500, "Description too long").optional(),
@@ -33,21 +33,20 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
     };
   }
 
-  const { name, parentId, type, price, description } = validationResult.data;
+  const { name, parent_id, type, price, description } = validationResult.data;
 
   if (type === "item" && (price === undefined || price <= 0)) {
     return {
       success: false,
       message: "Items must have a positive price.",
-      errors: [{ path: ["price"], message: "Price must be a positive number for items.", code: "custom" }] // Match ZodIssue structure
+      errors: [{ path: ["price"], message: "Price must be a positive number for items.", code: "custom" }]
     };
   }
 
   try {
-    // Ensure the call to addCatalogEntry is awaited if it's async
-    const newEntry = await addCatalogEntry({
+    const newEntry = await addCatalogEntry({ // addCatalogEntry in data.ts now uses Supabase
       name,
-      parentId,
+      parent_id, // Pass parent_id
       type: type as CatalogEntryType, 
       price: type === "item" ? price : undefined,
       description,
@@ -55,20 +54,17 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
     revalidatePath("/settings"); 
     return { success: true, message: `${type === 'category' ? 'Category' : 'Item'} "${name}" added successfully.`, newEntry };
   } catch (error: any) {
-    console.error("Error in addCatalogEntryAction:", error); // Log the actual error
+    console.error("Error in addCatalogEntryAction:", error);
     return { success: false, message: error.message || `Failed to add ${type}.` };
   }
 }
 
 export async function getCatalogHierarchyAction(): Promise<CatalogHierarchyNode[]> {
   try {
-    // Ensure the call to getFullCatalogHierarchy is awaited if it's async
-    const hierarchy = await getFullCatalogHierarchy();
+    const hierarchy = await getFullCatalogHierarchy(); // getFullCatalogHierarchy in data.ts now uses Supabase
     return hierarchy;
   } catch (error) {
     console.error("Error fetching catalog hierarchy:", error);
     return [];
   }
 }
-
-    
