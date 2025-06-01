@@ -8,20 +8,21 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription as UiCardDescription, CardHeader, CardTitle } from "@/components/ui/card"; // Renamed CardDescription to avoid conflict
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Cog, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import type { StaffCredentials } from "@/lib/mock-auth-store"; // Interface is in mock-auth-store
+import type { StaffCredentials } from "@/lib/mock-auth-store"; 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,20 +52,20 @@ export default function SettingsPage() {
     resolver: zodResolver(AddStaffSchema),
     defaultValues: {
       name: "",
-      loginId: "", // This is login_id in DB, but schema uses loginId
+      loginId: "", 
       password: "",
     },
   });
 
   async function onAddStaffSubmit(data: AddStaffInput) {
-    const result = await addStaffAction(data); // addStaffAction handles mapping to login_id
+    const result = await addStaffAction(data); 
     if (result.success) {
       toast({
         title: "Staff Action",
         description: result.message,
       });
       form.reset();
-      fetchStaff(); // Refresh staff list
+      fetchStaff(); 
     } else {
       if (result.errors?.name) form.setError("name", { message: result.errors.name.join(', ') });
       if (result.errors?.loginId) form.setError("loginId", { message: result.errors.loginId.join(', ') });
@@ -78,8 +79,8 @@ export default function SettingsPage() {
     }
   }
 
-  const handleQuickLoginToggle = async (login_id: string, enable: boolean) => { // parameter is login_id
-    const result = await toggleQuickLoginAction({ loginId: login_id, enable }); // schema expects loginId
+  const handleQuickLoginToggle = async (login_id: string, enable: boolean) => { 
+    const result = await toggleQuickLoginAction({ loginId: login_id, enable }); 
     if (result.success) {
       toast({ title: "Quick Login Updated", description: result.message });
       setStaffList(prevList => 
@@ -111,7 +112,7 @@ export default function SettingsPage() {
           <CardTitle className="font-headline text-2xl flex items-center">
             <Users className="mr-2 h-6 w-6" /> Add New Staff
           </CardTitle>
-          <CardDescription>Add new staff members to the system (uses Supabase).</CardDescription>
+          <UiCardDescription>Add new staff members to the system (uses Supabase).</UiCardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -131,7 +132,7 @@ export default function SettingsPage() {
               />
               <FormField
                 control={form.control}
-                name="loginId" // Maps to login_id in DB via action
+                name="loginId" 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Login ID</FormLabel>
@@ -171,7 +172,7 @@ export default function SettingsPage() {
           <CardTitle className="font-headline text-2xl flex items-center">
             <KeyRound className="mr-2 h-6 w-6" /> Manage Staff Quick Login
           </CardTitle>
-          <CardDescription>Enable or disable quick login for staff members (uses Supabase).</CardDescription>
+          <UiCardDescription>Enable or disable quick login for staff members (uses Supabase).</UiCardDescription>
         </CardHeader>
         <CardContent>
           {isLoadingStaff ? (
@@ -208,3 +209,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
