@@ -6,7 +6,7 @@ import {
   getAllStaff as getAllStaffFromStore,
   updateStaffQuickLoginStatus,
   type StaffCredentials
-} from "@/lib/mock-auth-store"; // This now points to Firestore-backed functions
+} from "@/lib/mock-auth-store"; // This now points to mock in-memory functions
 import { type AddStaffInput, AddStaffSchema, type ToggleQuickLoginInput, ToggleQuickLoginSchema } from "./settings.schema";
 
 export async function addStaffAction(data: AddStaffInput) {
@@ -21,8 +21,8 @@ export async function addStaffAction(data: AddStaffInput) {
   }
 
   try {
-    // NOTE: In a real app, hash the password before storing.
-    // staffData.password = await hashPassword(staffData.password);
+    // NOTE: In a real app with Supabase, hash the password before storing.
+    // This will be handled during Supabase integration.
     await addStaffToStore({
       name: validationResult.data.name,
       loginId: validationResult.data.loginId,
@@ -31,13 +31,13 @@ export async function addStaffAction(data: AddStaffInput) {
     });
     return {
       success: true,
-      message: `Staff member ${validationResult.data.name} with Login ID ${validationResult.data.loginId} added. Quick login is initially disabled.`,
+      message: `Staff member ${validationResult.data.name} with Login ID ${validationResult.data.loginId} added to mock store. Quick login is initially disabled.`,
     };
   } catch (error: any) {
-    console.error("Error adding staff:", error);
+    console.error("Error adding staff to mock store:", error);
     return {
       success: false,
-      message: error.message || "Failed to add staff member due to a server error.",
+      message: error.message || "Failed to add staff member to mock store.",
     };
   }
 }
@@ -46,8 +46,8 @@ export async function getAllStaffAction(): Promise<StaffCredentials[]> {
   try {
     return await getAllStaffFromStore();
   } catch (error) {
-    console.error("Error fetching staff list:", error);
-    return []; // Return empty array or handle error as appropriate for UI
+    console.error("Error fetching staff list from mock store:", error);
+    return []; 
   }
 }
 
@@ -63,18 +63,18 @@ export async function toggleQuickLoginAction(data: ToggleQuickLoginInput) {
     if (success) {
       return { 
         success: true, 
-        message: `Quick login for ${validationResult.data.loginId} ${validationResult.data.enable ? 'enabled' : 'disabled'}.` 
+        message: `Quick login for ${validationResult.data.loginId} ${validationResult.data.enable ? 'enabled' : 'disabled'} in mock store.` 
       };
     }
     return { 
       success: false, 
-      message: "Failed to update quick login status. Staff member may not exist or an error occurred." 
+      message: "Failed to update quick login status in mock store. Staff member may not exist." 
     };
   } catch (error: any) {
-    console.error("Error toggling quick login:", error);
+    console.error("Error toggling quick login in mock store:", error);
     return {
       success: false,
-      message: error.message || "Failed to toggle quick login status due to a server error.",
+      message: error.message || "Failed to toggle quick login status in mock store.",
     };
   }
 }

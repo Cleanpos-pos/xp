@@ -17,18 +17,19 @@ export async function loginAction(data: LoginInput) {
 
   // NOTE: In a real app, password should be hashed here before comparing,
   // or the comparison should happen after retrieving the hashed password from DB.
+  // This will be handled when Supabase is fully integrated.
   const staffMember = await findStaff(validationResult.data.employeeId, validationResult.data.password);
 
   if (staffMember) {
     return {
       success: true,
-      message: `Login successful! Welcome ${staffMember.name}.`,
-      // In a real app, you'd set up a session here (e.g., with cookies or a JWT)
+      message: `Login successful! Welcome ${staffMember.name}. (Using mock store)`,
+      // In a real app with Supabase, you'd set up a session here (e.g., with Supabase Auth)
     };
   } else {
     return {
       success: false,
-      message: "Invalid Employee ID or Password.",
+      message: "Invalid Employee ID or Password. (Checked against mock store)",
     };
   }
 }
