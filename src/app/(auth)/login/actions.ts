@@ -2,10 +2,10 @@
 "use server";
 
 import { z } from "zod";
-import { redirect } from "next/navigation";
+import { findStaff } from "@/lib/mock-auth-store";
 
 export const LoginSchema = z.object({
-  employeeId: z.string().min(1, "Employee ID is required"),
+  employeeId: z.string().min(1, "Employee ID is required"), // This maps to loginId
   password: z.string().min(1, "Password is required"),
 });
 
@@ -22,19 +22,16 @@ export async function loginAction(data: LoginInput) {
     };
   }
 
-  // Mock authentication
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+  // Simulate network delay if desired
+  // await new Promise(resolve => setTimeout(resolve, 1000));
 
-  if (
-    validationResult.data.employeeId === "STAFF001" &&
-    validationResult.data.password === "password"
-  ) {
+  const staffMember = findStaff(validationResult.data.employeeId, validationResult.data.password);
+
+  if (staffMember) {
     // In a real app, you'd set up a session here (e.g., with cookies or a JWT)
-    // For this prototype, we'll just return success.
-    // The redirect will happen on the client-side based on this success.
     return {
       success: true,
-      message: "Login successful!",
+      message: `Login successful! Welcome ${staffMember.name}.`,
     };
   } else {
     return {

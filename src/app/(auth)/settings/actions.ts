@@ -2,6 +2,7 @@
 "use server";
 
 import { z } from "zod";
+import { addStaff as addStaffToStore } from "@/lib/mock-auth-store";
 
 export const AddStaffSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -22,13 +23,17 @@ export async function addStaffAction(data: AddStaffInput) {
     };
   }
 
-  // In a real app, you would save this to a database.
-  // For now, we'll just log it.
-  console.log("New staff member to add:", validationResult.data);
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+  // Check if staff already exists in our mock store
+  // Note: findStaff is not imported here to avoid circular dependency if it were in the same file or complex setup
+  // For this simple mock store, we can rely on the store's own logic or duplicate a simple check if needed.
+  // The addStaffToStore function in mock-auth-store already has a basic check.
+
+  addStaffToStore(validationResult.data);
+  // await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay - can be removed if not needed
 
   return {
     success: true,
-    message: `Staff member ${validationResult.data.name} with Login ID ${validationResult.data.loginId} details logged. (Mocked add)`,
+    message: `Staff member ${validationResult.data.name} with Login ID ${validationResult.data.loginId} added.`,
   };
 }
+
