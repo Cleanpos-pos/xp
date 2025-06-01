@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/sidebar';
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/orders/new', label: 'New Order', icon: ClipboardPlus },
   { href: '/orders', label: 'Order Tracking', icon: Shirt },
   { href: '/find-ticket', label: 'Find Ticket', icon: Search },
@@ -43,7 +43,9 @@ export function SidebarNav() {
 
   const renderNavItems = (items: typeof navItems) => items.map((item) => {
     const Icon = item.icon;
-    const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+    // For dashboard, exact match. For others, startsWith.
+    const isActive = item.href === '/dashboard' ? pathname === item.href : (item.href !== '/' && pathname.startsWith(item.href));
+    
     return (
       <SidebarMenuItem key={item.href}>
         <Link href={item.href} legacyBehavior passHref>
@@ -80,5 +82,3 @@ export function SidebarNav() {
     </>
   );
 }
-
-    

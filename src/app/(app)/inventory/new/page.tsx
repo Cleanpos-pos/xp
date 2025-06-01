@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,7 +15,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CreateInventoryItemSchema, type CreateInventoryItemInput, createInventoryItemAction } from "./actions";
+import { CreateInventoryItemSchema, type CreateInventoryItemInput } from "./inventory.schema";
+import { createInventoryItemAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
