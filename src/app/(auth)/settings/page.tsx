@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Users, Cog, KeyRound } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import type { StaffCredentials } from "@/lib/mock-auth-store";
+import type { StaffCredentials } from "@/lib/mock-auth-store"; // Interface is in mock-auth-store
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +37,7 @@ export default function SettingsPage() {
       const list = await getAllStaffAction();
       setStaffList(list);
     } catch (error) {
-      toast({ title: "Error", description: "Failed to load staff list.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to load staff list from Supabase.", variant: "destructive" });
     } finally {
       setIsLoadingStaff(false);
     }
@@ -51,13 +51,13 @@ export default function SettingsPage() {
     resolver: zodResolver(AddStaffSchema),
     defaultValues: {
       name: "",
-      loginId: "",
+      loginId: "", // This is login_id in DB, but schema uses loginId
       password: "",
     },
   });
 
   async function onAddStaffSubmit(data: AddStaffInput) {
-    const result = await addStaffAction(data);
+    const result = await addStaffAction(data); // addStaffAction handles mapping to login_id
     if (result.success) {
       toast({
         title: "Staff Action",
@@ -66,7 +66,6 @@ export default function SettingsPage() {
       form.reset();
       fetchStaff(); // Refresh staff list
     } else {
-      // Error handling for form fields
       if (result.errors?.name) form.setError("name", { message: result.errors.name.join(', ') });
       if (result.errors?.loginId) form.setError("loginId", { message: result.errors.loginId.join(', ') });
       if (result.errors?.password) form.setError("password", { message: result.errors.password.join(', ') });
@@ -79,17 +78,15 @@ export default function SettingsPage() {
     }
   }
 
-  const handleQuickLoginToggle = async (loginId: string, enable: boolean) => {
-    const result = await toggleQuickLoginAction({ loginId, enable });
+  const handleQuickLoginToggle = async (login_id: string, enable: boolean) => { // parameter is login_id
+    const result = await toggleQuickLoginAction({ loginId: login_id, enable }); // schema expects loginId
     if (result.success) {
       toast({ title: "Quick Login Updated", description: result.message });
-      // Optimistically update local state or re-fetch
       setStaffList(prevList => 
         prevList.map(staff => 
-          staff.loginId === loginId ? { ...staff, enableQuickLogin: enable } : staff
+          staff.login_id === login_id ? { ...staff, enable_quick_login: enable } : staff
         )
       );
-      // Or fetchStaff(); for guaranteed consistency but potentially slower UI response
     } else {
       toast({ title: "Error", description: result.message, variant: "destructive" });
     }
@@ -114,7 +111,7 @@ export default function SettingsPage() {
           <CardTitle className="font-headline text-2xl flex items-center">
             <Users className="mr-2 h-6 w-6" /> Add New Staff
           </CardTitle>
-          <CardDescription>Add new staff members to the system.</CardDescription>
+          <CardDescription>Add new staff members to the system (uses Supabase).</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -134,7 +131,7 @@ export default function SettingsPage() {
               />
               <FormField
                 control={form.control}
-                name="loginId"
+                name="loginId" // Maps to login_id in DB via action
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Login ID</FormLabel>
@@ -154,6 +151,9 @@ export default function SettingsPage() {
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
+                     <FormDescription>
+                      NOTE: Passwords are NOT hashed in this prototype. Implement hashing for production.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -171,7 +171,7 @@ export default function SettingsPage() {
           <CardTitle className="font-headline text-2xl flex items-center">
             <KeyRound className="mr-2 h-6 w-6" /> Manage Staff Quick Login
           </CardTitle>
-          <CardDescription>Enable or disable quick login for staff members.</CardDescription>
+          <CardDescription>Enable or disable quick login for staff members (uses Supabase).</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoadingStaff ? (
@@ -181,19 +181,19 @@ export default function SettingsPage() {
           ) : staffList.length > 0 ? (
             <ul className="space-y-4">
               {staffList.map((staff) => (
-                <li key={staff.loginId} className="flex items-center justify-between p-3 border rounded-md bg-background shadow-sm">
+                <li key={staff.login_id} className="flex items-center justify-between p-3 border rounded-md bg-background shadow-sm">
                   <div>
                     <p className="font-medium">{staff.name}</p>
-                    <p className="text-sm text-muted-foreground">ID: {staff.loginId}</p>
+                    <p className="text-sm text-muted-foreground">ID: {staff.login_id}</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Switch
-                      id={`quick-login-${staff.loginId}`}
-                      checked={!!staff.enableQuickLogin}
-                      onCheckedChange={(checked) => handleQuickLoginToggle(staff.loginId, checked)}
+                      id={`quick-login-${staff.login_id}`}
+                      checked={!!staff.enable_quick_login}
+                      onCheckedChange={(checked) => handleQuickLoginToggle(staff.login_id, checked)}
                       aria-label={`Enable quick login for ${staff.name}`}
                     />
-                    <Label htmlFor={`quick-login-${staff.loginId}`} className="text-sm">
+                    <Label htmlFor={`quick-login-${staff.login_id}`} className="text-sm">
                       Enable Quick Login
                     </Label>
                   </div>

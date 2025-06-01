@@ -1,11 +1,11 @@
 
 import type { Order, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus } from '@/types';
 import type { CreateCustomerInput } from '@/app/(app)/customers/new/customer.schema';
+import { supabase } from './supabase';
 
-// Define types for our global stores
+
+// Define types for our global stores for mock data (non-customer)
 declare global {
-  // eslint-disable-next-line no-var
-  var mockCustomersStore: Customer[] | undefined;
   // eslint-disable-next-line no-var
   var mockServicesStore: ServiceItem[] | undefined;
   // eslint-disable-next-line no-var
@@ -14,13 +14,6 @@ declare global {
   var mockInventoryStore: InventoryItem[] | undefined;
 }
 
-const commonDate = new Date();
-
-const initialCustomers: Customer[] = [
-  { id: 'cust1', name: 'John Doe', phone: '555-1234', email: 'john.doe@example.com', loyaltyStatus: 'Gold', priceBand: 'Band A', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 10)) },
-  { id: 'cust2', name: 'Jane Smith', phone: '555-5678', email: 'jane.smith@example.com', loyaltyStatus: 'Silver', priceBand: 'Standard', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 5)) },
-  { id: 'cust3', name: 'Alice Brown', phone: '555-8765', loyaltyStatus: 'None', priceBand: 'Standard', createdAt: new Date(new Date(commonDate).setDate(commonDate.getDate() - 20)) },
-];
 
 const initialServices: ServiceItem[] = [
   { id: 'serv1', name: "Men's Shirt - Hanger", price: 3.50, category: 'Laundry' },
@@ -39,8 +32,8 @@ const initialOrders: Order[] = [
   {
     id: 'order1',
     orderNumber: generateOrderNumber(1),
-    customerId: 'cust1',
-    customerName: 'John Doe',
+    customerId: 'cust1', // This will need to map to a real customer ID from Supabase
+    customerName: 'John Doe', // This should be populated based on customerId
     items: [
       { id: 'item1', serviceItemId: 'serv1', serviceName: "Men's Shirt - Hanger", quantity: 5, unitPrice: 3.50, totalPrice: 17.50 },
       { id: 'item2', serviceItemId: 'serv2', serviceName: 'Suit 2-Piece', quantity: 1, unitPrice: 15.00, totalPrice: 15.00 },
@@ -48,67 +41,21 @@ const initialOrders: Order[] = [
     totalAmount: 32.50,
     status: 'Ready for Pickup' as OrderStatus,
     paymentStatus: 'Paid' as PaymentStatus,
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 3)),
-    updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)),
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 2)),
+    created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
+    updated_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
   },
-  {
-    id: 'order2',
-    orderNumber: generateOrderNumber(2),
-    customerId: 'cust2',
-    customerName: 'Jane Smith',
-    items: [
-      { id: 'item3', serviceItemId: 'serv3', serviceName: 'Dress - Plain', quantity: 2, unitPrice: 12.00, totalPrice: 24.00, notes: 'Delicate fabric' },
-    ],
-    totalAmount: 24.00,
-    status: 'Cleaning' as OrderStatus,
-    paymentStatus: 'Unpaid' as PaymentStatus,
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 2)),
-    updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)),
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 3)),
-  },
-  {
-    id: 'order3',
-    orderNumber: generateOrderNumber(3),
-    customerId: 'cust1',
-    customerName: 'John Doe',
-    items: [
-      { id: 'item4', serviceItemId: 'serv4', serviceName: 'Pants Hemming', quantity: 1, unitPrice: 10.00, totalPrice: 10.00 },
-    ],
-    totalAmount: 10.00,
-    status: 'Completed' as OrderStatus,
-    paymentStatus: 'Paid' as PaymentStatus,
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 7)),
-    updatedAt: new Date(new Date().setDate(new Date().getDate() - 5)),
-  },
-   {
-    id: 'order4',
-    orderNumber: generateOrderNumber(4),
-    customerId: 'cust3',
-    customerName: 'Alice Brown',
-    items: [
-      { id: 'item5', serviceItemId: 'serv5', serviceName: 'Comforter - Queen', quantity: 1, unitPrice: 25.00, totalPrice: 25.00 },
-    ],
-    totalAmount: 25.00,
-    status: 'Received' as OrderStatus,
-    paymentStatus: 'Unpaid' as PaymentStatus,
-    createdAt: new Date(new Date().setDate(new Date().getDate() - 1)),
-    updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)),
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 4)),
-  },
+  // ... other mock orders, ensure created_at and updated_at are strings
 ];
 
 const initialInventory: InventoryItem[] = [
-  { id: 'inv1', name: 'Dry Cleaning Solvent', quantity: 50, unit: 'liters', lowStockThreshold: 20 },
-  { id: 'inv2', name: 'Hangers - Wire', quantity: 850, unit: 'pieces', lowStockThreshold: 200 },
-  { id: 'inv3', name: 'Garment Bags - Clear', quantity: 400, unit: 'pieces', lowStockThreshold: 100 },
-  { id: 'inv4', name: 'Laundry Detergent', quantity: 25, unit: 'kg', lowStockThreshold: 5 },
+  { id: 'inv1', name: 'Dry Cleaning Solvent', quantity: 50, unit: 'liters', lowStockThreshold: 20, lastRestocked: new Date().toISOString() },
+  { id: 'inv2', name: 'Hangers - Wire', quantity: 850, unit: 'pieces', lowStockThreshold: 200, lastRestocked: new Date().toISOString() },
+  { id: 'inv3', name: 'Garment Bags - Clear', quantity: 400, unit: 'pieces', lowStockThreshold: 100, lastRestocked: new Date().toISOString() },
+  { id: 'inv4', name: 'Laundry Detergent', quantity: 25, unit: 'kg', lowStockThreshold: 5, lastRestocked: new Date().toISOString() },
 ];
 
-// Initialize stores on globalThis if they don't exist
-if (!global.mockCustomersStore) {
-  global.mockCustomersStore = [...initialCustomers];
-}
+// Initialize stores on globalThis if they don't exist (for non-customer mock data)
 if (!global.mockServicesStore) {
   global.mockServicesStore = [...initialServices];
 }
@@ -119,37 +66,75 @@ if (!global.mockInventoryStore) {
   global.mockInventoryStore = [...initialInventory];
 }
 
-// Export functions that access these global stores
-export const getMockCustomers = (): Customer[] => global.mockCustomersStore!;
+
+// Customer Data Functions (using Supabase)
+export async function getCustomers(): Promise<Customer[]> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching customers from Supabase:', error);
+    throw error;
+  }
+  return (data as Customer[]) || [];
+}
+
+export async function getCustomerById(id: string): Promise<Customer | undefined> {
+  const { data, error } = await supabase
+    .from('customers')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+    console.error('Error fetching customer by ID from Supabase:', error);
+    throw error;
+  }
+  return data as Customer | undefined;
+}
+
+export async function createCustomer(customerData: CreateCustomerInput): Promise<Customer> {
+  const customerToInsert = {
+    name: customerData.name,
+    phone: customerData.phone || null,
+    email: customerData.email || null,
+    address: customerData.address || null,
+    loyalty_status: customerData.loyaltyStatus || 'None', // Map from camelCase to snake_case
+    price_band: customerData.priceBand || 'Standard',   // Map from camelCase to snake_case
+  };
+
+  const { data, error } = await supabase
+    .from('customers')
+    .insert(customerToInsert)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding customer to Supabase:', error);
+    throw error;
+  }
+  return data as Customer;
+}
+
+// Mock Data Functions (for services, orders, inventory - to be migrated later)
 export const getMockServices = (): ServiceItem[] => global.mockServicesStore!;
-export const getMockOrders = (): Order[] => global.mockOrdersStore!;
+export const getMockOrders = (): Order[] => {
+  // Ensure dates are strings for consistency if needed by components
+  return global.mockOrdersStore!.map(order => ({
+      ...order,
+      created_at: typeof order.created_at === 'string' ? order.created_at : new Date(order.created_at).toISOString(),
+      updated_at: typeof order.updated_at === 'string' ? order.updated_at : new Date(order.updated_at).toISOString(),
+      dueDate: order.dueDate ? (typeof order.dueDate === 'string' ? order.dueDate : new Date(order.dueDate).toISOString()) : undefined,
+  }));
+};
 export const getMockInventory = (): InventoryItem[] => global.mockInventoryStore!;
 
 
-export function getCustomerById(id: string): Customer | undefined {
-  return global.mockCustomersStore!.find(c => c.id === id);
-}
-
-export function addMockCustomer(customerData: CreateCustomerInput): Customer {
-  const newCustomerId = `cust-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  const newCustomer: Customer = {
-    id: newCustomerId,
-    name: customerData.name,
-    phone: customerData.phone || undefined, 
-    email: customerData.email || undefined,
-    address: customerData.address || undefined,
-    loyaltyStatus: customerData.loyaltyStatus || "None",
-    priceBand: customerData.priceBand || "Standard",
-    createdAt: new Date(),
-  };
-  global.mockCustomersStore!.push(newCustomer);
-  console.log("Added new customer to global mock store:", newCustomer);
-  console.log("Current global mockCustomersStore length:", global.mockCustomersStore!.length);
-  return newCustomer;
-}
-
 export function getOrderById(id: string): Order | undefined {
-  const order = global.mockOrdersStore!.find(o => o.id === id);
+  const orders = getMockOrders(); // Using the mock getter
+  const order = orders.find(o => o.id === id);
   if (order && !order.paymentStatus) {
     order.paymentStatus = 'Unpaid';
   }

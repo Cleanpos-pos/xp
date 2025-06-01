@@ -2,7 +2,7 @@
 "use server";
 
 import { type CreateCustomerInput, CreateCustomerSchema } from "./customer.schema";
-import { addMockCustomer } from "@/lib/data";
+import { createCustomer as createCustomerInDb } from "@/lib/data"; // Now uses Supabase
 
 export async function createCustomerAction(data: CreateCustomerInput) {
   const validationResult = CreateCustomerSchema.safeParse(data);
@@ -14,15 +14,20 @@ export async function createCustomerAction(data: CreateCustomerInput) {
     };
   }
 
-  // Add to the in-memory mock store
-  const newCustomer = addMockCustomer(validationResult.data);
+  try {
+    // createCustomerInDb now interacts with Supabase
+    const newCustomer = await createCustomerInDb(validationResult.data);
 
-  // Simulate some delay if needed, though addMockCustomer is synchronous
-  // await new Promise(resolve => setTimeout(resolve, 100)); 
-
-  return {
-    success: true,
-    message: `Customer ${newCustomer.name} created successfully!`,
-    customerId: newCustomer.id, // Use the ID from the newly added customer
-  };
+    return {
+      success: true,
+      message: `Customer ${newCustomer.name} created successfully in Supabase!`,
+      customerId: newCustomer.id, 
+    };
+  } catch (error: any) {
+    console.error("Error creating customer in action:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to create customer in Supabase.",
+    };
+  }
 }

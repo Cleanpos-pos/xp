@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { getMockCustomers, getMockServices, getCustomerById } from "@/lib/data";
+import { getCustomers, getCustomerById, getMockServices } from "@/lib/data"; // getCustomers and getCustomerById are now async
 import type { ServiceItem, Customer } from "@/types";
 import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
@@ -31,6 +31,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ServicesByCategory {
   [category: string]: ServiceItem[];
@@ -44,11 +45,13 @@ export default function NewOrderPage() {
   const searchParams = useSearchParams();
   const [stage, setStage] = React.useState<OrderCreationStage>("form");
   const [createdOrderDetails, setCreatedOrderDetails] = React.useState<{ id: string; message: string; totalAmount: number } | null>(null);
+  
+  const [allCustomers, setAllCustomers] = React.useState<Customer[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = React.useState(true);
   const [selectedCustomerName, setSelectedCustomerName] = React.useState<string | null>(null);
 
-  const allCustomers = React.useMemo(() => getMockCustomers(), []);
-  const allServices = React.useMemo(() => getMockServices(), []);
 
+  const allServices = React.useMemo(() => getMockServices(), []); // Services are still mock
 
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
@@ -60,45 +63,82 @@ export default function NewOrderPage() {
     },
   });
 
+  // Fetch all customers for the dropdown if no specific customer is pre-selected
+  React.useEffect(() => {
+    const customerIdFromQuery = searchParams.get('customerId');
+    if (!customerIdFromQuery) { // Only fetch all if no customer is pre-selected
+      setIsLoadingCustomers(true);
+      getCustomers()
+        .then(data => {
+          setAllCustomers(data);
+          setIsLoadingCustomers(false);
+        })
+        .catch(err => {
+          console.error("Failed to fetch customers:", err);
+          toast({ title: "Error", description: "Could not load customer list.", variant: "destructive" });
+          setIsLoadingCustomers(false);
+        });
+    } else {
+      setIsLoadingCustomers(false); // Not loading all customers if one is specified
+    }
+  }, [searchParams, toast]);
+
+
+  // Effect to handle pre-selected customer from query params
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
     if (customerIdFromQuery) {
-      const customer = getCustomerById(customerIdFromQuery);
-      if (customer) {
-        form.setValue('customerId', customerIdFromQuery, { shouldValidate: true });
-        setSelectedCustomerName(customer.name); // Directly set the name here
-      } else {
-        console.warn(`Customer ID ${customerIdFromQuery} from query params not found.`);
-        toast({title: "Customer Not Found", description: "The customer ID from the previous page was not found. Please select a customer.", variant: "destructive"});
-        form.setValue('customerId', '');
-        setSelectedCustomerName(null); // Clear name if customer not found
-      }
+      setIsLoadingCustomers(true); // Indicate loading for this specific customer
+      getCustomerById(customerIdFromQuery)
+        .then(customer => {
+          if (customer) {
+            form.setValue('customerId', customerIdFromQuery, { shouldValidate: true });
+            setSelectedCustomerName(customer.name);
+          } else {
+            console.warn(`Customer ID ${customerIdFromQuery} from query params not found.`);
+            toast({title: "Customer Not Found", description: "The pre-selected customer was not found. Please select a customer.", variant: "destructive"});
+            form.setValue('customerId', '');
+            setSelectedCustomerName(null);
+            router.replace('/orders/new', undefined); // Clear query param if customer not found
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch customer by ID:", err);
+          toast({title: "Error", description: "Could not load the pre-selected customer.", variant: "destructive"});
+          form.setValue('customerId', '');
+          setSelectedCustomerName(null);
+          router.replace('/orders/new', undefined);
+        })
+        .finally(() => {
+          setIsLoadingCustomers(false);
+        });
     } else {
-      // If no customerId in query, and form has one (e.g. back navigation without query), clear it.
-      // Also clear name if customerId is being cleared.
+      // Ensure customerId and name are cleared if query param is removed/not present
       if (form.getValues('customerId')) {
-        form.setValue('customerId', '');
-        setSelectedCustomerName(null);
+          form.setValue('customerId', '');
+      }
+      if (selectedCustomerName) {
+          setSelectedCustomerName(null);
       }
     }
-  }, [searchParams, form, toast]);
+  }, [searchParams, form, toast, router, selectedCustomerName]);
 
   const watchedCustomerId = form.watch("customerId");
 
+  // Effect to update selectedCustomerName if customerId changes via dropdown
   React.useEffect(() => {
-    // This effect primarily syncs selectedCustomerName if customerId changes through other means
-    // or is cleared. For initial load from query param, the above effect is more direct.
-    if (watchedCustomerId) {
-      const customer = getCustomerById(watchedCustomerId);
+    if (watchedCustomerId && !searchParams.get('customerId')) { // Only if not pre-selected
+      const customer = allCustomers.find(c => c.id === watchedCustomerId);
       if (customer && customer.name !== selectedCustomerName) {
         setSelectedCustomerName(customer.name);
-      } else if (!customer) {
-        setSelectedCustomerName(null);
+      } else if (!customer && watchedCustomerId) { // If ID is set but not in list (shouldn't happen)
+        setSelectedCustomerName(null); 
       }
-    } else {
-      setSelectedCustomerName(null);
+    } else if (!watchedCustomerId && !searchParams.get('customerId')) { // Cleared or no selection
+        setSelectedCustomerName(null);
     }
-  }, [watchedCustomerId, selectedCustomerName]); // Added selectedCustomerName to dep to avoid stale closures if logic gets more complex
+    // Do not clear if customerId is from query param, that's handled by the other useEffect
+  }, [watchedCustomerId, allCustomers, selectedCustomerName, searchParams]);
 
 
   const { fields, append, remove, update } = useFieldArray({
@@ -149,7 +189,7 @@ export default function NewOrderPage() {
   }, [watchedItems]);
 
   async function onSubmit(data: CreateOrderInput) {
-    const result = await createOrderAction(data);
+    const result = await createOrderAction(data); // This is mock, needs Supabase later
     if (result.success && result.orderId) {
       toast({
         title: "Order Created",
@@ -180,8 +220,16 @@ export default function NewOrderPage() {
     });
     setStage("form");
     setCreatedOrderDetails(null);
-    setSelectedCustomerName(null); // Also reset selected customer name
+    setSelectedCustomerName(null);
     router.replace('/orders/new', undefined); 
+    // Re-fetch all customers for dropdown if we are clearing a pre-selection
+    if (!searchParams.get('customerId')) {
+        setIsLoadingCustomers(true);
+        getCustomers().then(data => {
+            setAllCustomers(data);
+            setIsLoadingCustomers(false);
+        }).catch(() => setIsLoadingCustomers(false));
+    }
   };
 
   const handleProceedToPayment = () => {
@@ -195,13 +243,13 @@ export default function NewOrderPage() {
       title: "Payment Processed (Mocked)",
       description: `Payment for order ${createdOrderDetails.id} of $${createdOrderDetails.totalAmount.toFixed(2)} was successful.`,
     });
-    router.push(`/orders/${createdOrderDetails.id}`);
+    router.push(`/orders/${createdOrderDetails.id}`); // Order details page still uses mock order
     resetFormAndStage();
   }
 
   const handlePayLater = () => {
     if (!createdOrderDetails) return;
-    router.push(`/orders/${createdOrderDetails.id}`);
+    router.push(`/orders/${createdOrderDetails.id}`); // Order details page still uses mock order
     resetFormAndStage();
   };
 
@@ -299,7 +347,7 @@ export default function NewOrderPage() {
       <div className="lg:col-span-2 space-y-6">
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="font-headline text-2xl">Select Services for {selectedCustomerName || 'Customer'}</CardTitle>
+            <CardTitle className="font-headline text-2xl">Select Services for {isLoadingCustomers && searchParams.get('customerId') ? <Skeleton className="h-7 w-32 inline-block" /> : selectedCustomerName || 'Customer'}</CardTitle>
             <CardDescription>Choose a category, then click a service to add it to the order.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -356,10 +404,13 @@ export default function NewOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Customer</FormLabel>
+                      {isLoadingCustomers && !searchParams.get('customerId') ? (
+                        <Skeleton className="h-10 w-full" />
+                      ) : (
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value}
-                        disabled={!!searchParams.get('customerId')}
+                        disabled={!!searchParams.get('customerId') || isLoadingCustomers}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -374,13 +425,14 @@ export default function NewOrderPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                      )}
                       <FormDescription>
                         {searchParams.get('customerId') && selectedCustomerName
-                          ? `Selected: ${selectedCustomerName}. To change, go back to find/add customer.`
-                          : !searchParams.get('customerId') && !watchedCustomerId
+                          ? `Selected: ${selectedCustomerName}. To change, go back.`
+                          : isLoadingCustomers && !searchParams.get('customerId')
+                          ? 'Loading customer list...'
+                          : !searchParams.get('customerId') && !watchedCustomerId 
                           ? 'Select a customer for this order.'
-                          : searchParams.get('customerId') && !selectedCustomerName && !form.formState.errors.customerId
-                          ? 'Attempting to load pre-selected customer...'
                           : ''}
                       </FormDescription>
                       <FormMessage />
@@ -462,7 +514,7 @@ export default function NewOrderPage() {
                               )}
                             >
                               {field.value ? (
-                                format(field.value, "PPP")
+                                format(new Date(field.value), "PPP") // Ensure field.value is converted to Date
                               ) : (
                                 <span>Pick a date</span>
                               )}
@@ -506,11 +558,13 @@ export default function NewOrderPage() {
                     </div>
                     <Button 
                       type="submit" 
-                      disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId} 
+                      disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingCustomers} 
                       className="w-full"
                     >
                       {form.formState.isSubmitting
                         ? "Creating Order..."
+                        : isLoadingCustomers && watchedCustomerId // Show loading if specific customer is being fetched
+                        ? "Loading Customer..."
                         : watchedCustomerId && selectedCustomerName
                         ? `Create Order for ${selectedCustomerName}`
                         : "Select Customer First"}
@@ -524,4 +578,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-

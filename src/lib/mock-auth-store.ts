@@ -1,69 +1,108 @@
 
+import { supabase } from './supabase';
+
 // NOTE ON PASSWORD SECURITY:
 // In a real production application, passwords should NEVER be stored in plain text.
 // They should be securely hashed using a strong algorithm (e.g., bcrypt or Argon2).
-// For this prototype, we are storing them as plain text for simplicity.
-// When integrating Supabase, we will handle password hashing properly.
+// The `hashed_password` column in Supabase should store these hashes.
+// FOR THIS PROTOTYPE, we are storing plain text in the `hashed_password` column for simplicity.
+// THIS IS INSECURE AND MUST BE CHANGED FOR PRODUCTION.
 
 export interface StaffCredentials {
-  id?: string; // In a real DB, this would be the primary key
+  id?: string; // Supabase UUID
   name: string;
-  loginId: string; // This will be our queryable unique ID for staff
-  password: string; // Stored as plain text for prototype - HASH IN PRODUCTION!
-  enableQuickLogin?: boolean;
+  login_id: string; // Changed from loginId to match DB
+  hashed_password?: string; // Represents the password field for now (plain text)
+  password?: string; // Used for input, will be stored in hashed_password
+  enable_quick_login?: boolean; // Changed from enableQuickLogin
+  created_at?: string;
+  updated_at?: string;
 }
 
-// In-memory store for staff credentials (temporary, will be replaced by Supabase)
-let mockStaffStore: StaffCredentials[] = [
-  { id: 'staff1', name: 'Admin User', loginId: 'ADMIN001', password: 'password', enableQuickLogin: true },
-  { id: 'staff2', name: 'Standard User', loginId: 'STAFF002', password: 'password123', enableQuickLogin: false },
-];
+export async function addStaff(staffData: Omit<StaffCredentials, 'id' | 'created_at' | 'updated_at' | 'hashed_password'> & { password: string }): Promise<StaffCredentials> {
+  console.warn("SECURITY WARNING: Storing plain text password in 'hashed_password' column. Implement proper hashing for production.");
+  
+  const { error, data } = await supabase
+    .from('staff')
+    .insert({
+      name: staffData.name,
+      login_id: staffData.login_id,
+      hashed_password: staffData.password, // Storing plain text password directly!
+      enable_quick_login: staffData.enable_quick_login ?? false,
+    })
+    .select()
+    .single();
 
-export async function addStaff(staffData: Omit<StaffCredentials, 'id'>): Promise<StaffCredentials> {
-  console.log("Mock addStaff called. Data will be in-memory until Supabase is integrated.", staffData);
-  if (mockStaffStore.some(staff => staff.loginId === staffData.loginId)) {
-    throw new Error(`Staff with loginId ${staffData.loginId} already exists.`);
+  if (error) {
+    console.error("Error adding staff to Supabase:", error);
+    if (error.code === '23505') { // Unique constraint violation for login_id
+        throw new Error(`Staff with login ID ${staffData.login_id} already exists.`);
+    }
+    throw error;
   }
-  const newStaff: StaffCredentials = {
-    id: `mock-${Date.now()}`, // Simple mock ID
-    ...staffData,
-    enableQuickLogin: staffData.enableQuickLogin ?? false,
-  };
-  mockStaffStore.push(newStaff);
-  return newStaff;
+  return data as StaffCredentials;
 }
 
-export async function findStaff(loginId: string, password?: string): Promise<StaffCredentials | undefined> {
-  console.log(`Mock findStaff called for loginId: ${loginId}. Data is in-memory.`);
-  const staffMember = mockStaffStore.find(staff => staff.loginId === loginId);
+export async function findStaff(login_id_input: string, password_input?: string): Promise<StaffCredentials | undefined> {
+  const { data, error } = await supabase
+    .from('staff')
+    .select('*')
+    .eq('login_id', login_id_input)
+    .single();
 
-  if (!staffMember) {
+  if (error && error.code !== 'PGRST116') { // PGRST116: "single row not found"
+    console.error("Error finding staff in Supabase:", error);
+    throw error;
+  }
+
+  if (!data) {
     return undefined;
   }
 
-  if (password && staffMember.password !== password) {
+  const staffMember = data as StaffCredentials;
+
+  // INSECURE: Plain text password comparison.
+  if (password_input && staffMember.hashed_password !== password_input) {
+    console.warn("SECURITY WARNING: Plain text password comparison.");
     return undefined;
   }
   return staffMember;
 }
 
 export async function getAllStaff(): Promise<StaffCredentials[]> {
-  console.log("Mock getAllStaff called. Data is in-memory.");
-  return [...mockStaffStore]; // Return a copy
+  const { data, error } = await supabase
+    .from('staff')
+    .select('*');
+
+  if (error) {
+    console.error("Error fetching all staff from Supabase:", error);
+    throw error;
+  }
+  return (data as StaffCredentials[]) || [];
 }
 
-export async function updateStaffQuickLoginStatus(loginId: string, enable: boolean): Promise<boolean> {
-  console.log(`Mock updateStaffQuickLoginStatus called for ${loginId} to ${enable}. Data is in-memory.`);
-  const staffMember = mockStaffStore.find(staff => staff.loginId === loginId);
-  if (staffMember) {
-    staffMember.enableQuickLogin = enable;
-    return true;
+export async function updateStaffQuickLoginStatus(login_id_input: string, enable: boolean): Promise<boolean> {
+  const { error, count } = await supabase
+    .from('staff')
+    .update({ enable_quick_login: enable })
+    .eq('login_id', login_id_input);
+
+  if (error) {
+    console.error("Error updating quick login status in Supabase:", error);
+    throw error;
   }
-  console.warn(`No staff member found with loginId: ${loginId} to update quick login status.`);
-  return false;
+  return count !== null && count > 0;
 }
 
 export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
-  console.log("Mock getQuickLoginStaff called. Data is in-memory.");
-  return mockStaffStore.filter(staff => staff.enableQuickLogin);
+  const { data, error } = await supabase
+    .from('staff')
+    .select('*')
+    .eq('enable_quick_login', true);
+
+  if (error) {
+    console.error("Error fetching quick login staff from Supabase:", error);
+    throw error;
+  }
+  return (data as StaffCredentials[]) || [];
 }

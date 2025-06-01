@@ -1,24 +1,44 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getMockCustomers } from '@/lib/data';
+import { getCustomers } from '@/lib/data'; // Fetches from Supabase
 import type { Customer } from '@/types';
 import Link from 'next/link';
 import { Search, UserPlus, ArrowRight, Users } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function FindOrAddCustomerPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<Customer[]>([]);
+  const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
-  const allCustomers = getMockCustomers(); // Get all customers once
+
+  const fetchAllCustomers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const customers = await getCustomers();
+      setAllCustomers(customers);
+    } catch (error) {
+      console.error("Failed to fetch customers:", error);
+      // Optionally show a toast or error message to the user
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllCustomers();
+  }, [fetchAllCustomers]);
 
   const handleSearch = () => {
+    if (isLoading) return; // Don't search if initial load isn't done
     if (!searchTerm.trim()) {
       setSearchResults([]);
       setHasSearched(true);
@@ -62,13 +82,22 @@ export default function FindOrAddCustomerPage() {
               }}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="flex-1"
+              disabled={isLoading}
             />
-            <Button onClick={handleSearch} type="button">
+            <Button onClick={handleSearch} type="button" disabled={isLoading}>
               <Search className="mr-2 h-4 w-4" /> Search
             </Button>
           </div>
 
-          {hasSearched && searchResults.length > 0 && (
+          {isLoading && (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          )}
+
+          {!isLoading && hasSearched && searchResults.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-md font-semibold text-muted-foreground px-1">Search Results:</h3>
               <ul className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-2 bg-muted/20">
@@ -95,13 +124,13 @@ export default function FindOrAddCustomerPage() {
             </div>
           )}
 
-          {hasSearched && searchResults.length === 0 && searchTerm.trim() !== '' && (
+          {!isLoading && hasSearched && searchResults.length === 0 && searchTerm.trim() !== '' && (
             <p className="text-center text-muted-foreground py-4">
               No customer found matching your search.
             </p>
           )}
 
-           {hasSearched && searchResults.length === 0 && searchTerm.trim() === '' && (
+           {!isLoading && hasSearched && searchResults.length === 0 && searchTerm.trim() === '' && (
             <p className="text-center text-muted-foreground py-4">
               Enter a search term to find a customer or add a new one below.
             </p>

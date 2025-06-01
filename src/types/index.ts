@@ -1,14 +1,15 @@
 
 export type Customer = {
-  id: string;
+  id: string; // Supabase will typically generate this as UUID
   name: string;
   phone?: string;
   email?: string;
   address?: string;
-  loyaltyStatus?: 'None' | 'Bronze' | 'Silver' | 'Gold'; // Added
-  priceBand?: 'Standard' | 'Band A' | 'Band B' | 'Band C'; // Added
-  orderHistory?: Order[];
-  createdAt: Date;
+  loyalty_status?: 'None' | 'Bronze' | 'Silver' | 'Gold'; // Changed to snake_case
+  price_band?: 'Standard' | 'Band A' | 'Band B' | 'Band C'; // Changed to snake_case
+  orderHistory?: Order[]; // This would need a separate table and relation in a real setup
+  created_at: string; // Supabase returns ISO string
+  updated_at: string; // Supabase returns ISO string
 };
 
 export type ServiceItem = {
@@ -53,9 +54,9 @@ export type Order = {
   totalAmount: number;
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
-  createdAt: Date;
-  updatedAt: Date;
-  dueDate?: Date;
+  created_at: string; // Supabase returns ISO string
+  updated_at: string; // Supabase returns ISO string
+  dueDate?: string; // Dates also likely ISO strings or need conversion
   notes?: string; // General order notes
 };
 
@@ -65,7 +66,7 @@ export type InventoryItem = {
   quantity: number;
   unit: string; // e.g., "liters", "kg", "pieces"
   lowStockThreshold?: number;
-  lastRestocked?: Date;
+  lastRestocked?: string; // Date
 };
 
 export type ReportData = {
@@ -74,4 +75,6 @@ export type ReportData = {
   // Add more metrics as needed
 };
 
+// Note: StaffCredentials interface moved to mock-auth-store.ts for co-location
+// but conceptually it's a type that will be updated there to match DB.
     
