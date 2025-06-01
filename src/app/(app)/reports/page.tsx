@@ -1,5 +1,7 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, LineChart, PieChart, TrendingUp } from "lucide-react";
+import { BarChart, LineChart as LineChartIcon, PieChart as PieChartIcon, TrendingUp } from "lucide-react"; // Renamed to avoid conflict
 import Image from "next/image";
 import { AiInsights } from "@/components/reports/ai-insights";
 import {
@@ -87,7 +89,7 @@ export default function ReportsPage() {
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="font-headline flex items-center">
-              <PieChart className="mr-2 h-5 w-5" /> Service Popularity
+              <PieChartIcon className="mr-2 h-5 w-5" /> Service Popularity
             </CardTitle>
             <CardDescription>Distribution of services availed by customers.</CardDescription>
           </CardHeader>
@@ -122,7 +124,7 @@ export default function ReportsPage() {
       <Card className="shadow-md">
         <CardHeader>
           <CardTitle className="font-headline flex items-center">
-            <LineChart className="mr-2 h-5 w-5" /> Order Volume Trend
+            <LineChartIcon className="mr-2 h-5 w-5" /> Order Volume Trend
           </CardTitle>
           <CardDescription>Monitor the number of orders over the past weeks.</CardDescription>
         </CardHeader>
