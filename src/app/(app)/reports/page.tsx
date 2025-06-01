@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, LineChart as LineChartIcon, PieChart as PieChartIcon, TrendingUp } from "lucide-react"; // Renamed to avoid conflict
+import { BarChart as BarChartIcon, LineChart as LineChartIcon, PieChart as PieChartIcon, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import { AiInsights } from "@/components/reports/ai-insights";
 import {
@@ -12,7 +12,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart"
-import { Bar, XAxis, YAxis, CartesianGrid, Pie, Cell, Line, PieChart, LineChart } from "recharts" // Added PieChart and LineChart here
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Pie, Cell, Line, PieChart, LineChart } from "recharts"
 
 const chartDataSales = [
   { month: "January", sales: Math.floor(Math.random() * 5000) + 1000 },
@@ -64,7 +64,7 @@ export default function ReportsPage() {
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="font-headline flex items-center">
-              <BarChart className="mr-2 h-5 w-5" /> Monthly Sales Overview
+              <BarChartIcon className="mr-2 h-5 w-5" /> Monthly Sales Overview
             </CardTitle>
             <CardDescription>Track your sales performance over time.</CardDescription>
           </CardHeader>
@@ -151,4 +151,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-
