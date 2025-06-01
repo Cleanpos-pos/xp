@@ -7,24 +7,10 @@ import { supabase } from './supabase';
 // Define types for our global stores for mock data (non-customer, non-staff, non-catalog)
 declare global {
   // eslint-disable-next-line no-var
-  var mockServicesStore: ServiceItem[] | undefined;
-  // eslint-disable-next-line no-var
   var mockOrdersStore: Order[] | undefined;
   // eslint-disable-next-line no-var
   var mockInventoryStore: InventoryItem[] | undefined;
 }
-
-
-const initialServices: ServiceItem[] = [
-  { id: 'serv1', name: "Men's Shirt - Hanger", price: 3.50, category: 'Laundry' },
-  { id: 'serv2', name: 'Suit 2-Piece', price: 15.00, category: 'Dry Cleaning' },
-  { id: 'serv3', name: 'Dress - Plain', price: 12.00, category: 'Dry Cleaning' },
-  { id: 'serv4', name: 'Pants Hemming', price: 10.00, category: 'Alterations' },
-  { id: 'serv5', name: 'Comforter - Queen', price: 25.00, category: 'Dry Cleaning' },
-  { id: 'serv6', name: "Women's Blouse", price: 7.00, category: 'Laundry' },
-  { id: 'serv7', name: 'Tablecloth', price: 10.00, category: 'Specialty Items' },
-  { id: 'serv8', name: 'Zipper Replacement', price: 18.00, category: 'Alterations' },
-];
 
 const generateOrderNumber = (index: number) => `XP-${String(1000 + index).padStart(6, '0')}`;
 
@@ -55,9 +41,6 @@ const initialInventory: InventoryItem[] = [
 ];
 
 
-if (!global.mockServicesStore) {
-  global.mockServicesStore = [...initialServices];
-}
 if (!global.mockOrdersStore) {
   global.mockOrdersStore = [...initialOrders];
 }
@@ -129,8 +112,8 @@ export async function createCustomer(customerData: CreateCustomerInput): Promise
   } as Customer;
 }
 
-// Mock Data Functions (for services, orders, inventory - to be migrated later)
-export const getMockServices = (): ServiceItem[] => global.mockServicesStore!;
+// Mock Data Functions (for orders, inventory - to be migrated later)
+
 export const getMockOrders = (): Order[] => {
   return global.mockOrdersStore!.map(order => ({
       ...order,
@@ -149,10 +132,6 @@ export function getOrderById(id: string): Order | undefined {
     order.paymentStatus = 'Unpaid';
   }
   return order;
-}
-
-export function getServiceById(id:string): ServiceItem | undefined {
-  return global.mockServicesStore!.find(s => s.id === id);
 }
 
 export function getInventoryItemById(id: string): InventoryItem | undefined {
@@ -222,8 +201,9 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
   }
 
   if (!data) {
-    console.error('Supabase returned no data and no error after inserting catalog entry. Entry data attempted:', JSON.stringify(entryToInsert, null, 2));
-    throw new Error('Failed to add catalog entry: Supabase returned no data after insert. This may be due to RLS policies or other database constraints.');
+    const errorMessage = 'Failed to add catalog entry: Supabase returned no data after insert. This may be due to RLS policies or other database constraints.';
+    console.error(errorMessage, 'Entry data attempted:', JSON.stringify(entryToInsert, null, 2));
+    throw new Error(errorMessage);
   }
   
   console.log("Successfully inserted catalog entry, Supabase returned:", JSON.stringify(data, null, 2));
@@ -240,7 +220,7 @@ export function buildCatalogHierarchy(entries: CatalogEntry[], parent_id: string
   if (!entries) return [];
   return entries
     .filter(entry => entry.parent_id === parent_id)
-    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)) // Added null check for sort_order
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
     .map(entry => ({
       ...entry,
       children: buildCatalogHierarchy(entries, entry.id),
@@ -250,4 +230,42 @@ export function buildCatalogHierarchy(entries: CatalogEntry[], parent_id: string
 export async function getFullCatalogHierarchy(): Promise<CatalogHierarchyNode[]> {
   const allEntries = await getCatalogEntries();
   return buildCatalogHierarchy(allEntries);
+}
+
+// Service Item related functions (now from catalog)
+async function getServiceItemsFromCatalog(): Promise<ServiceItem[]> {
+  const allEntries = await getCatalogEntries();
+  
+  const categoryMap = new Map<string, string>();
+  allEntries.forEach(entry => {
+    if (entry.type === 'category') {
+      categoryMap.set(entry.id, entry.name);
+    }
+  });
+
+  return allEntries
+    .filter(entry => entry.type === 'item' && entry.price !== undefined)
+    .map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price!, // Filter ensures price is defined
+      description: item.description || undefined,
+      category: item.parent_id ? (categoryMap.get(item.parent_id) || 'General Services') : 'General Services',
+    }));
+}
+
+// Replaces the old getMockServices. Now async and fetches from Supabase.
+export async function getMockServices(): Promise<ServiceItem[]> {
+  return getServiceItemsFromCatalog();
+}
+
+
+// This function might be deprecated or refactored if all services come from catalog
+export function getServiceById(id:string): ServiceItem | undefined {
+  // This would need to be async and fetch from catalog if we fully deprecate mockServices
+  // For now, it's not used by the pages we're modifying.
+  console.warn("getServiceById is using a non-performant mock lookup. Refactor if used broadly.");
+  // const services = getMockServices(); // This is now async, can't call directly
+  // return services.find(s => s.id === id);
+  return undefined; 
 }

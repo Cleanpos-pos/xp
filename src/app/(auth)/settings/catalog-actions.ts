@@ -52,11 +52,13 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
       description,
     });
     revalidatePath("/settings"); 
+    revalidatePath("/services");
+    revalidatePath("/orders/new");
     return { success: true, message: `${type === 'category' ? 'Category' : 'Item'} "${name}" added successfully.`, newEntry };
   } catch (error: any) {
     const inputDataForLog = { name, parent_id, type, price, description };
     console.error("Error in addCatalogEntryAction. Input data was:", JSON.stringify(inputDataForLog, null, 2));
-    console.error("Caught error details in action:", error); // Log the full error object
+    console.error("Caught error details in action:", error); 
     return { success: false, message: error.message || `Failed to add ${type}. Please check server logs for more details.` };
   }
 }

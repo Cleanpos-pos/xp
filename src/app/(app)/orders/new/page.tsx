@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { getCustomers, getCustomerById, getMockServices } from "@/lib/data"; // getCustomers and getCustomerById are now async
+import { getCustomers, getCustomerById, getMockServices } from "@/lib/data"; 
 import type { ServiceItem, Customer } from "@/types";
 import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
@@ -50,8 +50,11 @@ export default function NewOrderPage() {
   const [isLoadingCustomers, setIsLoadingCustomers] = React.useState(true);
   const [selectedCustomerName, setSelectedCustomerName] = React.useState<string | null>(null);
 
+  const [allServices, setAllServices] = React.useState<ServiceItem[]>([]);
+  const [isLoadingServices, setIsLoadingServices] = React.useState(true);
+  const [servicesByCategory, setServicesByCategory] = React.useState<ServicesByCategory>({});
+  const [serviceCategoryNames, setServiceCategoryNames] = React.useState<string[]>([]);
 
-  const allServices = React.useMemo(() => getMockServices(), []); // Services are still mock
 
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
@@ -66,40 +69,37 @@ export default function NewOrderPage() {
   // Fetch all customers for the dropdown if no specific customer is pre-selected
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
-    if (!customerIdFromQuery) { // Only fetch all if no customer is pre-selected
+    if (!customerIdFromQuery) { 
       setIsLoadingCustomers(true);
       getCustomers()
         .then(data => {
           setAllCustomers(data);
-          setIsLoadingCustomers(false);
         })
         .catch(err => {
           console.error("Failed to fetch customers:", err);
           toast({ title: "Error", description: "Could not load customer list.", variant: "destructive" });
-          setIsLoadingCustomers(false);
-        });
+        })
+        .finally(() => setIsLoadingCustomers(false));
     } else {
-      setIsLoadingCustomers(false); // Not loading all customers if one is specified
+      setIsLoadingCustomers(false); 
     }
   }, [searchParams, toast]);
 
 
-  // Effect to handle pre-selected customer from query params
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
     if (customerIdFromQuery) {
-      setIsLoadingCustomers(true); // Indicate loading for this specific customer
+      setIsLoadingCustomers(true); 
       getCustomerById(customerIdFromQuery)
         .then(customer => {
           if (customer) {
             form.setValue('customerId', customerIdFromQuery, { shouldValidate: true });
             setSelectedCustomerName(customer.name);
           } else {
-            console.warn(`Customer ID ${customerIdFromQuery} from query params not found.`);
             toast({title: "Customer Not Found", description: "The pre-selected customer was not found. Please select a customer.", variant: "destructive"});
             form.setValue('customerId', '');
             setSelectedCustomerName(null);
-            router.replace('/orders/new', undefined); // Clear query param if customer not found
+            router.replace('/orders/new', undefined); 
           }
         })
         .catch(err => {
@@ -113,7 +113,6 @@ export default function NewOrderPage() {
           setIsLoadingCustomers(false);
         });
     } else {
-      // Ensure customerId and name are cleared if query param is removed/not present
       if (form.getValues('customerId')) {
           form.setValue('customerId', '');
       }
@@ -121,41 +120,57 @@ export default function NewOrderPage() {
           setSelectedCustomerName(null);
       }
     }
-  }, [searchParams, form, toast, router, selectedCustomerName]);
+  }, [searchParams, form, toast, router, selectedCustomerName]); // Added selectedCustomerName to dependencies
 
   const watchedCustomerId = form.watch("customerId");
 
-  // Effect to update selectedCustomerName if customerId changes via dropdown
   React.useEffect(() => {
-    if (watchedCustomerId && !searchParams.get('customerId')) { // Only if not pre-selected
+    if (watchedCustomerId && !searchParams.get('customerId')) { 
       const customer = allCustomers.find(c => c.id === watchedCustomerId);
       if (customer && customer.name !== selectedCustomerName) {
         setSelectedCustomerName(customer.name);
-      } else if (!customer && watchedCustomerId) { // If ID is set but not in list (shouldn't happen)
+      } else if (!customer && watchedCustomerId) { 
         setSelectedCustomerName(null); 
       }
-    } else if (!watchedCustomerId && !searchParams.get('customerId')) { // Cleared or no selection
+    } else if (!watchedCustomerId && !searchParams.get('customerId')) { 
         setSelectedCustomerName(null);
     }
-    // Do not clear if customerId is from query param, that's handled by the other useEffect
   }, [watchedCustomerId, allCustomers, selectedCustomerName, searchParams]);
+
+  // Fetch services
+  React.useEffect(() => {
+    async function fetchServices() {
+      setIsLoadingServices(true);
+      try {
+        const servicesData = await getMockServices(); // Now async
+        setAllServices(servicesData);
+
+        const groupedServices = servicesData.reduce((acc, service) => {
+          const category = service.category || "Other";
+          if (!acc[category]) {
+            acc[category] = [];
+          }
+          acc[category].push(service);
+          return acc;
+        }, {} as ServicesByCategory);
+        setServicesByCategory(groupedServices);
+        setServiceCategoryNames(Object.keys(groupedServices));
+
+      } catch (err) {
+        console.error("Failed to fetch services:", err);
+        toast({ title: "Error", description: "Could not load services list.", variant: "destructive" });
+      } finally {
+        setIsLoadingServices(false);
+      }
+    }
+    fetchServices();
+  }, [toast]);
 
 
   const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: "items",
   });
-
-  const servicesByCategory = React.useMemo(() => {
-    return allServices.reduce((acc, service) => {
-      const category = service.category || "Other";
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(service);
-      return acc;
-    }, {} as ServicesByCategory);
-  }, [allServices]);
 
   const handleServiceItemClick = (service: ServiceItem) => {
     const currentItems = form.getValues("items");
@@ -189,7 +204,7 @@ export default function NewOrderPage() {
   }, [watchedItems]);
 
   async function onSubmit(data: CreateOrderInput) {
-    const result = await createOrderAction(data); // This is mock, needs Supabase later
+    const result = await createOrderAction(data); 
     if (result.success && result.orderId) {
       toast({
         title: "Order Created",
@@ -222,13 +237,11 @@ export default function NewOrderPage() {
     setCreatedOrderDetails(null);
     setSelectedCustomerName(null);
     router.replace('/orders/new', undefined); 
-    // Re-fetch all customers for dropdown if we are clearing a pre-selection
     if (!searchParams.get('customerId')) {
         setIsLoadingCustomers(true);
         getCustomers().then(data => {
             setAllCustomers(data);
-            setIsLoadingCustomers(false);
-        }).catch(() => setIsLoadingCustomers(false));
+        }).catch(() => {}).finally(() => setIsLoadingCustomers(false));
     }
   };
 
@@ -243,13 +256,13 @@ export default function NewOrderPage() {
       title: "Payment Processed (Mocked)",
       description: `Payment for order ${createdOrderDetails.id} of $${createdOrderDetails.totalAmount.toFixed(2)} was successful.`,
     });
-    router.push(`/orders/${createdOrderDetails.id}`); // Order details page still uses mock order
+    router.push(`/orders/${createdOrderDetails.id}`); 
     resetFormAndStage();
   }
 
   const handlePayLater = () => {
     if (!createdOrderDetails) return;
-    router.push(`/orders/${createdOrderDetails.id}`); // Order details page still uses mock order
+    router.push(`/orders/${createdOrderDetails.id}`); 
     resetFormAndStage();
   };
 
@@ -339,9 +352,6 @@ export default function NewOrderPage() {
     );
   }
 
-
-  const categoryNames = Object.keys(servicesByCategory);
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       <div className="lg:col-span-2 space-y-6">
@@ -351,19 +361,25 @@ export default function NewOrderPage() {
             <CardDescription>Choose a category, then click a service to add it to the order.</CardDescription>
           </CardHeader>
           <CardContent>
-            {categoryNames.length > 0 ? (
-              <Tabs defaultValue={categoryNames[0]} className="w-full">
+            {isLoadingServices ? (
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ) : serviceCategoryNames.length > 0 ? (
+              <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">
-                  {categoryNames.map((category) => (
+                  {serviceCategoryNames.map((category) => (
                     <TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">
                       {category}
                     </TabsTrigger>
                   ))}
                 </TabsList>
-                {categoryNames.map((category) => (
+                {serviceCategoryNames.map((category) => (
                   <TabsContent key={category} value={category}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
-                      {servicesByCategory[category].map((service) => (
+                      {servicesByCategory[category]?.map((service) => ( // Added optional chaining for servicesByCategory[category]
                         <Button
                           key={service.id}
                           variant="outline"
@@ -379,7 +395,7 @@ export default function NewOrderPage() {
                 ))}
               </Tabs>
             ) : (
-              <p>No services available.</p>
+              <p>No services available. Add items to your catalog in Settings.</p>
             )}
           </CardContent>
         </Card>
@@ -514,7 +530,7 @@ export default function NewOrderPage() {
                               )}
                             >
                               {field.value ? (
-                                format(new Date(field.value), "PPP") // Ensure field.value is converted to Date
+                                format(new Date(field.value), "PPP") 
                               ) : (
                                 <span>Pick a date</span>
                               )}
@@ -558,13 +574,15 @@ export default function NewOrderPage() {
                     </div>
                     <Button 
                       type="submit" 
-                      disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingCustomers} 
+                      disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingCustomers || isLoadingServices} 
                       className="w-full"
                     >
                       {form.formState.isSubmitting
                         ? "Creating Order..."
-                        : isLoadingCustomers && watchedCustomerId // Show loading if specific customer is being fetched
+                        : isLoadingCustomers && watchedCustomerId 
                         ? "Loading Customer..."
+                        : isLoadingServices
+                        ? "Loading Services..."
                         : watchedCustomerId && selectedCustomerName
                         ? `Create Order for ${selectedCustomerName}`
                         : "Select Customer First"}
