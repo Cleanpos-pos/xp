@@ -1,3 +1,4 @@
+
 "use server";
 
 import { z } from "zod";
@@ -11,9 +12,7 @@ const OrderItemSchema = z.object({
 export const CreateOrderSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
   items: z.array(OrderItemSchema).min(1, "Order must have at least one item"),
-  dueDate: z.string().optional().refine(val => !val || !isNaN(Date.parse(val)), {
-    message: "Invalid due date",
-  }),
+  dueDate: z.coerce.date().optional(),
   notes: z.string().optional(),
 });
 
