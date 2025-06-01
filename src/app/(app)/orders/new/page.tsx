@@ -14,6 +14,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Label } from "@/components/ui/label"; // Import Label directly
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -106,10 +107,10 @@ export default function NewOrderPage() {
         title: "Order Created",
         description: result.message,
       });
-      setCreatedOrderDetails({ 
-        id: result.orderId, 
+      setCreatedOrderDetails({
+        id: result.orderId,
         message: result.message || "Order created successfully!",
-        totalAmount: orderTotal 
+        totalAmount: orderTotal
       });
       setStage("paymentOptions");
     } else {
@@ -137,7 +138,7 @@ export default function NewOrderPage() {
     if (!createdOrderDetails) return;
     setStage("paymentProcessing");
   };
-  
+
   const handleConfirmMockPayment = () => {
     if (!createdOrderDetails) return;
     toast({
@@ -203,19 +204,19 @@ export default function NewOrderPage() {
         <CardContent className="space-y-6">
           {/* This is a mock payment form. No real validation or processing. */}
           <div className="space-y-4">
-            <FormItem>
-              <FormLabel>Card Number</FormLabel>
-              <Input type="text" placeholder="•••• •••• •••• ••••" />
-            </FormItem>
+            <div className="space-y-2">
+              <Label htmlFor="cardNumberMock">Card Number</Label>
+              <Input id="cardNumberMock" type="text" placeholder="•••• •••• •••• ••••" />
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <FormItem>
-                <FormLabel>Expiry Date (MM/YY)</FormLabel>
-                <Input type="text" placeholder="MM/YY" />
-              </FormItem>
-              <FormItem>
-                <FormLabel>CVV</FormLabel>
-                <Input type="text" placeholder="•••" />
-              </FormItem>
+              <div className="space-y-2">
+                <Label htmlFor="expiryDateMock">Expiry Date (MM/YY)</Label>
+                <Input id="expiryDateMock" type="text" placeholder="MM/YY" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cvvMock">CVV</Label>
+                <Input id="cvvMock" type="text" placeholder="•••" />
+              </div>
             </div>
           </div>
           <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 justify-end">
@@ -370,11 +371,11 @@ export default function NewOrderPage() {
                     ))}
                   </div>
                 )}
-                
+
                 {form.formState.errors.items && !form.formState.errors.items.root && !Array.isArray(form.formState.errors.items) && (
                     <FormMessage>{form.formState.errors.items.message}</FormMessage>
                 )}
-                
+
                 <FormField
                   control={form.control}
                   name="dueDate"
@@ -428,7 +429,7 @@ export default function NewOrderPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <div className="border-t pt-4 space-y-2">
                     <div className="flex justify-between items-center font-semibold text-lg">
                         <span>Total:</span>
@@ -446,5 +447,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
-    
