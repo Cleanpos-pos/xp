@@ -14,7 +14,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LoginSchema, type LoginInput, loginAction } from "./(auth)/login/actions";
+import { LoginSchema, type LoginInput } from "./(auth)/login/login.schema";
+import { loginAction } from "./(auth)/login/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";

@@ -1,15 +1,8 @@
 
 "use server";
 
-import { z } from "zod";
 import { findStaff } from "@/lib/mock-auth-store";
-
-export const LoginSchema = z.object({
-  employeeId: z.string().min(1, "Employee ID is required"), // This maps to loginId
-  password: z.string().min(1, "Password is required"),
-});
-
-export type LoginInput = z.infer<typeof LoginSchema>;
+import { LoginSchema, type LoginInput } from "./login.schema";
 
 export async function loginAction(data: LoginInput) {
   const validationResult = LoginSchema.safeParse(data);
