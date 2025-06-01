@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart"
-import { Bar, XAxis, YAxis, CartesianGrid, Pie, Cell, Line } from "recharts"
+import { Bar, XAxis, YAxis, CartesianGrid, Pie, Cell, Line, PieChart } from "recharts" // Added PieChart here
 
 const chartDataSales = [
   { month: "January", sales: Math.floor(Math.random() * 5000) + 1000 },
