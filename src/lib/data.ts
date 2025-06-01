@@ -78,9 +78,14 @@ if (!global.mockOrdersStore) {
 if (!global.mockInventoryStore) {
   global.mockInventoryStore = [...initialInventory];
 }
-if (!global.mockCatalogEntriesStore) {
-  global.mockCatalogEntriesStore = [...initialCatalogEntries];
-}
+
+// Helper to ensure catalog store is initialized and accessible
+const getSafeCatalogStore = (): CatalogEntry[] => {
+  if (!global.mockCatalogEntriesStore) {
+    global.mockCatalogEntriesStore = [...initialCatalogEntries];
+  }
+  return global.mockCatalogEntriesStore;
+};
 
 
 // Customer Data Functions (using Supabase)
@@ -104,7 +109,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
     .eq('id', id)
     .single();
 
-  if (error && error.code !== 'PGRST116') {
+  if (error && error.code !== 'PGRST116') { // PGRST116: "single row not found"
     console.error('Error fetching customer by ID from Supabase:', error);
     throw error;
   }
@@ -112,6 +117,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
 }
 
 export async function createCustomer(customerData: CreateCustomerInput): Promise<Customer> {
+  // Map from CreateCustomerInput (camelCase) to database schema (snake_case)
   const customerToInsert = {
     name: customerData.name,
     phone: customerData.phone || null,
@@ -167,27 +173,33 @@ export function getInventoryItemById(id: string): InventoryItem | undefined {
 // Catalog Entry Mock Functions
 export async function getCatalogEntries(): Promise<CatalogEntry[]> {
   // Simulate async operation
-  await new Promise(resolve => setTimeout(resolve, 100));
-  return [...global.mockCatalogEntriesStore!];
+  await new Promise(resolve => setTimeout(resolve, 50)); // Reduced timeout
+  const store = getSafeCatalogStore();
+  return [...store]; // Return a copy
 }
 
 export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_at' | 'updated_at' | 'sortOrder'> & { parentId: string | null }): Promise<CatalogEntry> {
-  const newId = `${entry.type}_${entry.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
-  const siblings = global.mockCatalogEntriesStore!.filter(e => e.parentId === entry.parentId);
+  const store = getSafeCatalogStore();
+  const safeName = String(entry.name || 'unnamed_entry'); // Ensure name is a string for ID generation
+  const newId = `${entry.type}_${safeName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')}_${Date.now()}`;
+  
+  const siblings = store.filter(e => e.parentId === entry.parentId);
   const newEntry: CatalogEntry = {
     ...entry,
+    name: safeName, // Use the sanitized name
     id: newId,
     sortOrder: siblings.length, // Simple sort order for now
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
-  global.mockCatalogEntriesStore!.push(newEntry);
+  store.push(newEntry);
   // Simulate async operation
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise(resolve => setTimeout(resolve, 50)); // Reduced timeout
   return newEntry;
 }
 
 export function buildCatalogHierarchy(entries: CatalogEntry[], parentId: string | null = null): CatalogHierarchyNode[] {
+  if (!entries) return []; // Guard against undefined entries array
   return entries
     .filter(entry => entry.parentId === parentId)
     .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -201,3 +213,5 @@ export async function getFullCatalogHierarchy(): Promise<CatalogHierarchyNode[]>
   const allEntries = await getCatalogEntries();
   return buildCatalogHierarchy(allEntries);
 }
+
+    
