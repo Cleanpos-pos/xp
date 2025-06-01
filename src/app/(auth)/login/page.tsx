@@ -1,7 +1,11 @@
 
-// This page has been moved to src/app/page.tsx to make login the root page.
-// This file can be deleted.
-// For clarity during the operation, its content is now empty.
-// Ensure that src/app/(auth)/login/actions.ts is still accessible if it contains
-// the LoginSchema and loginAction, or move those to a more central location.
-// The new src/app/page.tsx imports from './(auth)/login/actions'.
+import { redirect } from 'next/navigation';
+
+// This page component handles the old /login route.
+// Since the main login page is now at the root ('/'),
+// we redirect any traffic to /login to / to ensure users
+// see the correct login screen.
+export default function LoginPageRedirect() {
+  redirect('/'); // Redirect to the root login page
+  return null; // Pages in Next.js App Router must return null or JSX
+}
