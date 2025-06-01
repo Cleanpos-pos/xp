@@ -1,76 +1,80 @@
 
-// This is a mock in-memory store for staff credentials.
-// In a real application, this would be replaced by a database.
+import { db } from './firebase';
+import { collection, addDoc, query, where, getDocs, doc, updateDoc, setDoc, getDoc } from 'firebase/firestore';
+
+// NOTE ON PASSWORD SECURITY:
+// In a real production application, passwords should NEVER be stored in plain text.
+// They should be securely hashed using a strong algorithm (e.g., bcrypt or Argon2).
+// For this prototype, we are storing them as plain text for simplicity.
 
 export interface StaffCredentials {
+  id?: string; // Firestore document ID, optional because it's not present before creation
   name: string;
-  loginId: string;
-  password: string;
-  enableQuickLogin?: boolean; // New field for quick login
+  loginId: string; // This will be our queryable unique ID for staff
+  password: string; // Stored as plain text for prototype - HASH IN PRODUCTION!
+  enableQuickLogin?: boolean;
 }
 
-// Extend the NodeJS.Global interface to declare our custom property
-declare global {
-  // eslint-disable-next-line no-var
-  var staffMembersStore: StaffCredentials[] | undefined;
-}
+const STAFF_COLLECTION = "staff";
 
-// Initialize with the default staff member
-if (!global.staffMembersStore) {
-  global.staffMembersStore = [
-    { name: "Default Staff", loginId: "STAFF001", password: "password", enableQuickLogin: false }
-  ];
-}
-
-// Type for adding new staff, matching AddStaffInput
-type NewStaffMemberData = Pick<StaffCredentials, 'name' | 'loginId' | 'password'>;
-
-export function addStaff(staffData: NewStaffMemberData): void {
-  if (!global.staffMembersStore) {
-    global.staffMembersStore = [];
+export async function addStaff(staffData: Omit<StaffCredentials, 'id'>): Promise<StaffCredentials> {
+  // Check if loginId already exists
+  const q = query(collection(db, STAFF_COLLECTION), where("loginId", "==", staffData.loginId));
+  const querySnapshot = await getDocs(q);
+  if (!querySnapshot.empty) {
+    throw new Error(`Staff with loginId ${staffData.loginId} already exists.`);
   }
-  if (global.staffMembersStore.find(s => s.loginId === staffData.loginId)) {
-    console.warn(`Staff with loginId ${staffData.loginId} already exists.`);
-    return;
-  }
-  const newStaffMember: StaffCredentials = {
+
+  const docRef = await addDoc(collection(db, STAFF_COLLECTION), {
     ...staffData,
-    enableQuickLogin: false, // Default quick login to false for new staff
-  };
-  global.staffMembersStore.push(newStaffMember);
-  console.log("Current staff members in mock store:", global.staffMembersStore);
+    enableQuickLogin: staffData.enableQuickLogin ?? false, // Ensure it defaults to false
+  });
+  return { ...staffData, id: docRef.id, enableQuickLogin: staffData.enableQuickLogin ?? false };
 }
 
-export function findStaff(loginId: string, password?: string): StaffCredentials | undefined {
-  if (!global.staffMembersStore) {
+export async function findStaff(loginId: string, password?: string): Promise<StaffCredentials | undefined> {
+  const q = query(collection(db, STAFF_COLLECTION), where("loginId", "==", loginId));
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
     return undefined;
   }
-  const member = global.staffMembersStore.find(s => s.loginId === loginId);
+
+  const staffDoc = querySnapshot.docs[0];
+  const staffData = staffDoc.data() as StaffCredentials;
+
   if (password) {
-    return member && member.password === password ? member : undefined;
+    if (staffData.password === password) {
+      return { ...staffData, id: staffDoc.id };
+    }
+    return undefined;
   }
-  return member;
+  return { ...staffData, id: staffDoc.id };
 }
 
-export function getAllStaff(): StaffCredentials[] {
-  if (!global.staffMembersStore) {
-    return [];
-  }
-  return [...global.staffMembersStore]; // Return a copy
+export async function getAllStaff(): Promise<StaffCredentials[]> {
+  const querySnapshot = await getDocs(collection(db, STAFF_COLLECTION));
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<StaffCredentials, 'id'>) }));
 }
 
-export function updateStaffQuickLoginStatus(loginId: string, enable: boolean): boolean {
-  if (!global.staffMembersStore) return false;
-  const staffIndex = global.staffMembersStore.findIndex(s => s.loginId === loginId);
-  if (staffIndex !== -1) {
-    global.staffMembersStore[staffIndex].enableQuickLogin = enable;
-    console.log("Updated quick login for:", global.staffMembersStore[staffIndex]);
-    return true;
+export async function updateStaffQuickLoginStatus(loginId: string, enable: boolean): Promise<boolean> {
+  const q = query(collection(db, STAFF_COLLECTION), where("loginId", "==", loginId));
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
+    console.warn(`No staff member found with loginId: ${loginId} to update quick login status.`);
+    return false;
   }
-  return false;
+
+  const staffDocRef = querySnapshot.docs[0].ref;
+  await updateDoc(staffDocRef, {
+    enableQuickLogin: enable
+  });
+  return true;
 }
 
-export function getQuickLoginStaff(): StaffCredentials[] {
-  if (!global.staffMembersStore) return [];
-  return global.staffMembersStore.filter(s => s.enableQuickLogin);
+export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
+  const q = query(collection(db, STAFF_COLLECTION), where("enableQuickLogin", "==", true));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as Omit<StaffCredentials, 'id'>) }));
 }

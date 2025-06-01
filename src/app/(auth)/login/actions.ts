@@ -15,15 +15,15 @@ export async function loginAction(data: LoginInput) {
     };
   }
 
-  const staffMember = findStaff(validationResult.data.employeeId, validationResult.data.password);
+  // NOTE: In a real app, password should be hashed here before comparing,
+  // or the comparison should happen after retrieving the hashed password from DB.
+  const staffMember = await findStaff(validationResult.data.employeeId, validationResult.data.password);
 
   if (staffMember) {
     return {
       success: true,
       message: `Login successful! Welcome ${staffMember.name}.`,
       // In a real app, you'd set up a session here (e.g., with cookies or a JWT)
-      // Optionally, return staff details if needed by the client after login
-      // staff: { name: staffMember.name, loginId: staffMember.loginId } 
     };
   } else {
     return {
