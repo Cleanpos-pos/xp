@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,7 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { mockCustomers, mockServices } from "@/lib/data";
-import { CreateOrderSchema, type CreateOrderInput, createOrderAction } from "./actions";
+import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
+import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PlusCircle, Trash2, CalendarIcon } from "lucide-react";
@@ -189,7 +191,7 @@ export default function NewOrderPage() {
                           )}
                         >
                           {field.value ? (
-                            format(new Date(field.value), "PPP")
+                            format(field.value, "PPP")
                           ) : (
                             <span>Pick a date</span>
                           )}
@@ -200,8 +202,8 @@ export default function NewOrderPage() {
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
                         mode="single"
-                        selected={field.value ? new Date(field.value) : undefined}
-                        onSelect={(date) => field.onChange(date?.toISOString())}
+                        selected={field.value}
+                        onSelect={(date) => field.onChange(date)}
                         disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) } // Disable past dates
                         initialFocus
                       />

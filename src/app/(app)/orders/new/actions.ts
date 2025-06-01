@@ -1,22 +1,7 @@
 
 "use server";
 
-import { z } from "zod";
-
-const OrderItemSchema = z.object({
-  serviceItemId: z.string().min(1, "Service item is required"),
-  quantity: z.coerce.number().min(1, "Quantity must be at least 1"),
-  notes: z.string().optional(),
-});
-
-export const CreateOrderSchema = z.object({
-  customerId: z.string().min(1, "Customer is required"),
-  items: z.array(OrderItemSchema).min(1, "Order must have at least one item"),
-  dueDate: z.coerce.date().optional(),
-  notes: z.string().optional(),
-});
-
-export type CreateOrderInput = z.infer<typeof CreateOrderSchema>;
+import { type CreateOrderInput, CreateOrderSchema } from "./order.schema";
 
 export async function createOrderAction(data: CreateOrderInput) {
   const validationResult = CreateOrderSchema.safeParse(data);
