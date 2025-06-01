@@ -63,10 +63,9 @@ export default function NewOrderPage() {
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
     if (customerIdFromQuery) {
-      const customer = getCustomerById(customerIdFromQuery); // Uses the updated getCustomerById
+      const customer = getCustomerById(customerIdFromQuery); 
       if (customer) {
         form.setValue('customerId', customerIdFromQuery, { shouldValidate: true });
-        // selectedCustomerName will be updated by the effect below
       } else {
         console.warn(`Customer ID ${customerIdFromQuery} from query params not found.`);
         toast({title: "Customer Not Found", description: "The customer ID from the previous page was not found. Please select a customer.", variant: "destructive"});
@@ -493,8 +492,16 @@ export default function NewOrderPage() {
                         <span>Total:</span>
                         <span>${orderTotal.toFixed(2)}</span>
                     </div>
-                    <Button type="submit" disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId} className="w-full">
-                    {form.formState.isSubmitting ? "Creating Order..." : (watchedCustomerId ? "Create Order" : "Select Customer First")}
+                    <Button 
+                      type="submit" 
+                      disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId} 
+                      className="w-full"
+                    >
+                      {form.formState.isSubmitting
+                        ? "Creating Order..."
+                        : watchedCustomerId && selectedCustomerName
+                        ? `Create Order for ${selectedCustomerName}`
+                        : "Select Customer First"}
                     </Button>
                 </div>
               </form>
@@ -505,3 +512,4 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
