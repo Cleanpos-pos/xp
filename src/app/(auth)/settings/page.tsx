@@ -15,11 +15,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription as UiCardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription as UiCardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react"; // Added UserCog & Shield icons
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus } from "lucide-react"; // Added UserCog & Shield icons
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { StaffCredentials, UserRole } from "@/types"; // Import UserRole from @/types
@@ -32,6 +32,8 @@ import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
 import { Badge } from "@/components/ui/badge"; // Import Badge
 
+// Renaming RHF components for clarity to avoid conflict with generic HTML/div elements
+// when not using RHF for a specific section (like Regional Settings)
 const RHFFormItem = FormItem;
 const RHFFormLabel = FormLabel;
 const RHFFormDescription = FormDescription;
@@ -493,3 +495,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
