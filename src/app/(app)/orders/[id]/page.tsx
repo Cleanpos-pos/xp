@@ -1,17 +1,18 @@
 
 "use client";
 
-import React, { useEffect } from 'react'; 
+import React, { useEffect, useState } from 'react'; 
 import { getOrderById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert, Zap } from 'lucide-react';
+import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert, Zap, Percent } from 'lucide-react';
 import type { OrderItem, OrderStatus, PaymentStatus } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Separator } from '@/components/ui/separator';
 
 function getStatusBadgeVariant(status: OrderStatus): "default" | "secondary" | "destructive" | "outline" {
    switch (status) {
@@ -69,6 +70,9 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
   const isExpressFromQuery = searchParams.get('express') === 'true';
   const effectiveIsExpress = order?.isExpress || isExpressFromQuery;
 
+  // Placeholder for VAT settings - in a real app, this would come from context/settings
+  const [isVatEnabled, setIsVatEnabled] = useState(true); // Default to true for demo
+  const [vatRate, setVatRate] = useState(0.20); // 20% VAT for demo
 
   useEffect(() => {
     const autoprint = searchParams.get('autoprint');
@@ -76,23 +80,12 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
 
     if (autoprint === 'true') {
       console.log("Attempting to print for type:", printTypeParam); 
-      // Here you could add logic to modify the page *before* printing
-      // based on printTypeParam, e.g., by adding a class to the body
-      // document.body.classList.add(`print-type-${printTypeParam}`);
-      // For now, it just triggers a generic print.
-      
       const printTimeout = setTimeout(() => {
         window.print();
-        // Optional: remove the class after printing
-        // if (printTypeParam) document.body.classList.remove(`print-type-${printTypeParam}`);
-        
-        // Navigate back to a cleaner URL without autoprint params
-        // Or, navigate to wherever is appropriate after printing
-        // router.replace(`/orders/${params.id}${effectiveIsExpress ? '?express=true' : ''}`);
-      }, 100); // Timeout to allow content to render fully
+      }, 100); 
       return () => clearTimeout(printTimeout);
     }
-  }, [searchParams, params.id, router, effectiveIsExpress]); // Added effectiveIsExpress to dep array
+  }, [searchParams, params.id, router, effectiveIsExpress]); 
 
 
   if (!order) {
@@ -120,12 +113,13 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
   const PaymentIcon = order.paymentStatus ? paymentStatusIcons[order.paymentStatus] : ShieldAlert;
 
   const handlePrint = (printType: string = "default") => {
-    // This function could also set up print-specific state or classes before calling window.print()
-    // For now, it's simple, but it's a good place for future enhancements.
     const queryParams = `?autoprint=true&printType=${printType}${effectiveIsExpress ? '&express=true' : ''}`;
-    // Re-navigate with print params to trigger the useEffect print logic
     router.push(`/orders/${order.id}${queryParams}`);
   };
+
+  const subTotal = order.totalAmount;
+  const vatAmount = isVatEnabled ? subTotal * vatRate : 0;
+  const grandTotal = isVatEnabled ? subTotal + vatAmount : subTotal;
 
   return (
     <div id="orderDetailsPrintSection" className="space-y-6">
@@ -177,7 +171,7 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
           </div>
           <div className="space-y-1">
             <h4 className="text-sm font-medium flex items-center text-muted-foreground"><DollarSign className="mr-2 h-4 w-4" /> Total Amount</h4>
-            <p className="text-base font-semibold">${order.totalAmount.toFixed(2)}</p>
+            <p className="text-base font-semibold">${isVatEnabled ? grandTotal.toFixed(2) : order.totalAmount.toFixed(2)}</p>
           </div>
         </CardContent>
       </Card>
@@ -209,6 +203,24 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
                 </TableRow>
               ))}
             </TableBody>
+             {isVatEnabled && (
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right font-medium">Subtotal:</TableCell>
+                  <TableCell className="text-right font-semibold">${subTotal.toFixed(2)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell colSpan={3} className="text-right font-medium flex items-center justify-end">
+                     <Percent className="mr-1 h-3 w-3 text-muted-foreground"/> VAT @ {(vatRate * 100).toFixed(0)}%:
+                  </TableCell>
+                  <TableCell className="text-right font-semibold">${vatAmount.toFixed(2)}</TableCell>
+                </TableRow>
+                <TableRow className="border-t-2 border-foreground">
+                  <TableCell colSpan={3} className="text-right text-lg font-bold">Grand Total:</TableCell>
+                  <TableCell className="text-right text-lg font-bold">${grandTotal.toFixed(2)}</TableCell>
+                </TableRow>
+              </TableBody>
+            )}
           </Table>
         </CardContent>
       </Card>
@@ -226,3 +238,4 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
     </div>
   );
 }
+

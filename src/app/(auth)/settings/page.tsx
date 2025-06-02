@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription a
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { StaffCredentials, UserRole } from "@/types"; 
@@ -36,13 +36,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-
-
-// Renaming RHF components for clarity
-// const RHFFormItem = FormItem; // Original error source if FormItem not imported before this line
-// const RHFFormLabel = FormLabel; // Original error source if FormLabel not imported before this line
-// const RHFFormDescription = FormDescription; // Original error source if FormDescription not imported before this line
-
 
 const userRoles: UserRole[] = ["clerk", "admin", "super_admin"];
 
@@ -93,7 +86,7 @@ const rolePermissions = {
       "Oversee system-wide configurations & security",
       "Access audit logs and advanced system diagnostics",
     ],
-    cannot: [], // Typically no restrictions
+    cannot: [], 
   },
 };
 
@@ -103,12 +96,19 @@ export default function SettingsPage() {
   const [staffList, setStaffList] = React.useState<StaffCredentials[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = React.useState(true);
 
-  // Regional Settings State
-  const [selectedCurrency, setSelectedCurrency] = React.useState<string>("USD");
+  // Company & Regional Settings State
+  const [companyName, setCompanyName] = React.useState<string>("XP Clean Ltd.");
+  const [companyAddress, setCompanyAddress] = React.useState<string>("123 Clean Street, Suite 100, YourTown, YT 54321");
+  const [companyPhone, setCompanyPhone] = React.useState<string>("(555) 123-4567");
+  const [vatTaxId, setVatTaxId] = React.useState<string>("GB123456789");
+  const [vatSalesTaxRate, setVatSalesTaxRate] = React.useState<string>("20");
+  const [includeVatInPrices, setIncludeVatInPrices] = React.useState<boolean>(true);
+  const [selectedCurrency, setSelectedCurrency] = React.useState<string>("GBP");
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("en");
 
-  // Printer Settings State (Placeholders)
+  // Printer Settings State
   const [receiptPrinter, setReceiptPrinter] = React.useState<string>("thermal_80mm");
+  const [customerReceiptCopies, setCustomerReceiptCopies] = React.useState<string>("1");
   const [stubPrinter, setStubPrinter] = React.useState<string>("dotmatrix_76mm");
   const [receiptHeader, setReceiptHeader] = React.useState<string>("XP Clean - Your Town Branch");
   const [receiptFooter, setReceiptFooter] = React.useState<string>("Thank you for your business!");
@@ -123,7 +123,6 @@ export default function SettingsPage() {
   const [isBuyXgetYFromCalendarOpen, setIsBuyXgetYFromCalendarOpen] = React.useState(false);
   const [isBuyXgetYToCalendarOpen, setIsBuyXgetYToCalendarOpen] = React.useState(false);
 
-
   const [bundle_Items, setBundle_Items] = React.useState<string>("2");
   const [bundle_Price, setBundle_Price] = React.useState<string>("10.00");
   const [bundle_Notes, setBundle_Notes] = React.useState<string>("");
@@ -133,7 +132,6 @@ export default function SettingsPage() {
   const [isBundleFromCalendarOpen, setIsBundleFromCalendarOpen] = React.useState(false);
   const [isBundleToCalendarOpen, setIsBundleToCalendarOpen] = React.useState(false);
 
-
   const [spendGet_Threshold, setSpendGet_Threshold] = React.useState<string>("50.00");
   const [spendGet_FreeItemDesc, setSpendGet_FreeItemDesc] = React.useState<string>("1 Free Shirt Press");
   const [spendGet_Active, setSpendGet_Active] = React.useState<boolean>(false);
@@ -141,7 +139,6 @@ export default function SettingsPage() {
   const [spendGet_ValidTo, setSpendGet_ValidTo] = React.useState<Date | undefined>();
   const [isSpendGetFromCalendarOpen, setIsSpendGetFromCalendarOpen] = React.useState(false);
   const [isSpendGetToCalendarOpen, setIsSpendGetToCalendarOpen] = React.useState(false);
-
 
   const fetchStaff = React.useCallback(async () => {
     setIsLoadingStaff(true);
@@ -206,17 +203,18 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveRegionalSettings = () => {
+  const handleSaveCompanyRegionalSettings = () => {
+    // In a real app, these values would be persisted
     toast({
-      title: "Preferences (Mock) Saved",
-      description: `Currency: ${selectedCurrency}, Language: ${selectedLanguage}. Full implementation requires backend integration.`,
+      title: "Company & Regional Settings (Mock) Saved",
+      description: `Company: ${companyName}, Currency: ${selectedCurrency}, Language: ${selectedLanguage}, VAT Rate: ${vatSalesTaxRate}%, VAT Included: ${includeVatInPrices}. Full implementation requires backend.`,
     });
   };
   
   const handleSavePrinterSettings = () => {
     toast({
       title: "Printer Settings (Mock) Saved",
-      description: `Receipt: ${receiptPrinter}, Stub: ${stubPrinter}. Header/Footer updated. These are UI placeholders.`,
+      description: `Receipt Printer: ${receiptPrinter}, Customer Copies: ${customerReceiptCopies}, Stub Printer: ${stubPrinter}. Header/Footer updated. These are UI placeholders.`,
     });
   };
 
@@ -292,10 +290,10 @@ export default function SettingsPage() {
             Printers
           </TabsTrigger>
           <TabsTrigger
-            value="regionalSettings"
+            value="companyRegional"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
-            Regional
+            Company
           </TabsTrigger>
         </TabsList>
 
@@ -497,7 +495,6 @@ export default function SettingsPage() {
         </TabsContent>
         
         <TabsContent value="specialOffers" className="mt-6 space-y-6">
-          {/* Buy X Get Y Offer Card */}
           <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-xl flex items-center">
@@ -558,11 +555,10 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Bundle Deal Offer Card */}
           <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-xl flex items-center">
-                <Percent className="mr-2 h-5 w-5 text-blue-600" /> "Bundle Deal (X Items for £Y)"
+                <Percent className="mr-2 h-5 w-5 text-blue-600" /> "Bundle Deal (X Items for Price Y)"
               </CardTitle>
               <UiCardDescription>Set a fixed price for a bundle of items.</UiCardDescription>
             </CardHeader>
@@ -573,7 +569,7 @@ export default function SettingsPage() {
                   <Input id="bundle-items" type="number" value={bundle_Items} onChange={(e) => setBundle_Items(e.target.value)} placeholder="e.g., 3" className="mt-1" />
                 </div>
                 <div>
-                  <Label htmlFor="bundle-price">Fixed Price for Bundle (£)</Label>
+                  <Label htmlFor="bundle-price">Fixed Price for Bundle ({selectedCurrency})</Label>
                   <Input id="bundle-price" type="number" step="0.01" value={bundle_Price} onChange={(e) => setBundle_Price(e.target.value)} placeholder="e.g., 15.00" className="mt-1" />
                 </div>
               </div>
@@ -619,7 +615,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Spend & Get Offer Card */}
           <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-xl flex items-center">
@@ -629,12 +624,12 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="spendGet-threshold">Spend Threshold (£)</Label>
+                <Label htmlFor="spendGet-threshold">Spend Threshold ({selectedCurrency})</Label>
                 <Input id="spendGet-threshold" type="number" step="0.01" value={spendGet_Threshold} onChange={(e) => setSpendGet_Threshold(e.target.value)} placeholder="e.g., 50.00" className="mt-1" />
               </div>
               <div>
                 <Label htmlFor="spendGet-freeItem">Description of Free Item</Label>
-                <Input id="spendGet-freeItem" value={spendGet_FreeItemDesc} onChange={(e) => setSpendGet_FreeItemDesc(e.target.value)} placeholder="e.g., 1 Free Tie Clean, Cheapest item up to £5" className="mt-1" />
+                <Input id="spendGet-freeItem" value={spendGet_FreeItemDesc} onChange={(e) => setSpendGet_FreeItemDesc(e.target.value)} placeholder="e.g., 1 Free Tie Clean, Cheapest item up to value X" className="mt-1" />
               </div>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -668,7 +663,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <Label htmlFor="spendGet-notes">Additional Offer Details/Exclusions (Notes)</Label>
-                <Textarea id="spendGet-notes" placeholder="e.g., Not valid with other offers. Excludes leather items." className="mt-1" rows={2} />
+                <Textarea id="spendGet-notes" value={spendGet_FreeItemDesc} onChange={(e) => setSpendGet_FreeItemDesc(e.target.value)} placeholder="e.g., Not valid with other offers. Excludes leather items." className="mt-1" rows={2} />
               </div>
               <div className="flex items-center space-x-2">
                 <Switch id="spendGet-active" checked={spendGet_Active} onCheckedChange={setSpendGet_Active} />
@@ -707,7 +702,7 @@ export default function SettingsPage() {
               <UiCardDescription>Configure default printers and receipt templates. (UI Placeholders)</UiCardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                 <div>
                   <Label htmlFor="receipt-printer" className="flex items-center"><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground" /> Default Receipt Printer</Label>
                   <Select value={receiptPrinter} onValueChange={setReceiptPrinter}>
@@ -719,6 +714,19 @@ export default function SettingsPage() {
                       <SelectItem value="dotmatrix_76mm">Dot Matrix (76mm)</SelectItem>
                       <SelectItem value="a4_letter">Standard A4/Letter Printer</SelectItem>
                       <SelectItem value="none">None (Manual/No Print)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="customer-receipt-copies">Customer Receipt Copies</Label>
+                  <Select value={customerReceiptCopies} onValueChange={setCustomerReceiptCopies}>
+                    <SelectTrigger id="customer-receipt-copies" className="mt-1">
+                      <SelectValue placeholder="Select no. of copies" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 Copy</SelectItem>
+                      <SelectItem value="2">2 Copies</SelectItem>
+                      <SelectItem value="3">3 Copies</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -741,6 +749,9 @@ export default function SettingsPage() {
               <div>
                 <Label htmlFor="receipt-header">Receipt Header Text</Label>
                 <Textarea id="receipt-header" value={receiptHeader} onChange={(e) => setReceiptHeader(e.target.value)} placeholder="e.g., Your Company Name - Address - Phone" className="mt-1" rows={2}/>
+                <p className="text-xs text-muted-foreground mt-1">
+                    Can be auto-generated from Company Settings (future implementation) or customized here.
+                </p>
               </div>
               <div>
                 <Label htmlFor="receipt-footer">Receipt Footer Text</Label>
@@ -749,26 +760,58 @@ export default function SettingsPage() {
 
               <Button onClick={handleSavePrinterSettings}>Save Printer Settings</Button>
                <p className="text-xs text-muted-foreground pt-4">
-                Note: These are UI placeholders. Actual printer selection and control requires system-level integration with printer drivers or specific web printing APIs, which are beyond typical web app capabilities without additional software.
+                Note: These are UI placeholders. Actual printer selection and control requires system-level integration.
               </p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="regionalSettings" className="mt-6">
+        <TabsContent value="companyRegional" className="mt-6">
          <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex items-center">
-                <Globe className="mr-2 h-6 w-6" /> Regional Settings
+                <Building className="mr-2 h-6 w-6" /> Company &amp; Regional Settings
               </CardTitle>
-              <UiCardDescription>Manage system currency and language preferences. (UI Placeholders)</UiCardDescription>
+              <UiCardDescription>Manage company details, system currency, language, and tax settings. (UI Placeholders)</UiCardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <div className="space-y-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div>
+                    <Label htmlFor="company-name">Company Name</Label>
+                    <Input id="company-name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your Company Ltd." className="mt-1" />
+                </div>
+                <div>
+                    <Label htmlFor="company-phone">Company Phone</Label>
+                    <Input id="company-phone" value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} placeholder="(555) 123-4567" className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="company-address">Company Address</Label>
+                <Textarea id="company-address" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} placeholder="123 Main St, City, Country" className="mt-1" rows={3}/>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="vat-tax-id">VAT / Tax ID Number</Label>
+                  <Input id="vat-tax-id" value={vatTaxId} onChange={(e) => setVatTaxId(e.target.value)} placeholder="e.g., GB123456789" className="mt-1" />
+                </div>
+                 <div>
+                  <Label htmlFor="vat-sales-tax-rate">VAT / Sales Tax Rate (%)</Label>
+                  <Input id="vat-sales-tax-rate" type="number" value={vatSalesTaxRate} onChange={(e) => setVatSalesTaxRate(e.target.value)} placeholder="e.g., 20" className="mt-1" />
+                </div>
+              </div>
+               <div className="flex items-center space-x-2">
+                <Switch id="include-vat" checked={includeVatInPrices} onCheckedChange={setIncludeVatInPrices} />
+                <Label htmlFor="include-vat">Include VAT / Sales Tax in Displayed Service Prices</Label>
+              </div>
+
+              <div className="border-t pt-6 space-y-2">
+                <h3 className="text-md font-medium text-muted-foreground">Regional Preferences</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
                   <Label htmlFor="system-currency" className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-muted-foreground" /> System Currency</Label>
                   <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-                    <SelectTrigger id="system-currency">
+                    <SelectTrigger id="system-currency" className="mt-1">
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                     <SelectContent>
@@ -780,16 +823,10 @@ export default function SettingsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Select the primary currency for transactions and reporting.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <div className="space-y-1">
+                <div>
                   <Label htmlFor="system-language" className="flex items-center"><Globe className="mr-2 h-4 w-4 text-muted-foreground" /> Language</Label>
                   <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                    <SelectTrigger id="system-language">
+                    <SelectTrigger id="system-language" className="mt-1">
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
                     <SelectContent>
@@ -800,14 +837,10 @@ export default function SettingsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  Select the display language for the application interface.
-                </p>
               </div>
-
-              <Button onClick={handleSaveRegionalSettings}>Save Regional Preferences</Button>
+              <Button onClick={handleSaveCompanyRegionalSettings}>Save Company &amp; Regional Settings</Button>
                <p className="text-xs text-muted-foreground pt-4">
-                Note: These settings are currently UI placeholders. Full currency and language switching requires backend and internationalization (i18n) integration throughout the application.
+                Note: These settings are currently UI placeholders. Full integration requires backend support.
               </p>
             </CardContent>
           </Card>
@@ -817,5 +850,4 @@ export default function SettingsPage() {
     </div>
   );
 }
-
     
