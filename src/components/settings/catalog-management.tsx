@@ -9,21 +9,34 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { PlusCircle, Edit3, Trash2, GripVertical } from "lucide-react";
+import { PlusCircle, Edit3, Trash2 } from "lucide-react";
 import type { CatalogHierarchyNode, CatalogEntryType } from "@/types";
-import { getCatalogHierarchyAction, addCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
+import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
+import { EditCatalogEntryDialog } from "./edit-catalog-entry-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog as AddDialog, DialogContent as AddDialogContent, DialogHeader as AddDialogHeader, DialogTitle as AddDialogTitle, DialogTrigger as AddDialogTrigger } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 interface RenderNodeProps {
   node: CatalogHierarchyNode;
-  onAddEntry: (parent_id: string, type: CatalogEntryType) => void; // Changed from parentId
+  onAddEntry: (parent_id: string | null, type: CatalogEntryType) => void;
+  onEditEntry: (entry: CatalogHierarchyNode) => void;
+  onDeleteEntry: (entry: CatalogHierarchyNode) => void;
   level: number;
 }
 
-function CatalogNodeDisplay({ node, onAddEntry, level }: RenderNodeProps) {
+function CatalogNodeDisplay({ node, onAddEntry, onEditEntry, onDeleteEntry, level }: RenderNodeProps) {
   const { toast } = useToast();
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [addFormType, setAddFormType] = useState<CatalogEntryType>("category");
@@ -36,7 +49,7 @@ function CatalogNodeDisplay({ node, onAddEntry, level }: RenderNodeProps) {
   const handleAddSuccess = () => {
     setIsAddFormOpen(false);
     toast({ title: "Success", description: `${addFormType === "category" ? "Category" : "Item"} added.`});
-    // Parent component will handle re-fetching data
+    onAddEntry(node.id, addFormType); 
   };
 
   return (
@@ -48,9 +61,19 @@ function CatalogNodeDisplay({ node, onAddEntry, level }: RenderNodeProps) {
             {node.type === "item" && node.price !== undefined && (
               <span className="ml-2 text-sm text-muted-foreground">${Number(node.price).toFixed(2)}</span>
             )}
+            {node.type === "item" && node.has_color_identifier && (
+                <span className="ml-2 text-xs text-blue-500">(Color ID)</span>
+            )}
           </div>
           <div className="flex items-center space-x-1">
-            {/* Future Edit/Delete buttons */}
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEditEntry(node); }}>
+              <Edit3 className="h-4 w-4" />
+              <span className="sr-only">Edit {node.name}</span>
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onDeleteEntry(node); }}>
+              <Trash2 className="h-4 w-4" />
+              <span className="sr-only">Delete {node.name}</span>
+            </Button>
           </div>
         </div>
       </AccordionTrigger>
@@ -63,6 +86,8 @@ function CatalogNodeDisplay({ node, onAddEntry, level }: RenderNodeProps) {
                   key={childNode.id}
                   node={childNode}
                   onAddEntry={onAddEntry}
+                  onEditEntry={onEditEntry}
+                  onDeleteEntry={onDeleteEntry}
                   level={level + 1}
                 />
               ))}
@@ -73,8 +98,8 @@ function CatalogNodeDisplay({ node, onAddEntry, level }: RenderNodeProps) {
           )}
 
           {node.type === "category" && (
-             <Dialog open={isAddFormOpen} onOpenChange={setIsAddFormOpen}>
-              <DialogTrigger asChild>
+             <AddDialog open={isAddFormOpen} onOpenChange={setIsAddFormOpen}>
+              <AddDialogTrigger asChild>
                 <div className="mt-2 flex space-x-2">
                     <Button variant="outline" size="sm" onClick={() => handleOpenAddForm("category")}>
                         <PlusCircle className="mr-1.5 h-4 w-4" /> Add Sub-category
@@ -83,22 +108,19 @@ function CatalogNodeDisplay({ node, onAddEntry, level }: RenderNodeProps) {
                         <PlusCircle className="mr-1.5 h-4 w-4" /> Add Item/Service
                     </Button>
                 </div>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New {addFormType === 'category' ? 'Sub-category' : 'Item/Service'} to {node.name}</DialogTitle>
-                </DialogHeader>
+              </AddDialogTrigger>
+              <AddDialogContent>
+                <AddDialogHeader>
+                  <AddDialogTitle>Add New {addFormType === 'category' ? 'Sub-category' : 'Item/Service'} to {node.name}</AddDialogTitle>
+                </AddDialogHeader>
                 <AddCatalogEntryForm
-                  parent_id={node.id} // Pass parent_id
+                  parent_id={node.id} 
                   defaultType={addFormType}
-                  onSuccess={() => {
-                    handleAddSuccess();
-                    onAddEntry(node.id, addFormType); // Trigger re-fetch in parent
-                  }}
+                  onSuccess={handleAddSuccess}
                   submitAction={addCatalogEntryAction}
                 />
-              </DialogContent>
-            </Dialog>
+              </AddDialogContent>
+            </AddDialog>
           )}
         </div>
       </AccordionContent>
@@ -112,6 +134,12 @@ export function CatalogManagementTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddTopLevelFormOpen, setIsAddTopLevelFormOpen] = useState(false);
   const { toast } = useToast();
+
+  const [entryToEdit, setEntryToEdit] = useState<CatalogHierarchyNode | null>(null);
+  const [isEditDialogValidOpen, setIsEditDialogValidOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<CatalogHierarchyNode | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
 
   const fetchCatalog = useCallback(async () => {
     setIsLoading(true);
@@ -130,15 +158,50 @@ export function CatalogManagementTab() {
     fetchCatalog();
   }, [fetchCatalog]);
 
-  const handleAddSuccess = () => {
+  const handleAddTopLevelSuccess = () => {
     setIsAddTopLevelFormOpen(false);
     toast({ title: "Success", description: "New top-level category added."});
-    fetchCatalog(); // Re-fetch the whole catalog
+    fetchCatalog(); 
   };
   
-  const handleSubEntryAdded = () => {
-    fetchCatalog(); // Re-fetch the whole catalog when a sub-entry is added
-  }
+  const handleSubEntryAddedOrUpdated = () => {
+    fetchCatalog();
+  };
+
+  const handleOpenEditDialog = (entry: CatalogHierarchyNode) => {
+    setEntryToEdit(entry);
+    setIsEditDialogValidOpen(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEntryToEdit(null);
+    setIsEditDialogValidOpen(false);
+  };
+
+  const handleEditSuccess = () => {
+    handleCloseEditDialog();
+    toast({ title: "Success", description: "Catalog entry updated." });
+    fetchCatalog();
+  };
+
+  const handleOpenDeleteConfirm = (entry: CatalogHierarchyNode) => {
+    setEntryToDelete(entry);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!entryToDelete) return;
+    const result = await deleteCatalogEntryAction(entryToDelete.id);
+    if (result.success) {
+      toast({ title: "Success", description: result.message || "Entry deleted." });
+      fetchCatalog();
+    } else {
+      toast({ title: "Error Deleting", description: result.message || "Could not delete entry.", variant: "destructive" });
+    }
+    setIsDeleteConfirmOpen(false);
+    setEntryToDelete(null);
+  };
+
 
   if (isLoading) {
     return (
@@ -153,37 +216,76 @@ export function CatalogManagementTab() {
 
   return (
     <div className="space-y-6">
-      <Dialog open={isAddTopLevelFormOpen} onOpenChange={setIsAddTopLevelFormOpen}>
-        <DialogTrigger asChild>
+      <AddDialog open={isAddTopLevelFormOpen} onOpenChange={setIsAddTopLevelFormOpen}>
+        <AddDialogTrigger asChild>
           <Button>
             <PlusCircle className="mr-2 h-4 w-4" /> Add New Top-Level Category
           </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Top-Level Category</DialogTitle>
-          </DialogHeader>
+        </AddDialogTrigger>
+        <AddDialogContent>
+          <AddDialogHeader>
+            <AddDialogTitle>Add New Top-Level Category</AddDialogTitle>
+          </AddDialogHeader>
           <AddCatalogEntryForm
-            parent_id={null} // Pass parent_id as null
+            parent_id={null} 
             defaultType="category"
-            onSuccess={handleAddSuccess}
+            onSuccess={handleAddTopLevelSuccess}
             submitAction={addCatalogEntryAction}
           />
-        </DialogContent>
-      </Dialog>
+        </AddDialogContent>
+      </AddDialog>
 
       {catalogHierarchy.length === 0 ? (
         <p className="text-muted-foreground">No categories found. Start by adding a top-level category.</p>
       ) : (
         <Accordion type="multiple" className="w-full space-y-1">
           {catalogHierarchy.map(node => (
-            <CatalogNodeDisplay key={node.id} node={node} onAddEntry={handleSubEntryAdded} level={0} />
+            <CatalogNodeDisplay 
+                key={node.id} 
+                node={node} 
+                onAddEntry={handleSubEntryAddedOrUpdated} 
+                onEditEntry={handleOpenEditDialog}
+                onDeleteEntry={handleOpenDeleteConfirm}
+                level={0} 
+            />
           ))}
         </Accordion>
       )}
+
+      {entryToEdit && (
+        <EditCatalogEntryDialog
+          entry={entryToEdit}
+          isOpen={isEditDialogValidOpen}
+          onOpenChange={setIsEditDialogValidOpen}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {entryToDelete && (
+        <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{entryToDelete.name}"?
+                {entryToDelete.type === 'category' && ' If this category contains items or sub-categories, deletion might fail unless it is emptied first.'}
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       <p className="text-xs text-muted-foreground mt-4">
-        Drag &amp; drop sorting for categories and items will be implemented in a future update. Edit and Delete functionality also pending.
+        Drag &amp; drop sorting for categories and items will be implemented in a future update.
       </p>
     </div>
   );
 }
+

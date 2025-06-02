@@ -32,8 +32,8 @@ const initialOrders: Order[] = [
     customerId: 'cust1',
     customerName: 'John Doe',
     items: [
-      { id: 'item1', serviceItemId: 'serv1', serviceName: "Men's Shirt - Hanger", quantity: 5, unitPrice: 3.50, totalPrice: 17.50 },
-      { id: 'item2', serviceItemId: 'serv2', serviceName: 'Suit 2-Piece', quantity: 1, unitPrice: 15.00, totalPrice: 15.00 },
+      { id: 'item1', serviceItemId: 'serv1', serviceName: "Men's Shirt - Hanger", quantity: 5, unitPrice: 3.50, totalPrice: 17.50, has_color_identifier: false },
+      { id: 'item2', serviceItemId: 'serv2', serviceName: 'Suit 2-Piece', quantity: 1, unitPrice: 15.00, totalPrice: 15.00, has_color_identifier: false },
     ],
     totalAmount: 32.50,
     status: 'Ready for Pickup' as OrderStatus,
@@ -49,7 +49,7 @@ const initialOrders: Order[] = [
     customerId: 'cust2',
     customerName: 'Jane Smith',
     items: [
-      { id: 'item3', serviceItemId: 'serv3', serviceName: 'Dress - Silk', quantity: 1, unitPrice: 18.00, totalPrice: 18.00 },
+      { id: 'item3', serviceItemId: 'serv3', serviceName: 'Dress - Silk', quantity: 1, unitPrice: 18.00, totalPrice: 18.00, has_color_identifier: true, color_value: "Red" },
     ],
     totalAmount: 18.00,
     status: 'Cleaning' as OrderStatus,
@@ -65,7 +65,7 @@ const initialOrders: Order[] = [
     customerId: 'cust1', // Another order for John Doe
     customerName: 'John Doe',
     items: [
-      { id: 'item4', serviceItemId: 'serv4', serviceName: 'Trousers - Cotton', quantity: 2, unitPrice: 7.00, totalPrice: 14.00 },
+      { id: 'item4', serviceItemId: 'serv4', serviceName: 'Trousers - Cotton', quantity: 2, unitPrice: 7.00, totalPrice: 14.00, has_color_identifier: true, color_value: "Khaki" },
     ],
     totalAmount: 14.00,
     status: 'Received' as OrderStatus,
@@ -98,7 +98,7 @@ export async function getCustomers(): Promise<Customer[]> {
 
   const { data, error } = await supabase
     .from('customers')
-    .select('*') // Simplified select
+    .select('*')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -110,7 +110,6 @@ export async function getCustomers(): Promise<Customer[]> {
     created_at: c.created_at ? new Date(c.created_at).toISOString() : null,
     updated_at: c.updated_at ? new Date(c.updated_at).toISOString() : null,
     account_id: c.account_id === null ? undefined : c.account_id, // Ensure null from DB becomes undefined for form
-    // Ensure boolean fields that might be null in DB are defaulted
     sms_opt_in: c.sms_opt_in ?? false,
     email_opt_in: c.email_opt_in ?? false,
     has_preferred_pricing: c.has_preferred_pricing ?? false,
@@ -131,7 +130,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
 
   const { data, error } = await supabase
     .from('customers')
-    .select('*') // Simplified select
+    .select('*')
     .eq('id', trimmedId) 
     .single();
 
@@ -180,7 +179,7 @@ export async function createCustomer(customerData: CreateCustomerInput): Promise
   const { data, error } = await supabase
     .from('customers')
     .insert(customerToInsert)
-    .select('*') // Explicitly select all fields
+    .select('*')
     .single();
 
   if (error) {
@@ -223,7 +222,7 @@ export async function updateCustomerAccountDetailsDb(
     .from('customers')
     .update(updateData)
     .eq('id', customerId)
-    .select('*') // Simplified select
+    .select('*')
     .single();
 
   if (error) {
@@ -265,7 +264,7 @@ export async function updateFullCustomerDb(customerId: string, customerData: Cre
     .from('customers')
     .update(dataToUpdate)
     .eq('id', customerId)
-    .select('*') // Simplified select
+    .select('*')
     .single();
 
   if (error) {
@@ -350,6 +349,7 @@ export async function getCatalogEntries(): Promise<CatalogEntry[]> {
   return (data || []).map(entry => ({
     ...entry,
     price: entry.price !== null && entry.price !== undefined ? parseFloat(entry.price) : undefined,
+    has_color_identifier: entry.has_color_identifier ?? false,
     created_at: entry.created_at ? new Date(entry.created_at).toISOString() : undefined,
     updated_at: entry.updated_at ? new Date(entry.updated_at).toISOString() : undefined,
   })) as CatalogEntry[];
@@ -382,6 +382,7 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
     type: entry.type,
     price: entry.type === 'item' ? entry.price : null,
     description: entry.description,
+    has_color_identifier: entry.type === 'item' ? (entry.has_color_identifier ?? false) : null,
     sort_order: sort_order,
   };
 
@@ -390,7 +391,7 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
   const { data, error } = await supabase
     .from('catalog_entries')
     .insert(entryToInsert)
-    .select('*') // Explicitly select all fields
+    .select('*') 
     .single();
 
   if (error) {
@@ -408,9 +409,102 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
   return {
     ...data,
     price: data.price !== null && data.price !== undefined ? parseFloat(data.price) : undefined,
+    has_color_identifier: data.has_color_identifier ?? false,
     created_at: data.created_at ? new Date(data.created_at).toISOString() : undefined,
     updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : undefined,
   } as CatalogEntry;
+}
+
+export async function updateCatalogEntry(
+  entryId: string,
+  dataToUpdate: Partial<Pick<CatalogEntry, 'name' | 'price' | 'description' | 'has_color_identifier'>>
+): Promise<CatalogEntry> {
+  const updatePayload: { [key: string]: any } = { ...dataToUpdate };
+
+  // Ensure price is null if not provided for an item, or if it's a category (though not editable here)
+  if (dataToUpdate.price === undefined) {
+    // Check current type to decide if price should be nulled or kept
+    const { data: currentEntry, error: fetchError } = await supabase
+      .from('catalog_entries')
+      .select('type, price')
+      .eq('id', entryId)
+      .single();
+
+    if (fetchError || !currentEntry) {
+      console.error(`Error fetching entry ${entryId} before update or entry not found:`, fetchError);
+      throw new Error(`Failed to fetch entry details for update: ${entryId}`);
+    }
+    if (currentEntry.type === 'item' && dataToUpdate.price === undefined) {
+      // If it's an item and price is explicitly set to undefined in payload (meaning not changed in form),
+      // it should retain its old price or be explicitly set to null if that's desired.
+      // For now, if price is not in dataToUpdate, we don't touch it in DB.
+      // If price is explicitly passed as null/0 for an item, it will be set.
+    } else if (currentEntry.type === 'category') {
+       updatePayload.price = null; // Categories shouldn't have prices
+    }
+  }
+   if (dataToUpdate.has_color_identifier === undefined) {
+    delete updatePayload.has_color_identifier; // Don't update if not provided
+  }
+
+
+  updatePayload.updated_at = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('catalog_entries')
+    .update(updatePayload)
+    .eq('id', entryId)
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error(`Error updating catalog entry ${entryId} in Supabase:`, error);
+    throw error;
+  }
+  if (!data) {
+    throw new Error(`Catalog entry with ID ${entryId} not found or update failed.`);
+  }
+  return {
+    ...data,
+    price: data.price !== null && data.price !== undefined ? parseFloat(data.price) : undefined,
+    has_color_identifier: data.has_color_identifier ?? false,
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : undefined,
+    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : undefined,
+  } as CatalogEntry;
+}
+
+export async function deleteCatalogEntry(entryId: string): Promise<{ success: boolean, message?: string }> {
+  // Check if the entry is a category and has children
+  const { data: children, error: childrenError } = await supabase
+    .from('catalog_entries')
+    .select('id')
+    .eq('parent_id', entryId);
+
+  if (childrenError) {
+    console.error(`Error checking children for catalog entry ${entryId}:`, childrenError);
+    return { success: false, message: `Error checking children: ${childrenError.message}` };
+  }
+
+  if (children && children.length > 0) {
+    return { success: false, message: "Cannot delete category: It contains sub-categories or items. Please empty the category first." };
+  }
+
+  // Proceed with deletion
+  const { error: deleteError, count } = await supabase
+    .from('catalog_entries')
+    .delete()
+    .eq('id', entryId);
+
+  if (deleteError) {
+    console.error(`Error deleting catalog entry ${entryId} from Supabase:`, deleteError);
+    return { success: false, message: `Error deleting entry: ${deleteError.message}` };
+  }
+
+  if (count === 0) {
+    return { success: false, message: "Entry not found or already deleted." };
+  }
+
+  return { success: true, message: "Entry deleted successfully." };
 }
 
 
@@ -449,6 +543,7 @@ async function getServiceItemsFromCatalog(): Promise<ServiceItem[]> {
       price: item.price!, 
       description: item.description || undefined,
       category: item.parent_id ? (categoryMap.get(item.parent_id) || 'General Services') : 'General Services',
+      has_color_identifier: item.has_color_identifier ?? false,
     }));
 }
 
