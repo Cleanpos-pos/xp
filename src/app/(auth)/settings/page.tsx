@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  // FormDescription as RHFFormDescription, // Renamed to avoid conflict
-  // FormItem as RHFFormItem, // Renamed to avoid conflict
-  // FormLabel as RHFFormLabel, // Renamed to avoid conflict
+  FormDescription, // Now imported
+  FormItem,       // Now imported
+  FormLabel,      // Now imported
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -347,4 +347,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
