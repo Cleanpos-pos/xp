@@ -103,7 +103,9 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-2xl font-headline">Order {order.orderNumber}</CardTitle>
-              <CardDescription>Details for order placed on {format(new Date(order.createdAt), 'MMMM dd, yyyy')}</CardDescription>
+              <CardDescription>
+                Details for order placed on {order.created_at ? format(new Date(order.created_at), 'MMMM dd, yyyy') : 'N/A'}
+              </CardDescription>
             </div>
             <div className="flex flex-col items-end gap-2">
               <Badge variant={getStatusBadgeVariant(order.status)} className={`${statusColors[order.status]} text-sm px-3 py-1`}>
@@ -178,5 +180,3 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     </div>
   );
 }
-
-    
