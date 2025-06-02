@@ -48,7 +48,15 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
     const inputDataForLog = { name, parent_id, type, price, description, has_color_identifier };
     console.error("Error in addCatalogEntryAction. Input data was:", JSON.stringify(inputDataForLog, null, 2));
     console.error("Caught error details in action:", error);
-    return { success: false, message: error.message || `Failed to add ${type}. Please check server logs for more details.` };
+
+    let userFriendlyMessage = error.message || `Failed to add ${type}. Please check server logs for more details.`;
+
+    if (typeof error.message === 'string' && 
+        (error.message.includes("Could not find the column") || error.message.includes("schema cache"))) {
+      userFriendlyMessage = `Failed to add ${type}. The database schema might be out of sync. Please try reloading the schema in your Supabase project dashboard (API section -> Reload schema) and try again.`;
+    }
+
+    return { success: false, message: userFriendlyMessage };
   }
 }
 
@@ -62,15 +70,10 @@ export async function updateCatalogEntryAction(entryId: string, data: UpdateCata
     };
   }
   
-  // We need to fetch the entry type to correctly handle price (it's only for items)
-  // This logic is a bit simplistic; a more robust way would be to ensure type isn't changed
-  // or to handle type changes carefully. For now, price is just ignored if not an item.
-  // The DB function `updateCatalogEntry` handles ensuring price is null for categories.
-  
   try {
     const updatedEntry = await updateCatalogEntryDb(entryId, {
       name: validationResult.data.name,
-      price: validationResult.data.price, // Pass price; DB function will handle if it's item/category
+      price: validationResult.data.price, 
       description: validationResult.data.description,
       has_color_identifier: validationResult.data.has_color_identifier,
     });
@@ -82,7 +85,12 @@ export async function updateCatalogEntryAction(entryId: string, data: UpdateCata
     return { success: true, message: `Entry "${updatedEntry.name}" updated.`, updatedEntry };
   } catch (error: any) {
     console.error("Error updating catalog entry in action:", error);
-    return { success: false, message: error.message || "Failed to update entry." };
+     let userFriendlyMessage = error.message || "Failed to update entry.";
+    if (typeof error.message === 'string' && 
+        (error.message.includes("Could not find the column") || error.message.includes("schema cache"))) {
+      userFriendlyMessage = `Failed to update entry. The database schema might be out of sync. Please try reloading the schema in your Supabase project dashboard (API section -> Reload schema) and try again.`;
+    }
+    return { success: false, message: userFriendlyMessage };
   }
 }
 
