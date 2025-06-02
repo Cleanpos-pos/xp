@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getMockInventory } from '@/lib/data';
 import type { InventoryItem } from '@/types';
-import { Package, Edit, MoreHorizontal, AlertTriangle } from 'lucide-react';
+import { Package, Edit, MoreHorizontal, AlertTriangle, ShoppingCart } from 'lucide-react'; // Added ShoppingCart
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -28,9 +28,16 @@ export default function InventoryPage() {
           <CardTitle className="font-headline">Inventory Tracking</CardTitle>
           <CardDescription>Manage your supplies and track usage.</CardDescription>
         </div>
-        <Link href="/inventory/new">
-          <Button>Add New Item</Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/inventory/order-supplies">
+            <Button variant="outline">
+              <ShoppingCart className="mr-2 h-4 w-4" /> Order Business Supplies
+            </Button>
+          </Link>
+          <Link href="/inventory/new">
+            <Button>Add New Item</Button>
+          </Link>
+        </div>
       </CardHeader>
       <CardContent>
         <Table>
