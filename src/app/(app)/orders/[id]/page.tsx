@@ -52,7 +52,7 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
   Paid: ShieldCheck,
   Unpaid: ShieldAlert,
   "Processing Payment": CreditCard,
-  Refunded: DollarSign, // Could be more specific like Undo
+  Refunded: DollarSign, 
 }
 
 
@@ -83,10 +83,13 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
 
   const PaymentIcon = order.paymentStatus ? paymentStatusIcons[order.paymentStatus] : ShieldAlert;
 
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div id="orderDetailsPrintSection" className="space-y-6">
+      <div className="flex items-center justify-between print-hidden">
         <Link href="/orders">
             <Button variant="outline" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Orders
@@ -94,7 +97,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
         </Link>
         <div className="flex gap-2">
             <Button variant="outline" size="sm"><Edit className="mr-2 h-4 w-4" /> Edit Order</Button>
-            <Button variant="outline" size="sm"><Printer className="mr-2 h-4 w-4" /> Print Receipt</Button>
+            <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Receipt</Button>
         </div>
       </div>
 

@@ -19,7 +19,7 @@ export default function AppLayout({
 }) {
   return (
     <SidebarProvider defaultOpen={true}>
-      <Sidebar side="left" variant="sidebar" collapsible="icon">
+      <Sidebar side="left" variant="sidebar" collapsible="icon" className="print-hidden">
         <SidebarHeader className="p-4">
           <Link href="/dashboard" className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
             {/* Simplified SVG logo, could be replaced by an image or more complex SVG */}
@@ -38,7 +38,7 @@ export default function AppLayout({
       </Sidebar>
       <SidebarInset>
         <div className="flex flex-col min-h-screen">
-          <AppHeader />
+          <AppHeader className="print-hidden" />
           <main className="flex-1 p-4 sm:p-6 bg-background">
             {children}
           </main>

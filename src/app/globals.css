@@ -100,3 +100,33 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+  body {
+    background-color: white !important;
+    -webkit-print-color-adjust: exact; /* Ensures background colors print in Chrome/Safari */
+    print-color-adjust: exact; /* Standard */
+  }
+  .card { /* Targeting ShadCN card specifically */
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+  main { /* Ensure main content area is not restricted */
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important; /* Allow content to overflow for printing if needed */
+  }
+  #orderDetailsPrintSection { /* Specific section for printing */
+    margin: 20px !important; /* Add some margin for the printed page */
+    width: auto !important; /* Allow it to take natural width for printing */
+  }
+  /* Ensure all parent containers of the print section are visible and flow naturally */
+  html, body, div[data-theme], div#__next, div.min-h-screen, div.flex-col, div.flex-1 {
+    display: block !important; /* Override flex behaviors for printing */
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
