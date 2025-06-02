@@ -59,24 +59,27 @@ export async function toggleQuickLoginAction(data: ToggleQuickLoginInput) {
     return { success: false, message: "Invalid input for quick login toggle." };
   }
 
+  const { loginId, enable } = validationResult.data;
+  console.log(`[toggleQuickLoginAction] Validated data - Login ID: '${loginId}', Enable: ${enable}`);
+
   try {
-    const success = await updateStaffQuickLoginStatus(validationResult.data.loginId, validationResult.data.enable);
+    const success = await updateStaffQuickLoginStatus(loginId, enable);
 
     if (success) {
       return {
         success: true,
-        message: `Quick login for ${validationResult.data.loginId} ${validationResult.data.enable ? 'enabled' : 'disabled'} in Supabase.`
+        message: `Quick login for ${loginId} ${enable ? 'enabled' : 'disabled'} in Supabase.`
       };
     }
     return {
       success: false,
-      message: `Failed to update quick login status for ${validationResult.data.loginId} in Supabase. The staff member might not exist or the update operation affected 0 rows.`
+      message: `Failed to update quick login status for ${loginId} in Supabase. The staff member might not exist or the update operation affected 0 rows.`
     };
   } catch (error: any) {
     console.error("Error toggling quick login in Supabase via action:", error);
     return {
       success: false,
-      message: error.message || `Failed to toggle quick login status for ${validationResult.data.loginId} in Supabase due to an error.`,
+      message: error.message || `Failed to toggle quick login status for ${loginId} in Supabase due to an error.`,
     };
   }
 }
@@ -87,24 +90,27 @@ export async function toggleStaffActiveStatusAction(data: ToggleStaffActiveStatu
     return { success: false, message: "Invalid input for active status toggle." };
   }
 
+  const { loginId, isActive } = validationResult.data;
+  console.log(`[toggleStaffActiveStatusAction] Validated data - Login ID: '${loginId}', IsActive: ${isActive}`);
+
   try {
-    const success = await updateStaffActiveStatus(validationResult.data.loginId, validationResult.data.isActive);
+    const success = await updateStaffActiveStatus(loginId, isActive);
 
     if (success) {
       return {
         success: true,
-        message: `Staff member ${validationResult.data.loginId} ${validationResult.data.isActive ? 'activated' : 'deactivated'} in Supabase.`
+        message: `Staff member ${loginId} ${isActive ? 'activated' : 'deactivated'} in Supabase.`
       };
     }
     return {
       success: false,
-      message: `Failed to update active status for ${validationResult.data.loginId} in Supabase. The staff member might not exist or the update operation affected 0 rows.`
+      message: `Failed to update active status for ${loginId} in Supabase. The staff member might not exist or the update operation affected 0 rows.`
     };
   } catch (error: any) {
     console.error("Error toggling active status in Supabase via action:", error);
     return {
       success: false,
-      message: error.message || `Failed to toggle active status for ${validationResult.data.loginId} in Supabase due to an error.`,
+      message: error.message || `Failed to toggle active status for ${loginId} in Supabase due to an error.`,
     };
   }
 }
@@ -114,6 +120,7 @@ export async function removeStaffAction(loginId: string) {
   if (!loginId || typeof loginId !== 'string' || loginId.trim() === '') {
     return { success: false, message: "Invalid Login ID provided for removal." };
   }
+  console.log(`[removeStaffAction] Attempting to remove staff with Login ID: '${loginId}'`);
   try {
     const success = await deleteStaffFromDb(loginId);
     if (success) {
