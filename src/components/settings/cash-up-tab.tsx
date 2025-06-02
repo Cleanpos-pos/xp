@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-modal";
 import type { CashUpSession } from "@/types";
 import { format } from "date-fns";
-import { TrendingUp, TrendingDown, CheckCircle, Edit3 } from "lucide-react";
+import { TrendingUp, TrendingDown, CheckCircle, Edit3, CheckSquare } from "lucide-react";
 
 const MOCK_SYSTEM_CASH = 1250.75; // Placeholder
 const MOCK_SYSTEM_CARD = 850.25;  // Placeholder
@@ -35,12 +35,14 @@ export function CashUpManagementTab() {
   const [isFloatModalOpen, setIsFloatModalOpen] = useState(false);
   const [floatInputValue, setFloatInputValue] = useState(floatAmount.toFixed(2));
 
+  const [isCardEntryModalOpen, setIsCardEntryModalOpen] = useState(false);
+  const [cardEntryInputValue, setCardEntryInputValue] = useState("");
+
 
   const cashVariance = actualCash - (systemCash + floatAmount);
   const cardVariance = actualCard - systemCard;
 
   useEffect(() => {
-    // Load history from localStorage (mock)
     const storedHistory = localStorage.getItem("cashUpHistory");
     if (storedHistory) {
       setCashUpHistory(JSON.parse(storedHistory));
@@ -52,7 +54,7 @@ export function CashUpManagementTab() {
     const newFloat = parseFloat(floatInputValue);
     if (isNaN(newFloat) || newFloat < 0) {
       toast({ title: "Invalid Amount", description: "Float amount must be a positive number.", variant: "destructive" });
-      setFloatInputValue(floatAmount.toFixed(2)); // Reset to current float
+      setFloatInputValue(floatAmount.toFixed(2));
       return;
     }
     setFloatAmount(newFloat);
@@ -63,15 +65,32 @@ export function CashUpManagementTab() {
     const newActualCash = parseFloat(cashEntryInputValue);
     if (isNaN(newActualCash) || newActualCash < 0) {
       toast({ title: "Invalid Amount", description: "Actual cash amount must be a positive number.", variant: "destructive" });
-      setCashEntryInputValue(actualCash.toFixed(2)); // Reset to current actual or 0
+      setCashEntryInputValue(actualCash.toFixed(2));
       return;
     }
     setActualCash(newActualCash);
   };
 
+  const handleEnterActualCard = () => {
+    const newActualCard = parseFloat(cardEntryInputValue);
+    if (isNaN(newActualCard) || newActualCard < 0) {
+      toast({ title: "Invalid Amount", description: "Actual card amount must be a positive number.", variant: "destructive" });
+      setCardEntryInputValue(actualCard.toFixed(2));
+      return;
+    }
+    setActualCard(newActualCard);
+  };
+
+  const handleEnterExactCard = () => {
+    setActualCard(systemCard);
+    setCardEntryInputValue(systemCard.toFixed(2)); // Also update input value for consistency if modal was open
+    toast({ title: "Card Total Entered", description: `Actual card total set to system expected: $${systemCard.toFixed(2)}.`});
+  };
+
+
   const handleFinalizeCashUp = () => {
-    if (actualCash === 0 && actualCard === 0) {
-        toast({ title: "Cannot Finalize", description: "Please enter actual cash or card amounts.", variant: "warning" });
+    if (actualCash === 0 && actualCard === 0 && !selectedCashUpId) { // only check if not viewing history
+        toast({ title: "Cannot Finalize", description: "Please enter actual cash or card amounts for the current session.", variant: "warning" });
         return;
     }
     const newSession: CashUpSession = {
@@ -84,21 +103,20 @@ export function CashUpManagementTab() {
       systemCard,
       actualCard,
       cardVariance,
-      finalizedBy: "Current User", // Placeholder
+      finalizedBy: "Current User", 
     };
     const updatedHistory = [newSession, ...cashUpHistory];
     setCashUpHistory(updatedHistory);
-    localStorage.setItem("cashUpHistory", JSON.stringify(updatedHistory)); // Mock storage
+    localStorage.setItem("cashUpHistory", JSON.stringify(updatedHistory)); 
     toast({ title: "Cash Up Finalized", description: `Session stored for ${format(new Date(newSession.timestamp), "PPP p")}.` });
     
-    // Reset for next cash up (optional, could also just display the finalized one)
     setActualCash(0);
     setActualCard(0);
     setCashEntryInputValue("0.00");
-    // Maybe set system values to 0 or fetch new ones for a new day
-    setSystemCash(0); // Example: Reset system figures after finalization
+    setCardEntryInputValue("0.00");
+    setSystemCash(0); 
     setSystemCard(0);
-    setSelectedCashUpId(newSession.id); // View the newly finalized session
+    setSelectedCashUpId(newSession.id); 
   };
   
   const loadSessionDetails = (sessionId: string | null) => {
@@ -113,18 +131,31 @@ export function CashUpManagementTab() {
         setActualCard(session.actualCard);
         setFloatInputValue(session.floatAmount.toFixed(2));
         setCashEntryInputValue(session.actualCash.toFixed(2));
+        setCardEntryInputValue(session.actualCard.toFixed(2));
       }
     } else {
       // Reset to current/new session state
-      setFloatAmount(parseFloat(localStorage.getItem("currentFloat") || "100.00")); // Or default
-      setSystemCash(MOCK_SYSTEM_CASH); // Reset to mock or fetch new data
+      const lastFloat = parseFloat(localStorage.getItem("cashUpFloat") || "100.00");
+      setFloatAmount(lastFloat);
+      setFloatInputValue(lastFloat.toFixed(2));
+      setSystemCash(MOCK_SYSTEM_CASH); 
       setSystemCard(MOCK_SYSTEM_CARD);
       setActualCash(0);
       setActualCard(0);
-      setFloatInputValue(floatAmount.toFixed(2));
       setCashEntryInputValue("0.00");
+      setCardEntryInputValue("0.00");
     }
   };
+
+  useEffect(() => {
+    const currentFloat = parseFloat(localStorage.getItem("cashUpFloat") || "100.00");
+    setFloatAmount(currentFloat);
+    setFloatInputValue(currentFloat.toFixed(2));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("cashUpFloat", floatAmount.toString());
+  }, [floatAmount]);
   
   const renderVariance = (variance: number) => {
     const isPositive = variance >= 0;
@@ -161,6 +192,15 @@ export function CashUpManagementTab() {
         title="Enter Actual Cash Counted"
         numericOnly={true}
       />
+      <AlphanumericKeypadModal
+        isOpen={isCardEntryModalOpen}
+        onOpenChange={setIsCardEntryModalOpen}
+        inputValue={cardEntryInputValue}
+        onInputChange={setCardEntryInputValue}
+        onConfirm={handleEnterActualCard}
+        title="Enter Actual Card Total"
+        numericOnly={true}
+      />
 
       <Card>
         <CardHeader>
@@ -170,7 +210,12 @@ export function CashUpManagementTab() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="current-float" className="text-lg">Current Float: <span className="font-bold text-primary">${floatAmount.toFixed(2)}</span></Label>
-            <Button onClick={() => { setFloatInputValue(floatAmount.toFixed(2)); setIsFloatModalOpen(true); }} variant="outline" size="sm">
+            <Button 
+              onClick={() => { setFloatInputValue(floatAmount.toFixed(2)); setIsFloatModalOpen(true); }} 
+              variant="outline" 
+              size="sm"
+              disabled={!!selectedCashUpId}
+            >
               <Edit3 className="mr-2 h-4 w-4"/> Set / Adjust Float
             </Button>
           </div>
@@ -191,7 +236,11 @@ export function CashUpManagementTab() {
               <Label>Actual Cash Counted:</Label>
               <span className="font-mono text-lg font-semibold text-blue-600">${actualCash.toFixed(2)}</span>
             </div>
-             <Button onClick={() => {setCashEntryInputValue(actualCash > 0 ? actualCash.toFixed(2) : ""); setIsCashEntryModalOpen(true);}} className="w-full">
+             <Button 
+                onClick={() => {setCashEntryInputValue(actualCash > 0 ? actualCash.toFixed(2) : ""); setIsCashEntryModalOpen(true);}} 
+                className="w-full"
+                disabled={!!selectedCashUpId}
+            >
               <Edit3 className="mr-2 h-4 w-4" /> Enter Actual Cash
             </Button>
             <div className="flex justify-between items-center border-t pt-3 mt-3">
@@ -210,17 +259,26 @@ export function CashUpManagementTab() {
               <Label>System Expected Card Payments:</Label>
               <span className="font-mono">${systemCard.toFixed(2)}</span>
             </div>
-            <div>
-              <Label htmlFor="actual-card" className="block mb-1">Actual Card Payments (from Terminal):</Label>
-              <Input
-                id="actual-card"
-                type="number"
-                step="0.01"
-                value={actualCard === 0 && !selectedCashUpId ? '' : actualCard.toFixed(2)}
-                onChange={(e) => setActualCard(parseFloat(e.target.value) || 0)}
-                placeholder="Enter total from card terminal"
-                disabled={!!selectedCashUpId}
-              />
+            <div className="flex justify-between items-center">
+              <Label>Actual Card Payments (from Terminal):</Label>
+              <span className="font-mono text-lg font-semibold text-blue-600">${actualCard.toFixed(2)}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+                <Button 
+                    onClick={() => {setCardEntryInputValue(actualCard > 0 ? actualCard.toFixed(2) : ""); setIsCardEntryModalOpen(true);}} 
+                    className="w-full"
+                    disabled={!!selectedCashUpId}
+                >
+                    <Edit3 className="mr-2 h-4 w-4" /> Enter Card Total
+                </Button>
+                <Button 
+                    onClick={handleEnterExactCard} 
+                    variant="outline" 
+                    className="w-full"
+                    disabled={!!selectedCashUpId}
+                >
+                    <CheckSquare className="mr-2 h-4 w-4" /> Enter Exact
+                </Button>
             </div>
             <div className="flex justify-between items-center border-t pt-3 mt-3">
               <Label>Card Variance:</Label>
@@ -244,14 +302,14 @@ export function CashUpManagementTab() {
       <Card>
         <CardHeader>
           <CardTitle>Cash Up History</CardTitle>
-          <CardDescription>Review past cash up sessions. (Stored in browser, will clear on refresh for this demo)</CardDescription>
+          <CardDescription>Review past cash up sessions. (Stored in browser)</CardDescription>
         </CardHeader>
         <CardContent>
           {cashUpHistory.length === 0 ? (
             <p className="text-muted-foreground">No cash up history found.</p>
           ) : (
             <Select onValueChange={(value) => loadSessionDetails(value)} value={selectedCashUpId || ""}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full mb-4">
                 <SelectValue placeholder="Select a past cash up session to view" />
               </SelectTrigger>
               <SelectContent>
@@ -264,15 +322,21 @@ export function CashUpManagementTab() {
             </Select>
           )}
            {selectedCashUpId && cashUpHistory.find(s => s.id === selectedCashUpId) && (
-            <div className="mt-4 p-4 border rounded-md bg-muted/50">
-                <h4 className="font-semibold mb-2">Details for session: {format(new Date(cashUpHistory.find(s => s.id === selectedCashUpId)!.timestamp), "PPP p")}</h4>
-                <p>Float: ${cashUpHistory.find(s => s.id === selectedCashUpId)!.floatAmount.toFixed(2)}</p>
-                <p>System Cash (incl. float): ${ (cashUpHistory.find(s => s.id === selectedCashUpId)!.systemCash + cashUpHistory.find(s => s.id === selectedCashUpId)!.floatAmount).toFixed(2)}</p>
-                <p>Actual Cash: ${cashUpHistory.find(s => s.id === selectedCashUpId)!.actualCash.toFixed(2)}</p>
-                <p>Cash Variance: {renderVariance(cashUpHistory.find(s => s.id === selectedCashUpId)!.cashVariance)}</p>
-                <p>System Card: ${cashUpHistory.find(s => s.id === selectedCashUpId)!.systemCard.toFixed(2)}</p>
-                <p>Actual Card: ${cashUpHistory.find(s => s.id === selectedCashUpId)!.actualCard.toFixed(2)}</p>
-                <p>Card Variance: {renderVariance(cashUpHistory.find(s => s.id === selectedCashUpId)!.cardVariance)}</p>
+            <div className="mt-4 p-4 border rounded-md bg-muted/50 space-y-1 text-sm">
+                <h4 className="font-semibold mb-2 text-md">Details for session: {format(new Date(cashUpHistory.find(s => s.id === selectedCashUpId)!.timestamp), "PPP p")}</h4>
+                <div className="flex justify-between"><span>Finalized By:</span> <span>{cashUpHistory.find(s => s.id === selectedCashUpId)!.finalizedBy}</span></div>
+                <div className="font-medium pt-2">Float:</div>
+                <div className="flex justify-between"><span>Opening Float:</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.floatAmount.toFixed(2)}</span></div>
+                
+                <div className="font-medium pt-2">Cash:</div>
+                <div className="flex justify-between"><span>System Expected (Net):</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.systemCash.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>Actual Counted:</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.actualCash.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>Variance:</span> {renderVariance(cashUpHistory.find(s => s.id === selectedCashUpId)!.cashVariance)}</div>
+
+                <div className="font-medium pt-2">Card:</div>
+                <div className="flex justify-between"><span>System Expected:</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.systemCard.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>Actual from Terminal:</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.actualCard.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>Variance:</span> {renderVariance(cashUpHistory.find(s => s.id === selectedCashUpId)!.cardVariance)}</div>
             </div>
            )}
         </CardContent>
@@ -280,3 +344,6 @@ export function CashUpManagementTab() {
     </div>
   );
 }
+
+
+    
