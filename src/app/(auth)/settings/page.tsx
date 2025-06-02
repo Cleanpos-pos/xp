@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription, // Now imported
-  FormItem,       // Now imported
-  FormLabel,      // Now imported
+  FormDescription,
+  FormItem,
+  FormLabel,
   FormMessage,
+  FormField, // Added FormField to imports
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription as UiCardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +33,7 @@ import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
 
 // Renaming RHF components for clarity to avoid conflict with generic HTML/div elements
 // when not using RHF for a specific section (like Regional Settings)
-const RHFFormItem = FormItem; 
+const RHFFormItem = FormItem;
 const RHFFormLabel = FormLabel;
 const RHFFormDescription = FormDescription;
 
@@ -133,26 +134,26 @@ export default function SettingsPage() {
 
       <Tabs defaultValue="staffManagement" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-          <TabsTrigger 
-            value="staffManagement" 
+          <TabsTrigger
+            value="staffManagement"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
             Staff Management
           </TabsTrigger>
-          <TabsTrigger 
-            value="itemCatalog" 
+          <TabsTrigger
+            value="itemCatalog"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
             Service &amp; Item Catalog
           </TabsTrigger>
-          <TabsTrigger 
-            value="cashUp" 
+          <TabsTrigger
+            value="cashUp"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
             Cash Up
           </TabsTrigger>
-          <TabsTrigger 
-            value="regionalSettings" 
+          <TabsTrigger
+            value="regionalSettings"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
             Regional
@@ -274,7 +275,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="cashUp" className="mt-6">
           <Card className="shadow-xl">
             <CardHeader>
@@ -347,3 +348,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
