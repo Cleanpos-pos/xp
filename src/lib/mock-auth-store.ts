@@ -83,13 +83,13 @@ export async function getAllStaff(): Promise<StaffCredentials[]> {
   }
   return ((data || []) as StaffCredentials[]).map(s => ({
       ...s,
-      enable_quick_login: s.enable_quick_login ?? false,
-      is_active: s.is_active ?? true
+      enable_quick_login: s.enable_quick_login ?? false, // Ensure boolean
+      is_active: s.is_active ?? true // Ensure boolean, default active
   }));
 }
 
 export async function updateStaffQuickLoginStatus(login_id_input: string, enable: boolean): Promise<boolean> {
-  console.log(`[updateStaffQuickLoginStatus] Attempting to update login_id: '${login_id_input}' to enable_quick_login: ${enable}`);
+  console.log(`[updateStaffQuickLoginStatus] Attempting to update login_id: '${login_id_input}' (type: ${typeof login_id_input}) to enable_quick_login: ${enable}`);
   const { error, count } = await supabase
     .from('staff')
     .update({ enable_quick_login: enable })
@@ -104,7 +104,7 @@ export async function updateStaffQuickLoginStatus(login_id_input: string, enable
 }
 
 export async function updateStaffActiveStatus(login_id_input: string, is_active: boolean): Promise<boolean> {
-  console.log(`[updateStaffActiveStatus] Attempting to update login_id: '${login_id_input}' to is_active: ${is_active}`);
+  console.log(`[updateStaffActiveStatus] Attempting to update login_id: '${login_id_input}' (type: ${typeof login_id_input}) to is_active: ${is_active}`);
   const { error, count } = await supabase
     .from('staff')
     .update({ is_active: is_active })
@@ -132,8 +132,8 @@ export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
   }
   return ((data || []) as StaffCredentials[]).map(s => ({
       ...s,
-      enable_quick_login: s.enable_quick_login ?? false,
-      is_active: s.is_active ?? true
+      enable_quick_login: s.enable_quick_login ?? false, // Ensure boolean
+      is_active: s.is_active ?? true // Ensure boolean
   }));
 }
 
