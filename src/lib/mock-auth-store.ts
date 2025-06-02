@@ -39,7 +39,7 @@ export async function addStaff(staffData: Omit<StaffCredentials, 'id' | 'created
 export async function findStaff(login_id_input: string, password_input?: string): Promise<StaffCredentials | undefined> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*, role, is_active') // Ensure role and is_active are selected
+    .select('*') // Simplified select
     .eq('login_id', login_id_input)
     .single();
 
@@ -59,17 +59,14 @@ export async function findStaff(login_id_input: string, password_input?: string)
     console.warn("SECURITY WARNING: Plain text password comparison.");
     return undefined;
   }
-  // Do not return staffMember if not active, login action will handle message
-  // if (staffMember.is_active === false) {
-  //   return undefined; // Or throw a specific error/status
-  // }
+  // is_active check is handled in loginAction
   return staffMember;
 }
 
 export async function getAllStaff(): Promise<StaffCredentials[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*, role, is_active'); // Ensure role and is_active are selected
+    .select('*'); // Simplified select to fetch all columns
 
   if (error) {
     console.error("Error fetching all staff from Supabase:", error);
@@ -111,7 +108,7 @@ export async function updateStaffActiveStatus(login_id_input: string, is_active:
 export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*, role, is_active') // Ensure role and is_active are selected
+    .select('*') // Simplified select
     .eq('enable_quick_login', true)
     .eq('is_active', true); // Only fetch active staff for quick login
 
