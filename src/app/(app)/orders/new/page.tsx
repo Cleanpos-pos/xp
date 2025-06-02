@@ -30,7 +30,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { format, addDays } from "date-fns";
+import { format, addDays, isToday, isTomorrow, getDay } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-modal";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,21 @@ interface ServicesByCategory {
 type OrderCreationStage = "form" | "paymentOptions";
 type PaymentStep = "selectAction" | "enterPaymentDetails";
 type PaymentMethod = "Cash" | "Card" | "On Account" | null;
+
+// Helper function to get the next occurrence of a weekday
+// targetDay: 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+const getNextOccurrenceOfWeekday = (targetDay: number, startDate: Date = new Date()): Date => {
+  const currentDate = new Date(startDate);
+  currentDate.setHours(0, 0, 0, 0); // Start from beginning of the day
+  const currentDay = getDay(currentDate); // Sunday is 0, Monday is 1, etc.
+  let daysToAdd = (targetDay - currentDay + 7) % 7;
+  // If targetDay is today and we want "next" (inclusive of today), and it's not already past,
+  // daysToAdd might be 0. If we always want a future date, adjust logic.
+  // For this use case, if targetDay is today, we want today.
+  const resultDate = addDays(currentDate, daysToAdd);
+  return resultDate;
+};
+
 
 export default function NewOrderPage() {
   const { toast } = useToast();
@@ -282,7 +297,6 @@ export default function NewOrderPage() {
     if (result.success && result.orderId) {
       toast({ title: "Order Created (Pay Later)", description: result.message });
       resetFormAndStage();
-      // Navigate to order details page, appending isExpress status for potential styling
       router.push(`/orders/${result.orderId}${isExpressOrder ? '?express=true' : ''}`);
     } else {
       toast({
@@ -326,7 +340,6 @@ export default function NewOrderPage() {
     setPrintType(selectedType);
     setShowPrintDialog(false);
     if (createdOrderDetails) {
-      // Include express status in query params for order details page
       const queryParams = `?autoprint=true&printType=${selectedType}${createdOrderDetails.isExpress ? '&express=true' : ''}`;
       router.push(`/orders/${createdOrderDetails.id}${queryParams}`);
       resetFormAndStage();
@@ -372,22 +385,31 @@ export default function NewOrderPage() {
     }
   }, [selectedPaymentMethod, setIsKeypadOpen]);
 
-  const setDueDateToday = () => {
-    form.setValue('dueDate', new Date(), { shouldValidate: true });
-    setIsExpressOrder(true);
-  };
-
-  const setDueDateTomorrow = () => {
-    form.setValue('dueDate', addDays(new Date(), 1), { shouldValidate: true });
-    setIsExpressOrder(true);
+  const handleDueDateButtonClick = (date: Date) => {
+    form.setValue('dueDate', date, { shouldValidate: true });
+    if (isToday(date) || isTomorrow(date)) {
+      setIsExpressOrder(true);
+    } else {
+      setIsExpressOrder(false);
+    }
   };
 
   const handleManualDateSelect = (date: Date | undefined) => {
     form.setValue('dueDate', date, { shouldValidate: true });
-    setIsExpressOrder(false); // Manual selection, not express by default
+    if (date && (isToday(date) || isTomorrow(date))) {
+      setIsExpressOrder(true);
+    } else {
+      setIsExpressOrder(false);
+    }
+  };
+  
+  const clearDueDate = () => {
+    form.setValue('dueDate', undefined, { shouldValidate: true });
+    setIsExpressOrder(false);
   };
   
   const watchedDueDate = form.watch("dueDate");
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 
   const renderOrderFormCard = () => (
@@ -477,21 +499,32 @@ export default function NewOrderPage() {
                 <FormLabel>Due Date (Optional)</FormLabel>
                 {isExpressOrder && <Badge variant="destructive" className="text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
               </div>
-              <div className="flex gap-2 items-center">
+              <div className="mt-1 grid grid-cols-4 gap-2">
+                <Button type="button" className="h-9 px-3 bg-red-600 hover:bg-red-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(new Date())}>Today</Button>
+                <Button type="button" className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(addDays(new Date(), 1))}>Tomorrow</Button>
+                {weekdays.map((day, index) => (
+                  <Button
+                    key={day}
+                    type="button"
+                    variant="default"
+                    className="h-9 px-3"
+                    onClick={() => handleDueDateButtonClick(getNextOccurrenceOfWeekday(index))}
+                  >
+                    {day}
+                  </Button>
+                ))}
+                 <Button type="button" variant="outline" size="sm" onClick={clearDueDate} className="h-9 px-2 text-xs col-span-1 self-center">Clear</Button>
+              </div>
+               <div className="mt-2 flex gap-2 items-center">
                 <Popover><PopoverTrigger asChild><FormControl>
                   <Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>
-                    {watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick a date</span>}
+                    {watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick specific date</span>}
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button></FormControl></PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar mode="single" selected={watchedDueDate ? new Date(watchedDueDate) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/>
                   </PopoverContent>
                 </Popover>
-                <Button type="button" variant="outline" size="sm" onClick={() => {form.setValue('dueDate', undefined); setIsExpressOrder(false);}} className="h-9 px-2 text-xs">Clear</Button>
-              </div>
-              <div className="flex gap-2 mt-1">
-                <Button type="button" variant="secondary" size="xs" className="text-xs h-7 px-2" onClick={setDueDateToday}>Today</Button>
-                <Button type="button" variant="secondary" size="xs" className="text-xs h-7 px-2" onClick={setDueDateTomorrow}>Tomorrow</Button>
               </div>
               <FormMessage />
             </FormItem>
