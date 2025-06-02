@@ -128,10 +128,10 @@ export default function SettingsPage() {
 
       <Tabs defaultValue="staffManagement" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-          <TabsTrigger value="staffManagement">Staff Management</TabsTrigger>
-          <TabsTrigger value="itemCatalog">Service &amp; Item Catalog</TabsTrigger>
-          <TabsTrigger value="cashUp">Cash Up</TabsTrigger>
-          <TabsTrigger value="regionalSettings">Regional</TabsTrigger>
+          <TabsTrigger value="staffManagement" className="data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">Staff Management</TabsTrigger>
+          <TabsTrigger value="itemCatalog" className="data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">Service &amp; Item Catalog</TabsTrigger>
+          <TabsTrigger value="cashUp" className="data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">Cash Up</TabsTrigger>
+          <TabsTrigger value="regionalSettings" className="data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">Regional</TabsTrigger>
         </TabsList>
 
         <TabsContent value="staffManagement" className="mt-6 space-y-8">
@@ -265,7 +265,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="regionalSettings" className="mt-6">
-          <Card className="shadow-xl">
+         <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex items-center">
                 <Globe className="mr-2 h-6 w-6" /> Regional Settings
