@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 type SearchType = "customer" | "order";
 
@@ -159,8 +160,22 @@ export default function FindCustomerOrOrderPage() {
         <CardContent className="space-y-6">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as SearchType)} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="customer"><Users className="mr-2 h-4 w-4" />Find Customer</TabsTrigger>
-              <TabsTrigger value="order"><Ticket className="mr-2 h-4 w-4" />Find Order/Ticket</TabsTrigger>
+              <TabsTrigger
+                value="customer"
+                className={cn(
+                  "data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:hover:bg-blue-100"
+                )}
+              >
+                <Users className="mr-2 h-4 w-4" />Find Customer
+              </TabsTrigger>
+              <TabsTrigger
+                value="order"
+                className={cn(
+                  "data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=inactive]:hover:bg-green-100"
+                )}
+              >
+                <Ticket className="mr-2 h-4 w-4" />Find Order/Ticket
+              </TabsTrigger>
             </TabsList>
 
             <div className="mt-6 mb-2 flex items-center space-x-2">
@@ -227,7 +242,7 @@ export default function FindCustomerOrOrderPage() {
               <div className="pt-6 border-t">
                 <p className="text-sm text-muted-foreground mb-3 text-center">Can't find the customer or need to add a new one?</p>
                 <Link href="/customers/new" passHref className="w-full">
-                  <Button variant="secondary" className="w-full">
+                  <Button className="w-full bg-purple-500 hover:bg-purple-600 text-white">
                     <UserPlus className="mr-2 h-5 w-5" /> Add New Customer
                   </Button>
                 </Link>
