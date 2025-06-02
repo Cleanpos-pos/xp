@@ -2,6 +2,7 @@
 import type { Order, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus, CatalogEntry, CatalogHierarchyNode, CatalogEntryType } from '@/types';
 import type { CreateCustomerInput } from '@/app/(app)/customers/new/customer.schema';
 import { supabase } from './supabase';
+import { format } from 'date-fns';
 
 
 // Define types for our global stores for mock data (non-customer, non-staff, non-catalog)
@@ -12,12 +13,22 @@ declare global {
   var mockInventoryStore: InventoryItem[] | undefined;
 }
 
-const generateOrderNumber = (index: number) => `XP-${String(1000 + index).padStart(6, '0')}`;
+const generateOrderNumber = (index: number, date: Date = new Date()): string => {
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // getMonth() is 0-indexed
+  const baseId = String(1000 + index).padStart(6, '0');
+  return `${month}-XP-${baseId}`;
+};
+
+// Create dates for different months for mock data
+const dateOneMonthAgo = new Date();
+dateOneMonthAgo.setMonth(dateOneMonthAgo.getMonth() - 1);
+const dateTwoMonthsAgo = new Date();
+dateTwoMonthsAgo.setMonth(dateTwoMonthsAgo.getMonth() - 2);
 
 const initialOrders: Order[] = [
   {
     id: 'order1',
-    orderNumber: generateOrderNumber(1),
+    orderNumber: generateOrderNumber(1, new Date()), // Current month
     customerId: 'cust1',
     customerName: 'John Doe',
     items: [
@@ -33,7 +44,7 @@ const initialOrders: Order[] = [
   },
   {
     id: 'order2',
-    orderNumber: generateOrderNumber(2),
+    orderNumber: generateOrderNumber(2, dateOneMonthAgo), // Last month
     customerId: 'cust2',
     customerName: 'Jane Smith',
     items: [
@@ -42,13 +53,13 @@ const initialOrders: Order[] = [
     totalAmount: 18.00,
     status: 'Cleaning' as OrderStatus,
     paymentStatus: 'Unpaid' as PaymentStatus,
-    created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
-    updated_at: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+    created_at: new Date(dateOneMonthAgo.setDate(dateOneMonthAgo.getDate() - 5)).toISOString(),
+    updated_at: new Date(dateOneMonthAgo.setDate(dateOneMonthAgo.getDate() - 2)).toISOString(),
+    dueDate: new Date(dateOneMonthAgo.setDate(dateOneMonthAgo.getDate() + 1)).toISOString(),
   },
   {
     id: 'order3',
-    orderNumber: generateOrderNumber(3),
+    orderNumber: generateOrderNumber(3, dateTwoMonthsAgo), // Two months ago
     customerId: 'cust1', // Another order for John Doe
     customerName: 'John Doe',
     items: [
@@ -57,9 +68,9 @@ const initialOrders: Order[] = [
     totalAmount: 14.00,
     status: 'Received' as OrderStatus,
     paymentStatus: 'Unpaid' as PaymentStatus,
-    created_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-    updated_at: new Date(new Date().setDate(new Date().getDate() - 0)).toISOString(),
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 4)).toISOString(),
+    created_at: new Date(dateTwoMonthsAgo.setDate(dateTwoMonthsAgo.getDate() - 1)).toISOString(),
+    updated_at: new Date(dateTwoMonthsAgo.setDate(dateTwoMonthsAgo.getDate() - 0)).toISOString(),
+    dueDate: new Date(dateTwoMonthsAgo.setDate(dateTwoMonthsAgo.getDate() + 4)).toISOString(),
   },
 ];
 
@@ -336,3 +347,4 @@ export function getServiceById(id:string): ServiceItem | undefined {
   return undefined; 
 }
 
+export { generateOrderNumber };

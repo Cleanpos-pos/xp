@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, ListChecks, Users, ShoppingBag } from "lucide-react";
+import { DollarSign, ListChecks, Users, ShoppingBag, Briefcase, BarChart3 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -12,12 +12,18 @@ export default function DashboardPage() {
     { title: "Items Processed Today", value: "112", icon: ShoppingBag, description: "Includes 80 garments", color: "text-indigo-500" },
   ];
 
+  const todayTakings = {
+    cash: 750.50,
+    card: 500.25,
+    total: 1250.75
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold font-headline">Dashboard</h1>
-        <Link href="/orders/new">
-          <Button>New Order</Button>
+        <Link href="/find-or-add-customer">
+          <Button>New Order / Find</Button>
         </Link>
       </div>
       
@@ -36,34 +42,64 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="shadow-md">
+      <div className="grid gap-6 md:grid-cols-3"> {/* Changed to md:grid-cols-3 */}
+        <Card className="shadow-md md:col-span-1"> {/* Recent Orders takes 1 column */}
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
             <CardDescription>A quick look at the latest orders.</CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Placeholder for recent orders list */}
             <ul className="space-y-2">
-              <li className="flex justify-between items-center p-2 rounded-md hover:bg-muted"><span>Order #XP-001023 - John Doe</span><span className="text-sm text-green-500">Ready</span></li>
-              <li className="flex justify-between items-center p-2 rounded-md hover:bg-muted"><span>Order #XP-001022 - Jane Smith</span><span className="text-sm text-yellow-500">Cleaning</span></li>
-              <li className="flex justify-between items-center p-2 rounded-md hover:bg-muted"><span>Order #XP-001021 - Alice Brown</span><span className="text-sm text-gray-500">Completed</span></li>
+              <li className="flex justify-between items-center p-2 rounded-md hover:bg-muted"><span>Order #06-XP-001023 - John Doe</span><span className="text-sm text-green-500">Ready</span></li>
+              <li className="flex justify-between items-center p-2 rounded-md hover:bg-muted"><span>Order #06-XP-001022 - Jane Smith</span><span className="text-sm text-yellow-500">Cleaning</span></li>
+              <li className="flex justify-between items-center p-2 rounded-md hover:bg-muted"><span>Order #05-XP-001021 - Alice Brown</span><span className="text-sm text-gray-500">Completed</span></li>
             </ul>
             <Link href="/orders" className="mt-4 inline-block">
               <Button variant="outline" size="sm">View All Orders</Button>
             </Link>
           </CardContent>
         </Card>
-        <Card className="shadow-md">
+
+        <Card className="shadow-md md:col-span-1"> {/* Today's Takings takes 1 column */}
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <BarChart3 className="mr-2 h-5 w-5 text-primary" /> Today's Takings
+            </CardTitle>
+            <CardDescription>Summary of sales for the current day.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Cash Sales:</span>
+              <span className="font-semibold">${todayTakings.cash.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Card Sales:</span>
+              <span className="font-semibold">${todayTakings.card.toFixed(2)}</span>
+            </div>
+            <div className="border-t my-2"></div>
+            <div className="flex justify-between items-center text-lg">
+              <span className="font-medium">Total Sales:</span>
+              <span className="font-bold text-primary">${todayTakings.total.toFixed(2)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground pt-2">Note: This is a static display. Real data would be fetched dynamically.</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-md md:col-span-1"> {/* Quick Actions takes 1 column */}
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
             <CardDescription>Commonly used functions.</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
-            <Link href="/orders/new"><Button className="w-full" variant="secondary">Create New Order</Button></Link>
-            <Link href="/customers/new"><Button className="w-full" variant="secondary">Add New Customer</Button></Link>
+            <Link href="/find-or-add-customer"><Button className="w-full" variant="secondary">New Order / Find</Button></Link>
+            <Link href="/customers/new"><Button className="w-full" variant="secondary">Add Customer</Button></Link>
             <Link href="/reports"><Button className="w-full" variant="secondary">View Reports</Button></Link>
             <Link href="/services"><Button className="w-full" variant="secondary">Manage Services</Button></Link>
+            <Link href="/settings" className="col-span-2">
+              <Button className="w-full" variant="outline">
+                <Briefcase className="mr-2 h-4 w-4" /> Cash Up EOD / Settings
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       </div>
