@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription as UiCardDescription, CardHeader, Ca
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { StaffCredentials } from "@/lib/mock-auth-store";
@@ -27,6 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
 
@@ -35,6 +36,11 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [staffList, setStaffList] = React.useState<StaffCredentials[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = React.useState(true);
+
+  // State for regional settings (UI only)
+  const [selectedCurrency, setSelectedCurrency] = React.useState<string>("USD");
+  const [selectedLanguage, setSelectedLanguage] = React.useState<string>("en");
+
 
   const fetchStaff = React.useCallback(async () => {
     setIsLoadingStaff(true);
@@ -97,6 +103,15 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSaveRegionalSettings = () => {
+    // In a real app, you would dispatch an action here to save to backend.
+    // For now, just show a toast.
+    toast({
+      title: "Preferences (Mock) Saved",
+      description: `Currency: ${selectedCurrency}, Language: ${selectedLanguage}. Full implementation requires backend integration.`,
+    });
+  };
+
   return (
     <div className="w-full max-w-4xl space-y-8">
       <div className="flex items-center justify-between">
@@ -104,7 +119,7 @@ export default function SettingsPage() {
           <Cog className="h-8 w-8" />
           <h1 className="text-3xl font-bold font-headline">Settings</h1>
         </div>
-        <Link href="/dashboard" passHref> {/* Changed from / to /dashboard */}
+        <Link href="/dashboard" passHref>
             <Button variant="outline" size="sm">
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
             </Button>
@@ -112,10 +127,11 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="staffManagement" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
           <TabsTrigger value="staffManagement">Staff Management</TabsTrigger>
           <TabsTrigger value="itemCatalog">Service &amp; Item Catalog</TabsTrigger>
           <TabsTrigger value="cashUp">Cash Up</TabsTrigger>
+          <TabsTrigger value="regionalSettings">Regional</TabsTrigger>
         </TabsList>
 
         <TabsContent value="staffManagement" className="mt-6 space-y-8">
@@ -244,6 +260,64 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <CashUpManagementTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="regionalSettings" className="mt-6">
+          <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl flex items-center">
+                <Globe className="mr-2 h-6 w-6" /> Regional Settings
+              </CardTitle>
+              <UiCardDescription>Manage system currency and language preferences. (UI Placeholders)</UiCardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FormItem>
+                <FormLabel className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-muted-foreground" /> System Currency</FormLabel>
+                <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="USD">USD - US Dollar</SelectItem>
+                    <SelectItem value="EUR">EUR - Euro</SelectItem>
+                    <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                    <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                    <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Select the primary currency for transactions and reporting.
+                </FormDescription>
+              </FormItem>
+
+              <FormItem>
+                <FormLabel className="flex items-center"><Globe className="mr-2 h-4 w-4 text-muted-foreground" /> Language</FormLabel>
+                <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="en">English</SelectItem>
+                    <SelectItem value="es">Español (Spanish)</SelectItem>
+                    <SelectItem value="fr">Français (French)</SelectItem>
+                    <SelectItem value="de">Deutsch (German)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Select the display language for the application interface.
+                </FormDescription>
+              </FormItem>
+
+              <Button onClick={handleSaveRegionalSettings}>Save Regional Preferences</Button>
+               <p className="text-xs text-muted-foreground pt-4">
+                Note: These settings are currently UI placeholders. Full currency and language switching requires backend and internationalization (i18n) integration throughout the application.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
