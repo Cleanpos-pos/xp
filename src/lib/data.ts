@@ -434,23 +434,22 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
     name: entry.name,
     parent_id: entry.parent_id,
     type: entry.type,
-    price: entry.type === 'item' ? entry.price : null,
     description: entry.description,
     sort_order: sort_order,
   };
 
   if (entry.type === 'item') {
-    if (typeof entry.has_color_identifier === 'boolean') {
-      entryToInsert.has_color_identifier = entry.has_color_identifier;
-    }
+    entryToInsert.has_color_identifier = entry.has_color_identifier; // Should be boolean (true/false) from action
+    entryToInsert.price = entry.price ?? 0;
   }
+  // If type is 'category', has_color_identifier is NOT added to entryToInsert
+  // (because entry.has_color_identifier was undefined from action), relying on DB default.
 
-
-  console.log("[addCatalogEntry] Attempting to insert into Supabase catalog_entries:", JSON.stringify(entryToInsert, null, 2));
+  console.log("[addCatalogEntry] Object being inserted into Supabase:", JSON.stringify(entryToInsert, null, 2));
 
   const { data, error } = await supabase
     .from('catalog_entries')
-    .insert(entryToInsert)
+    .insert(entryToInsert) 
     .select('*') 
     .single();
 
@@ -617,3 +616,4 @@ export function getServiceById(id:string): ServiceItem | undefined {
 }
 
 export { generateOrderNumber };
+
