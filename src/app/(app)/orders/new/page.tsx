@@ -67,16 +67,16 @@ export default function NewOrderPage() {
     },
   });
 
-  // Effect to fetch ALL customers if no specific customerId is in query
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
-    if (!customerIdFromQuery) { // Only load all if no specific customer is specified
+    if (!customerIdFromQuery) { 
       console.log('[NewOrderPage] No customerIdFromQuery, fetching all customers.');
       setIsLoadingAllCustomers(true);
       getCustomers()
         .then(data => {
           setAllCustomers(data);
-          console.log('[NewOrderPage] Successfully fetched all customers:', data.length);
+          console.log('[NewOrderPage] Successfully fetched all customers. Count:', data.length);
+          console.log('[NewOrderPage] All customer IDs fetched:', data.map(c => `ID: '${c.id}' (length ${c.id.length}) Name: ${c.name}`));
         })
         .catch(err => {
           console.error("[NewOrderPage] Failed to fetch customers:", err);
@@ -84,40 +84,38 @@ export default function NewOrderPage() {
         })
         .finally(() => setIsLoadingAllCustomers(false));
     } else {
-      setAllCustomers([]); // Clear all customers list if a specific one is being loaded
+      setAllCustomers([]); 
       setIsLoadingAllCustomers(false); 
     }
   }, [searchParams, toast]);
 
 
-  // Effect to fetch SPECIFIC customer if customerId is in query
   React.useEffect(() => {
     const customerIdFromQueryRaw = searchParams.get('customerId');
-    console.log('[NewOrderPage] Raw customerIdFromQuery from URL:', customerIdFromQueryRaw);
-
+    
     if (customerIdFromQueryRaw) {
       const customerIdFromQuery = customerIdFromQueryRaw.trim();
-      console.log('[NewOrderPage] useEffect for specific customer. Trimmed customerIdFromQuery:', customerIdFromQuery);
+      console.log('[NewOrderPage] useEffect for specific customer. Raw customerIdFromQuery from URL:', customerIdFromQueryRaw);
+      console.log(`[NewOrderPage] Trimmed customerIdFromQuery for Supabase: '${customerIdFromQuery}' (length ${customerIdFromQuery.length})`);
       
       setIsLoadingSpecificCustomer(true);
-      setSelectedCustomerName(null); // Clear previous name while loading
-      form.setValue('customerId', ''); // Clear previous form value
+      setSelectedCustomerName(null); 
+      form.setValue('customerId', ''); 
 
       getCustomerById(customerIdFromQuery)
         .then(customer => {
-          console.log('[NewOrderPage] getCustomerById returned:', customer);
+          console.log('[NewOrderPage] getCustomerById promise resolved. Customer data received:', JSON.stringify(customer));
           if (customer) {
+            console.log(`[NewOrderPage] Customer FOUND by ID from URL: Name: ${customer.name}, ID: '${customer.id}' (length ${customer.id.length})`);
             form.setValue('customerId', customer.id, { shouldValidate: true });
             setSelectedCustomerName(customer.name);
           } else {
-             // Customer not found or RLS filtered, but no outright error thrown by getCustomerById
-            const specificId = customerIdFromQueryRaw?.trim();
-            console.warn(`[NewOrderPage] Customer with ID '${specificId}' not found or access denied by RLS. getCustomerById returned no data.`);
+            console.warn(`[NewOrderPage] Customer NOT FOUND by ID from URL: '${customerIdFromQuery}'. getCustomerById returned null/undefined.`);
             toast({
-              title: "Customer Not Found by ID",
-              description: `Customer with ID '${specificId}' could not be loaded. They may not exist or access is restricted. Check server logs from 'getCustomerById'. Please select manually.`,
+              title: "Customer Not Loaded by ID",
+              description: `Could not load customer with ID '${customerIdFromQuery}'. They may not exist or access is restricted. Please select manually. Check server logs from 'getCustomerById'.`,
               variant: "warning",
-              duration: 10000
+              duration: 15000 
             });
             form.setValue('customerId', ''); 
             setSelectedCustomerName(null);
@@ -127,9 +125,9 @@ export default function NewOrderPage() {
           console.error("[NewOrderPage] Error fetching pre-selected customer by ID from URL:", err);
           toast({
             title: "Error Loading Customer by ID",
-            description: `Could not load details for the pre-selected customer. Error: ${err.message || 'Unknown error'}. Please check server logs for more details from 'getCustomerById' and try selecting manually.`,
+            description: `Could not load details for the pre-selected customer (ID: '${customerIdFromQuery}'). Error: ${err.message || 'Unknown error'}. Please check server logs for more details from 'getCustomerById' and try selecting manually.`,
             variant: "destructive",
-            duration: 10000
+            duration: 15000
           });
           form.setValue('customerId', '');
           setSelectedCustomerName(null);
@@ -139,55 +137,32 @@ export default function NewOrderPage() {
           console.log('[NewOrderPage] Finished specific customer fetch. isLoadingSpecificCustomer:', false);
         });
     } else {
-      // No customerId in query, ensure specific customer loading is false
-      // and potentially clear if a customer was previously selected from URL but URL changed.
-       const currentFormCustomerId = form.getValues('customerId');
-       if (currentFormCustomerId && !isLoadingSpecificCustomer && !allCustomers.find(c => c.id === currentFormCustomerId) ) { 
-         // If there's a customerId in form but no longer in URL, and it wasn't from allCustomers list (e.g. from a previous URL)
-         // This condition might be too aggressive, consider if a manual selection should persist if URL is cleared.
-         // For now, if URL is source of truth, clearing is okay.
-         // console.log('[NewOrderPage] No customerIdFromQuery, clearing existing form value:', currentFormCustomerId);
-         // form.setValue('customerId', ''); // This might clear a manual selection if user navigates away and back
-         // setSelectedCustomerName(null);
-       }
        setIsLoadingSpecificCustomer(false); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, toast]); // form removed to prevent re-runs on form state changes if not necessary for this effect
+  }, [searchParams, toast]); 
 
   const watchedCustomerId = form.watch("customerId");
 
-  // Effect to update selectedCustomerName when watchedCustomerId changes (manual selection from dropdown)
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId')?.trim();
     
-    // This effect handles manual selections or when form.customerId is programmatically set
-    // and should not conflict with the specific customer loading effect.
     if (!isLoadingSpecificCustomer && watchedCustomerId) {
       if (customerIdFromQuery && watchedCustomerId === customerIdFromQuery) {
-        // This ID was set by the URL loading effect, selectedCustomerName should already be correct or null if failed.
-        // No action needed here, rely on the specific customer loading effect.
+        // ID set by URL loading effect, name should be correct or null if failed.
       } else {
-         // Manually selected a different customer from dropdown, or form.customerId was set by other means
         const customer = allCustomers.find(c => c.id === watchedCustomerId);
         if (customer) {
           setSelectedCustomerName(customer.name);
-        } else if (allCustomers.length > 0 || !isLoadingAllCustomers) {
-          // If list is loaded and customer not found (e.g. bad ID), or list is empty.
-          // Only clear selectedCustomerName if it wasn't already being handled by specific customer load
-          // and if the current watchedCustomerId doesn't match a loaded customer from URL.
-          if (!selectedCustomerName && watchedCustomerId) { 
-             //setSelectedCustomerName(null); // Avoid clearing if specific load is in progress or just set it
-          }
+        } else if (!isLoadingAllCustomers && allCustomers.length > 0 && !selectedCustomerName) {
+            // setSelectedCustomerName(null); // This might be too aggressive if a specific load is pending for a different ID
         }
       }
     } else if (!watchedCustomerId && !isLoadingSpecificCustomer && !searchParams.get('customerId')) { 
-      // No form ID, not loading specific, and no customerId in URL (e.g. initial load or cleared selection)
       setSelectedCustomerName(null);
     }
   }, [watchedCustomerId, allCustomers, searchParams, isLoadingAllCustomers, isLoadingSpecificCustomer, selectedCustomerName]);
 
-  // Fetch services
   React.useEffect(() => {
     async function fetchServices() {
       setIsLoadingServices(true);
@@ -287,8 +262,6 @@ export default function NewOrderPage() {
     setCreatedOrderDetails(null);
     setSelectedCustomerName(null);
     
-    // Re-fetch all customers if no specific customer ID was in the original searchParams
-    // This ensures the dropdown is populated for a truly "new" order scenario.
     if (!searchParams.get('customerId')) { 
         setIsLoadingAllCustomers(true);
         getCustomers().then(data => {
@@ -397,13 +370,16 @@ export default function NewOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Customer</FormLabel>
-                      {isLoadingAllCustomers && !customerIdFromQuery && !selectedCustomerName ? ( // Show skeleton only when loading all customers and no specific one is being/has been processed
+                      {isLoadingAllCustomers && !customerIdFromQuery && !selectedCustomerName ? ( 
                         <Skeleton className="h-10 w-full" />
                       ) : (
                       <Select
                         onValueChange={(value) => {
+                           const selectedCust = allCustomers.find(c => c.id === value);
+                           if (selectedCust) {
+                             console.log(`[NewOrderPage] Customer selected from dropdown: ID: '${selectedCust.id}' (length ${selectedCust.id.length}), Name: ${selectedCust.name}`);
+                           }
                            field.onChange(value);
-                           // selectedCustomerName will be updated by the watch effect
                         }}
                         value={field.value}
                         disabled={!!customerIdFromQuery || isLoadingAllCustomers || isLoadingSpecificCustomer}
@@ -427,13 +403,13 @@ export default function NewOrderPage() {
                       <FormDescription>
                          {isLoadingSpecificCustomer
                            ? 'Loading pre-selected customer details...'
-                           : customerIdFromQuery && !selectedCustomerName && !isLoadingSpecificCustomer // Attempted to load query ID, failed, and not currently loading
+                           : customerIdFromQuery && !selectedCustomerName && !isLoadingSpecificCustomer 
                            ? `Failed to load customer (ID: ${customerIdFromQuery}). Select manually or go back.`
-                           : customerIdFromQuery && selectedCustomerName // Successfully loaded query ID
+                           : customerIdFromQuery && selectedCustomerName 
                            ? `Selected: ${selectedCustomerName}. To change, go back and re-select.`
-                           : isLoadingAllCustomers && !field.value && !selectedCustomerName // Loading list for dropdown, and no customer selected yet
+                           : isLoadingAllCustomers && !field.value && !selectedCustomerName 
                            ? 'Loading customer list...'
-                           : !watchedCustomerId && !customerIdFromQuery // No selection yet, list might be loaded or not, no URL customer
+                           : !watchedCustomerId && !customerIdFromQuery 
                            ? 'Select a customer for this order.'
                            : ''}
                       </FormDescription>

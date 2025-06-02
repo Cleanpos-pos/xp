@@ -70,8 +70,12 @@ export async function getCustomers(): Promise<Customer[]> {
 }
 
 export async function getCustomerById(id: string): Promise<Customer | undefined> {
-  const trimmedId = id.trim(); // Ensure no leading/trailing whitespace
-  console.log(`[getCustomerById] Fetching customer by ID from Supabase: '${trimmedId}'`);
+  if (typeof id !== 'string') {
+    console.error(`[getCustomerById] Received non-string ID: ${id} (type: ${typeof id}). Aborting fetch.`);
+    return undefined;
+  }
+  const trimmedId = id.trim(); 
+  console.log(`[getCustomerById] Attempting to fetch customer by ID from Supabase. Trimmed ID: '${trimmedId}' (length ${trimmedId.length})`);
 
   const { data: { session } } = await supabase.auth.getSession();
   console.log('[getCustomerById] Current Supabase auth session:', session ? `User: ${session.user.id}` : 'No session');
@@ -79,7 +83,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
   const { data, error } = await supabase
     .from('customers')
     .select('*')
-    .eq('id', trimmedId) // Use trimmedId
+    .eq('id', trimmedId) 
     .single();
 
   if (error) {
@@ -92,11 +96,11 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
   }
 
   if (!data) {
-    console.warn(`[getCustomerById] Customer with ID '${trimmedId}' not found in Supabase (no data returned).`);
+    console.warn(`[getCustomerById] Customer with ID '${trimmedId}' not found in Supabase (no data returned, but no explicit 'PGRST116' error).`);
     return undefined;
   }
 
-  console.log(`[getCustomerById] Successfully fetched customer:`, data.name);
+  console.log(`[getCustomerById] Successfully fetched customer from Supabase: Name: ${data.name}, ID: ${data.id}`);
   return {
     ...data,
     created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
