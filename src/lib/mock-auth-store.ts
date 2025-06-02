@@ -1,5 +1,6 @@
 
 import { supabase } from './supabase';
+import type { UserRole } from '@/types'; // Import UserRole
 
 // NOTE ON PASSWORD SECURITY:
 // In a real production application, passwords should NEVER be stored in plain text.
@@ -15,6 +16,7 @@ export interface StaffCredentials {
   hashed_password?: string; // Represents the password field for now (plain text)
   password?: string; // Used for input, will be stored in hashed_password
   enable_quick_login?: boolean; // Changed from enableQuickLogin
+  role: UserRole; // Added user role
   created_at?: string;
   updated_at?: string;
 }
@@ -29,6 +31,7 @@ export async function addStaff(staffData: Omit<StaffCredentials, 'id' | 'created
       login_id: staffData.login_id,
       hashed_password: staffData.password, // Storing plain text password directly!
       enable_quick_login: staffData.enable_quick_login ?? false,
+      role: staffData.role ?? 'clerk', // Add role, default to 'clerk' if not provided
     })
     .select()
     .single();
@@ -46,7 +49,7 @@ export async function addStaff(staffData: Omit<StaffCredentials, 'id' | 'created
 export async function findStaff(login_id_input: string, password_input?: string): Promise<StaffCredentials | undefined> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*')
+    .select('*, role') // Ensure role is selected
     .eq('login_id', login_id_input)
     .single();
 
@@ -72,7 +75,7 @@ export async function findStaff(login_id_input: string, password_input?: string)
 export async function getAllStaff(): Promise<StaffCredentials[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*');
+    .select('*, role'); // Ensure role is selected
 
   if (error) {
     console.error("Error fetching all staff from Supabase:", error);
@@ -97,7 +100,7 @@ export async function updateStaffQuickLoginStatus(login_id_input: string, enable
 export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*')
+    .select('*, role') // Ensure role is selected
     .eq('enable_quick_login', true);
 
   if (error) {

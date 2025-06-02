@@ -1,4 +1,6 @@
 
+export type UserRole = 'clerk' | 'admin' | 'super_admin';
+
 export type Customer = {
   id: string; // Supabase will typically generate this as UUID
   name: string;
@@ -108,3 +110,16 @@ export type CashUpSession = {
   finalizedBy: string; // Placeholder for staff who did it
 };
 
+// This type is primarily used in mock-auth-store and settings related to staff
+// It's partially duplicated here for wider use, can be consolidated later if needed.
+export interface StaffCredentials {
+  id?: string; // Supabase UUID
+  name: string;
+  login_id: string;
+  hashed_password?: string;
+  password?: string; // For input
+  enable_quick_login?: boolean;
+  role: UserRole; // Added user role
+  created_at?: string;
+  updated_at?: string;
+}

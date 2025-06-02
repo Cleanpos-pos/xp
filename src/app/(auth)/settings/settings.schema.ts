@@ -1,10 +1,14 @@
 
 import { z } from "zod";
+import type { UserRole } from "@/types";
 
 export const AddStaffSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   loginId: z.string().min(3, "Login ID must be at least 3 characters"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.enum(["clerk", "admin", "super_admin"], {
+    required_error: "Role is required",
+  }) satisfies z.ZodType<UserRole>,
 });
 
 export type AddStaffInput = z.infer<typeof AddStaffSchema>;

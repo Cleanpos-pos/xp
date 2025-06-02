@@ -11,31 +11,81 @@ import {
   FormDescription,
   FormItem,
   FormLabel,
+  FormField,
   FormMessage,
-  FormField, // Added FormField to imports
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription as UiCardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react"; // Added UserCog & Shield icons
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import type { StaffCredentials } from "@/lib/mock-auth-store";
+import type { StaffCredentials, UserRole } from "@/types"; // Import UserRole from @/types
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label"; // Generic Label
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
+import { Badge } from "@/components/ui/badge"; // Import Badge
 
-// Renaming RHF components for clarity to avoid conflict with generic HTML/div elements
-// when not using RHF for a specific section (like Regional Settings)
 const RHFFormItem = FormItem;
 const RHFFormLabel = FormLabel;
 const RHFFormDescription = FormDescription;
+
+const userRoles: UserRole[] = ["clerk", "admin", "super_admin"];
+
+const rolePermissions = {
+  clerk: {
+    name: "Clerk",
+    can: [
+      "Create & Manage Orders",
+      "Track Order Statuses",
+      "View Customer List & Basic Details",
+      "Perform Daily Cash Up Procedures",
+      "Process Payments",
+    ],
+    cannot: [
+      "Access System Settings (Staff, Catalog, Regional)",
+      "Change Service Prices or Item Catalog",
+      "Add, Edit, or Delete Staff Accounts",
+      "View Full Financial Reports or Detailed Analytics",
+      "Override standard pricing or apply non-approved discounts",
+    ],
+  },
+  admin: {
+    name: "Admin",
+    can: [
+      "All Clerk permissions",
+      "Manage Service & Item Catalog (Add, Edit, Price Changes)",
+      "Add, Edit Staff Accounts (Clerks & other Admins)",
+      "Manage Inventory & Supplies",
+      "View Detailed Reports & Analytics",
+      "Apply Approved Discounts & Promotions",
+      "Manage Customer Loyalty Tiers & Price Bands",
+    ],
+    cannot: [
+      "Manage Super Admin accounts",
+      "Change certain core system configurations (e.g., Regional Settings, if restricted)",
+      "Access highly sensitive system logs or direct database manipulation (typically)",
+    ],
+  },
+  super_admin: {
+    name: "Super Admin",
+    can: [
+      "All Admin permissions",
+      "Full system access, including all Settings",
+      "Manage all Staff Accounts (including Admins and Super Admins)",
+      "Configure Regional Settings (Currency, Language)",
+      "Oversee system-wide configurations & security",
+      "Access audit logs and advanced system diagnostics",
+    ],
+    cannot: [], // Typically no restrictions
+  },
+};
 
 
 export default function SettingsPage() {
@@ -43,7 +93,6 @@ export default function SettingsPage() {
   const [staffList, setStaffList] = React.useState<StaffCredentials[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = React.useState(true);
 
-  // State for regional settings (UI only)
   const [selectedCurrency, setSelectedCurrency] = React.useState<string>("USD");
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("en");
 
@@ -70,6 +119,7 @@ export default function SettingsPage() {
       name: "",
       loginId: "",
       password: "",
+      role: "clerk", // Default role
     },
   });
 
@@ -86,7 +136,8 @@ export default function SettingsPage() {
       if (result.errors?.name) form.setError("name", { message: result.errors.name.join(', ') });
       if (result.errors?.loginId) form.setError("loginId", { message: result.errors.loginId.join(', ') });
       if (result.errors?.password) form.setError("password", { message: result.errors.password.join(', ') });
-
+      if (result.errors?.role) form.setError("role", { message: result.errors.role.join(', ') });
+      
       toast({
         title: "Error",
         description: result.message || "Failed to add staff. Please check the form.",
@@ -110,12 +161,19 @@ export default function SettingsPage() {
   };
 
   const handleSaveRegionalSettings = () => {
-    // In a real app, you would dispatch an action here to save to backend.
-    // For now, just show a toast.
     toast({
       title: "Preferences (Mock) Saved",
       description: `Currency: ${selectedCurrency}, Language: ${selectedLanguage}. Full implementation requires backend integration.`,
     });
+  };
+
+  const getRoleBadgeVariant = (role: UserRole): "default" | "secondary" | "destructive" | "outline" => {
+    switch (role) {
+      case "super_admin": return "destructive";
+      case "admin": return "default";
+      case "clerk":
+      default: return "secondary";
+    }
   };
 
   return (
@@ -133,18 +191,24 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="staffManagement" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
           <TabsTrigger
             value="staffManagement"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
-            Staff Management
+            Staff
+          </TabsTrigger>
+           <TabsTrigger
+            value="rolesPermissions"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+          >
+            Roles & Permissions
           </TabsTrigger>
           <TabsTrigger
             value="itemCatalog"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
-            Service &amp; Item Catalog
+            Catalog
           </TabsTrigger>
           <TabsTrigger
             value="cashUp"
@@ -166,7 +230,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <Users className="mr-2 h-6 w-6" /> Add New Staff
               </CardTitle>
-              <UiCardDescription>Add new staff members to the system (uses Supabase).</UiCardDescription>
+              <UiCardDescription>Add new staff members to the system (uses Supabase). Ensure you have added a 'role' column to your 'staff' table in Supabase.</UiCardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -184,19 +248,45 @@ export default function SettingsPage() {
                       </RHFFormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="loginId"
-                    render={({ field }) => (
-                      <RHFFormItem>
-                        <RHFFormLabel>Login ID</RHFFormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., STAFF002" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </RHFFormItem>
-                    )}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="loginId"
+                      render={({ field }) => (
+                        <RHFFormItem>
+                          <RHFFormLabel>Login ID</RHFFormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., STAFF002" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </RHFFormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="role"
+                      render={({ field }) => (
+                        <RHFFormItem>
+                          <RHFFormLabel>Role</RHFFormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a role" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {userRoles.map((role) => (
+                                <SelectItem key={role} value={role} className="capitalize">
+                                  {role.replace('_', ' ')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </RHFFormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
                     name="password"
@@ -224,22 +314,25 @@ export default function SettingsPage() {
           <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex items-center">
-                <KeyRound className="mr-2 h-6 w-6" /> Manage Staff Quick Login
+                <KeyRound className="mr-2 h-6 w-6" /> Manage Staff Quick Login & Roles
               </CardTitle>
-              <UiCardDescription>Enable or disable quick login for staff members (uses Supabase).</UiCardDescription>
+              <UiCardDescription>View staff roles and enable or disable quick login (uses Supabase).</UiCardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingStaff ? (
                 <div className="space-y-4">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
                 </div>
               ) : staffList.length > 0 ? (
                 <ul className="space-y-4">
                   {staffList.map((staff) => (
                     <li key={staff.login_id} className="flex items-center justify-between p-3 border rounded-md bg-background shadow-sm">
-                      <div>
+                      <div className="flex flex-col">
                         <p className="font-medium">{staff.name}</p>
                         <p className="text-sm text-muted-foreground">ID: {staff.login_id}</p>
+                         <Badge variant={getRoleBadgeVariant(staff.role || 'clerk')} className="w-fit mt-1 capitalize">
+                          {staff.role ? staff.role.replace('_', ' ') : 'Clerk'}
+                        </Badge>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Switch
@@ -249,7 +342,7 @@ export default function SettingsPage() {
                           aria-label={`Enable quick login for ${staff.name}`}
                         />
                         <Label htmlFor={`quick-login-${staff.login_id}`} className="text-sm">
-                          Enable Quick Login
+                          Quick Login
                         </Label>
                       </div>
                     </li>
@@ -262,6 +355,58 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="rolesPermissions" className="mt-6 space-y-6">
+          <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl flex items-center">
+                <UserCog className="mr-2 h-6 w-6" /> User Roles & Permissions Overview
+              </CardTitle>
+              <UiCardDescription>This section outlines the capabilities of different user roles. Actual enforcement of these permissions requires further development.</UiCardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {(Object.keys(rolePermissions) as UserRole[]).map((roleKey) => {
+                const roleInfo = rolePermissions[roleKey];
+                let IconComponent = ShieldQuestion;
+                if (roleKey === 'clerk') IconComponent = ShieldAlert;
+                if (roleKey === 'admin') IconComponent = ShieldCheck;
+                if (roleKey === 'super_admin') IconComponent = UserCog; // Or a more distinct "super" icon
+                
+                return (
+                  <Card key={roleKey} className="bg-muted/30">
+                    <CardHeader>
+                      <CardTitle className="text-xl font-semibold flex items-center capitalize">
+                        <IconComponent className="mr-2 h-5 w-5 text-primary" />
+                        {roleInfo.name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <h4 className="font-medium mb-1 text-green-600">Can Do:</h4>
+                        <ul className="list-disc list-inside space-y-0.5">
+                          {roleInfo.can.map((perm, i) => <li key={`can-${i}`}>{perm}</li>)}
+                        </ul>
+                      </div>
+                      {roleInfo.cannot.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-1 text-red-600">Cannot Do:</h4>
+                          <ul className="list-disc list-inside space-y-0.5">
+                            {roleInfo.cannot.map((perm, i) => <li key={`cannot-${i}`}>{perm}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </CardContent>
+             <CardFooter>
+              <UiCardDescription className="text-xs">
+                Note: Assigning roles is now possible when adding staff. However, the actual restriction of access based on these roles (e.g., hiding buttons, preventing actions) is not yet implemented in this prototype and would require further development across the application.
+              </UiCardDescription>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+        
         <TabsContent value="itemCatalog" className="mt-6">
           <Card className="shadow-xl">
             <CardHeader>
@@ -348,5 +493,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
