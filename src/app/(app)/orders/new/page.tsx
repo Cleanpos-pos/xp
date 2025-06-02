@@ -108,8 +108,8 @@ export default function NewOrderPage() {
   React.useEffect(() => {
     if (customerIdFromQuery) {
       setIsLoadingSpecificCustomer(true);
-      setSelectedCustomerName(null); 
-      form.setValue('customerId', ''); 
+      setSelectedCustomerName(null);
+      form.setValue('customerId', '');
 
       getCustomerById(customerIdFromQuery)
         .then(customer => {
@@ -123,7 +123,7 @@ export default function NewOrderPage() {
               variant: "warning",
               duration: 15000
             });
-            form.setValue('customerId', ''); 
+            form.setValue('customerId', '');
             setSelectedCustomerName(null);
           }
         })
@@ -140,7 +140,7 @@ export default function NewOrderPage() {
         })
         .finally(() => setIsLoadingSpecificCustomer(false));
     } else {
-      setIsLoadingSpecificCustomer(false); 
+      setIsLoadingSpecificCustomer(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerIdFromQuery, toast]);
@@ -154,24 +154,26 @@ export default function NewOrderPage() {
 
     if (watchedCustomerId) {
       if (customerIdFromQuery && watchedCustomerId === customerIdFromQuery) {
+        // If it's the pre-selected customer, their name should already be set or is being set by the effect above.
+        // If allCustomers has data (e.g. from a previous non-ID load), we can try to find name, but prioritize specific load.
         if (!selectedCustomerName && allCustomers.length > 0) {
            const customer = allCustomers.find(c => c.id === watchedCustomerId);
            if (customer) setSelectedCustomerName(customer.name);
         }
-      } else { 
+      } else { // Customer selected manually from dropdown
         const customer = allCustomers.find(c => c.id === watchedCustomerId);
         if (customer) {
           setSelectedCustomerName(customer.name);
-        } else if (!customerIdFromQuery) { 
+        } else if (!customerIdFromQuery) { // Only clear if no customerId was from query (avoid race with specific load)
           setSelectedCustomerName(null);
         }
       }
-    } else {
-      if (!customerIdFromQuery) {
+    } else { // No customerId watched (e.g. form reset or initial state without query)
+      if (!customerIdFromQuery) { // Don't clear if a query ID is present and specific load might be pending
         setSelectedCustomerName(null);
       }
     }
-  }, [watchedCustomerId, allCustomers, customerIdFromQuery, isLoadingAllCustomers, isLoadingSpecificCustomer, searchParams]);
+  }, [watchedCustomerId, allCustomers, customerIdFromQuery, isLoadingAllCustomers, isLoadingSpecificCustomer, selectedCustomerName]);
 
 
   React.useEffect(() => {
@@ -220,7 +222,7 @@ export default function NewOrderPage() {
     form.reset({ customerId: "", items: [], dueDate: undefined, notes: "" });
     setStage("form");
     setCreatedOrderDetails(null);
-    setSelectedCustomerName(null);
+    // setSelectedCustomerName(null); // Keep if customerIdFromQuery is present
     setActivePaymentStep("selectAction");
     setAmountTendered("");
     setSelectedPaymentMethod(null);
@@ -230,10 +232,14 @@ export default function NewOrderPage() {
     setPrintType(null);
 
     if (!searchParams.get('customerId')) {
+        setSelectedCustomerName(null); // Clear name only if not from query
         setIsLoadingAllCustomers(true);
         getCustomers().then(data => setAllCustomers(data))
         .catch(() => {})
         .finally(() => setIsLoadingAllCustomers(false));
+    } else {
+      // If customerIdFromQuery exists, the effect for loading specific customer will run
+      // and potentially re-set selectedCustomerName
     }
   }, [form, searchParams]);
 
@@ -243,8 +249,8 @@ export default function NewOrderPage() {
       toast({ title: "Order Created", description: result.message });
       setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created!", totalAmount: orderTotal });
       setStage("paymentOptions");
-      setActivePaymentStep("selectAction"); 
-      setAmountTendered(orderTotal.toFixed(2)); 
+      setActivePaymentStep("selectAction");
+      setAmountTendered(orderTotal.toFixed(2));
       setSelectedPaymentMethod(null);
       setPaymentNote("");
     } else {
@@ -271,9 +277,8 @@ export default function NewOrderPage() {
     const result = await createOrderAction(data);
     if (result.success && result.orderId) {
       toast({ title: "Order Created (Pay Later)", description: result.message });
-      // router.push(`/orders/${result.orderId}`); // Deferred to after print dialog handling
       resetFormAndStage();
-      router.push('/find-or-add-customer'); // Or to order details if preferred
+      router.push('/find-or-add-customer'); 
     } else {
       toast({
         title: "Error Creating Order",
@@ -307,8 +312,7 @@ export default function NewOrderPage() {
     }
 
     toast({ title: "Payment Processed (Mocked)", description: paymentDetailsMessage });
-    // Instead of navigating and resetting, show print dialog
-    setPrintType(null); // Reset print type before showing dialog
+    setPrintType(null); 
     setShowPrintDialog(true);
   };
 
@@ -339,16 +343,22 @@ export default function NewOrderPage() {
     setAmountTendered(value);
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue < 0) {
-        setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00"); 
+        setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00");
         toast({title: "Invalid Amount", description: "Please enter a valid numeric amount.", variant: "destructive"});
     }
   };
-  
+
   const handlePayOnAccount = () => {
     setSelectedPaymentMethod("On Account");
-    setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00"); 
+    setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00");
     setPaymentNote(`Order total of $${createdOrderDetails?.totalAmount.toFixed(2)} will be charged to customer account.`);
   };
+
+  const handleOpenAmountKeypad = React.useCallback(() => {
+    if (selectedPaymentMethod !== "On Account") {
+      setIsKeypadOpen(true);
+    }
+  }, [selectedPaymentMethod, setIsKeypadOpen]);
 
 
   const renderOrderFormCard = () => (
@@ -367,7 +377,6 @@ export default function NewOrderPage() {
               name="customerId"
               render={({ field }) => (
                 <FormItem>
-                  { /* Using div instead of FormLabel to avoid useFormContext error here */ }
                   <div className="text-sm font-medium mb-1">Customer</div>
                   {(isLoadingAllCustomers && !customerIdFromQuery && !selectedCustomerName && !field.value) || (isLoadingSpecificCustomer && !selectedCustomerName && customerIdFromQuery) ? (
                     <Skeleton className="h-10 w-full" />
@@ -513,10 +522,10 @@ export default function NewOrderPage() {
             <div className="space-y-4">
               <div>
                 <div className="text-sm font-medium mb-1">Amount Tendered</div>
-                <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setIsKeypadOpen(true)}>
+                <div className="flex items-center space-x-2 cursor-pointer" onClick={handleOpenAmountKeypad}>
                     <Input
-                        id="amountTendered"
-                        type="text" 
+                        id="amountTenderedInput"
+                        type="text"
                         value={selectedPaymentMethod === "On Account" ? numericTotalAmount.toFixed(2) : amountTendered}
                         readOnly
                         placeholder="Tap to enter amount"
@@ -581,15 +590,15 @@ export default function NewOrderPage() {
       <AlphanumericKeypadModal
         isOpen={isKeypadOpen}
         onOpenChange={setIsKeypadOpen}
-        inputValue={amountTendered} 
-        onInputChange={setAmountTendered} 
-        onConfirm={handleAmountKeypadConfirm} 
+        inputValue={amountTendered}
+        onInputChange={setAmountTendered}
+        onConfirm={handleAmountKeypadConfirm}
         title="Enter Amount Tendered"
       />
       {createdOrderDetails && (
         <Dialog open={showPrintDialog} onOpenChange={(isOpen) => {
             setShowPrintDialog(isOpen);
-            if (!isOpen && !printType && createdOrderDetails) { // Dialog closed without a print choice
+            if (!isOpen && !printType && createdOrderDetails) { 
               router.push(`/orders/${createdOrderDetails.id}`);
               resetFormAndStage();
             }
@@ -661,5 +670,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
-    
