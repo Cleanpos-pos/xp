@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormItem as RHFFormItem, // Renamed to avoid conflict
-  FormLabel as RHFFormLabel, // Renamed to avoid conflict
+  FormItem as RHFFormItem, 
+  FormLabel as RHFFormLabel, 
   FormMessage,
-  FormField, // Added FormField to the import
+  FormField, 
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -268,56 +268,60 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="staffManagement" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8">
-          <TabsTrigger
-            value="staffManagement"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-          >
-            Staff
-          </TabsTrigger>
-           <TabsTrigger
-            value="rolesPermissions"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-          >
-            Roles &amp; Permissions
-          </TabsTrigger>
-          <TabsTrigger
-            value="customerManagement"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-          >
-            <Contact className="mr-1.5 h-4 w-4" />Customers
-          </TabsTrigger>
-          <TabsTrigger
-            value="itemCatalog"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-          >
-            Catalog
-          </TabsTrigger>
-           <TabsTrigger
-            value="specialOffers"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-          >
-             <Percent className="mr-1.5 h-4 w-4" /> Offers
-          </TabsTrigger>
-          <TabsTrigger
-            value="cashUp"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-          >
-            Cash Up
-          </TabsTrigger>
-          <TabsTrigger
-            value="printerSetup"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-          >
-            Printers
-          </TabsTrigger>
-          <TabsTrigger
-            value="companyRegional"
-            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-          >
-            Company
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex flex-col gap-2">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2">
+            <TabsTrigger
+              value="staffManagement"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+            >
+              Staff
+            </TabsTrigger>
+            <TabsTrigger
+              value="rolesPermissions"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+            >
+              Roles &amp; Permissions
+            </TabsTrigger>
+            <TabsTrigger
+              value="customerManagement"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+            >
+              <Contact className="mr-1.5 h-4 w-4" />Customers
+            </TabsTrigger>
+            <TabsTrigger
+              value="itemCatalog"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+            >
+              Catalog
+            </TabsTrigger>
+          </TabsList>
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2">
+            <TabsTrigger
+              value="specialOffers"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+            >
+              <Percent className="mr-1.5 h-4 w-4" /> Offers
+            </TabsTrigger>
+            <TabsTrigger
+              value="cashUp"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+            >
+              Cash Up
+            </TabsTrigger>
+            <TabsTrigger
+              value="printerSetup"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+            >
+              Printers
+            </TabsTrigger>
+            <TabsTrigger
+              value="companyRegional"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+            >
+              Company
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="staffManagement" className="mt-6 space-y-8">
           <Card className="shadow-xl">
@@ -832,7 +836,7 @@ export default function SettingsPage() {
                     <ImageUp className="mr-2 h-4 w-4" /> Upload / Change Logo
                   </Button>
                 </div>
-                <p className={cn("text-sm text-muted-foreground", "text-xs")}>
+                <p className={cn("text-muted-foreground", "text-xs")}>
                   Placeholder for logo upload. Actual file upload requires backend integration.
                 </p>
               </div>
