@@ -11,6 +11,7 @@ import {
   FormItem as RHFFormItem, // Renamed to avoid conflict
   FormLabel as RHFFormLabel, // Renamed to avoid conflict
   FormMessage,
+  FormField, // Added FormField to the import
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,11 +19,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription }
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact } from "lucide-react"; // Added Contact
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact } from "lucide-react";
 import Link from 'next/link';
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
-import type { StaffCredentials, UserRole } from "@/types"; 
+import type { StaffCredentials, UserRole } from "@/types";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,14 +31,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
-import { CustomerManagementTab } from "@/components/settings/customer-management-tab"; // Added
+import { CustomerManagementTab } from "@/components/settings/customer-management-tab";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-const FormLabel = RHFFormLabel; 
+const FormLabel = RHFFormLabel;
 const FormItem = RHFFormItem;
 
 
@@ -88,7 +89,7 @@ const rolePermissions = {
       "Oversee system-wide configurations & security",
       "Access audit logs and advanced system diagnostics",
     ],
-    cannot: [], 
+    cannot: [],
   },
 };
 
@@ -169,7 +170,7 @@ export default function SettingsPage() {
       name: "",
       loginId: "",
       password: "",
-      role: "clerk", 
+      role: "clerk",
     },
   });
 
@@ -187,7 +188,7 @@ export default function SettingsPage() {
       if (result.errors?.loginId && Array.isArray(result.errors.loginId)) form.setError("loginId", { message: result.errors.loginId.join(', ') });
       if (result.errors?.password && Array.isArray(result.errors.password)) form.setError("password", { message: result.errors.password.join(', ') });
       if (result.errors?.role && Array.isArray(result.errors.role)) form.setError("role", { message: result.errors.role.join(', ') });
-      
+
       toast({
         title: "Error",
         description: result.message || "Failed to add staff. Please check the form.",
@@ -216,7 +217,7 @@ export default function SettingsPage() {
       description: `Company: ${companyName}, Address: ${companyAddress}, Phone: ${companyPhone}, Logo URL (mock): ${companyLogoUrl}, Currency: ${selectedCurrency}, Language: ${selectedLanguage}, VAT ID: ${vatTaxId}, VAT Rate: ${vatSalesTaxRate}%, VAT Included: ${includeVatInPrices}. Full implementation requires backend.`,
     });
   };
-  
+
   const handleSavePrinterSettings = () => {
     toast({
       title: "Printer Settings (Mock) Saved",
@@ -242,7 +243,7 @@ export default function SettingsPage() {
       default: return "secondary";
     }
   };
-  
+
   const handleLogoUploadPlaceholder = () => {
     toast({
       title: "Logo Upload (Placeholder)",
@@ -464,7 +465,7 @@ export default function SettingsPage() {
                 if (roleKey === 'clerk') IconComponent = ShieldAlert;
                 if (roleKey === 'admin') IconComponent = ShieldCheck;
                 if (roleKey === 'super_admin') IconComponent = UserCog;
-                
+
                 return (
                   <Card key={roleKey} className="bg-muted/30">
                     <CardHeader>
@@ -514,7 +515,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="itemCatalog" className="mt-6">
           <Card className="shadow-xl">
             <CardHeader>
@@ -528,7 +529,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="specialOffers" className="mt-6 space-y-6">
           <Card className="shadow-xl">
             <CardHeader>
@@ -780,7 +781,7 @@ export default function SettingsPage() {
                   </Select>
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="receipt-header">Receipt Header Text</Label>
                 <Textarea id="receipt-header" value={receiptHeader} onChange={(e) => setReceiptHeader(e.target.value)} placeholder="e.g., Your Company Name - Address - Phone" className="mt-1" rows={2}/>
