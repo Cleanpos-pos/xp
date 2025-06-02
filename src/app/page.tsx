@@ -84,7 +84,7 @@ export default function RootLoginPage() {
         title: "Login Successful",
         description: result.message,
       });
-      router.push("/dashboard"); // Redirect to dashboard
+      router.push("/find-or-add-customer"); // Redirect to find-or-add-customer page
     } else {
       if (result.errors) {
         if (result.errors.employeeId) form.setError("employeeId", { message: result.errors.employeeId.join(', ') });

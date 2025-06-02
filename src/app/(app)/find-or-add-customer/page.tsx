@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getCustomers, searchOrdersLocal, getOrdersByCustomerIdLocal } from '@/lib/data';
 import type { Customer, Order } from '@/types';
-import { Search, UserPlus, ArrowRight, Users, Ticket, Eye, ShoppingCart, UserCircle } from 'lucide-react';
+import { Search, UserPlus, ArrowRight, Users, Ticket, Eye, ShoppingCart, UserCircle, LayoutDashboard } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -338,9 +338,14 @@ export default function FindCustomerOrOrderPage() {
             </TabsContent>
           </Tabs>
         </CardContent>
+        <CardFooter className="flex justify-center pt-4 border-t">
+          <Link href="/dashboard" passHref>
+            <Button variant="outline">
+              <LayoutDashboard className="mr-2 h-4 w-4" /> Go to Dashboard
+            </Button>
+          </Link>
+        </CardFooter>
       </Card>
     </div>
   );
 }
-
-    
