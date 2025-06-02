@@ -24,7 +24,7 @@ import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer, Zap } from "lucide-react";
+import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer, Zap, ListPlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,6 +51,13 @@ const getNextOccurrenceOfWeekday = (targetDay: number, startDate: Date = new Dat
   currentDate.setHours(0, 0, 0, 0); // Start from beginning of the day
   const currentDay = getDay(currentDate); // Sunday is 0, Monday is 1, etc.
   let daysToAdd = (targetDay - currentDay + 7) % 7;
+  if (daysToAdd === 0 && !isToday(startDate) && currentDay === targetDay) { // If it's today and target is today, use today. Otherwise, next week.
+     // Exception: if start date is already the target day but not today, we want next week's target day
+     // No, if targetDay is today, and startDate is today, daysToAdd is 0.
+     // If targetDay is e.g. Monday, and today is Monday, it should be today.
+     // If targetDay is e.g. Monday, and today is Tuesday, it should be next Monday.
+     // This seems correct. If daysToAdd is 0, it means currentDay is targetDay.
+  }
   const resultDate = addDays(currentDate, daysToAdd);
   return resultDate;
 };
@@ -75,6 +82,8 @@ export default function NewOrderPage() {
   const [isLoadingServices, setIsLoadingServices] = React.useState(true);
   const [servicesByCategory, setServicesByCategory] = React.useState<ServicesByCategory>({});
   const [serviceCategoryNames, setServiceCategoryNames] = React.useState<string[]>([]);
+  const [isServiceSelectionActive, setIsServiceSelectionActive] = React.useState(true);
+
 
   // Payment related states
   const [activePaymentStep, setActivePaymentStep] = React.useState<PaymentStep>("selectAction");
@@ -230,6 +239,10 @@ export default function NewOrderPage() {
     } else {
       append({ serviceItemId: service.id, serviceName: service.name, unitPrice: service.price, quantity: 1, notes: "" });
     }
+    // After adding or updating, if there are items, minimize the service selection
+    if (form.getValues("items").length > 0) {
+      setIsServiceSelectionActive(false);
+    }
   };
 
   const watchedItems = form.watch("items");
@@ -248,6 +261,8 @@ export default function NewOrderPage() {
     setPrintType(null);
     setIsExpressOrder(false);
     setIsDatePickerOpen(false);
+    setIsServiceSelectionActive(true);
+
 
     if (!searchParams.get('customerId')) {
         setSelectedCustomerName(null); 
@@ -741,28 +756,36 @@ export default function NewOrderPage() {
             <CardDescription>Choose a category, then click a service to add it to the order.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingServices ? (
-              <div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
-            ) : serviceCategoryNames.length > 0 ? (
-              <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">
-                  {serviceCategoryNames.map((category) => (<TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">{category}</TabsTrigger>))}
-                </TabsList>
-                {serviceCategoryNames.map((category) => (
-                  <TabsContent key={category} value={category}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
-                      {servicesByCategory[category]?.map((service) => (
-                        <Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}>
-                          <span className="font-medium text-sm">{service.name}</span>
-                          <span className="text-xs text-primary">${service.price.toFixed(2)}</span>
-                        </Button>
-                      ))}
-                    </div>
-                  </TabsContent>
-                ))}
-              </Tabs>
+            {isServiceSelectionActive ? (
+              <>
+                {isLoadingServices ? (
+                  <div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
+                ) : serviceCategoryNames.length > 0 ? (
+                  <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">
+                      {serviceCategoryNames.map((category) => (<TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">{category}</TabsTrigger>))}
+                    </TabsList>
+                    {serviceCategoryNames.map((category) => (
+                      <TabsContent key={category} value={category}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
+                          {servicesByCategory[category]?.map((service) => (
+                            <Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}>
+                              <span className="font-medium text-sm">{service.name}</span>
+                              <span className="text-xs text-primary">${service.price.toFixed(2)}</span>
+                            </Button>
+                          ))}
+                        </div>
+                      </TabsContent>
+                    ))}
+                  </Tabs>
+                ) : (
+                  <p>No services available. Add items to your catalog in Settings.</p>
+                )}
+              </>
             ) : (
-              <p>No services available. Add items to your catalog in Settings.</p>
+              <Button onClick={() => setIsServiceSelectionActive(true)} className="w-full" variant="outline" size="lg">
+                <ListPlus className="mr-2 h-5 w-5" /> Add / Modify Services
+              </Button>
             )}
           </CardContent>
         </Card>
