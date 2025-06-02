@@ -76,13 +76,23 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
 
     if (autoprint === 'true') {
       console.log("Attempting to print for type:", printTypeParam); 
+      // Here you could add logic to modify the page *before* printing
+      // based on printTypeParam, e.g., by adding a class to the body
+      // document.body.classList.add(`print-type-${printTypeParam}`);
+      // For now, it just triggers a generic print.
       
       const printTimeout = setTimeout(() => {
         window.print();
-      }, 100); 
+        // Optional: remove the class after printing
+        // if (printTypeParam) document.body.classList.remove(`print-type-${printTypeParam}`);
+        
+        // Navigate back to a cleaner URL without autoprint params
+        // Or, navigate to wherever is appropriate after printing
+        // router.replace(`/orders/${params.id}${effectiveIsExpress ? '?express=true' : ''}`);
+      }, 100); // Timeout to allow content to render fully
       return () => clearTimeout(printTimeout);
     }
-  }, [searchParams, params.id, router]); 
+  }, [searchParams, params.id, router, effectiveIsExpress]); // Added effectiveIsExpress to dep array
 
 
   if (!order) {
@@ -109,8 +119,12 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
 
   const PaymentIcon = order.paymentStatus ? paymentStatusIcons[order.paymentStatus] : ShieldAlert;
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = (printType: string = "default") => {
+    // This function could also set up print-specific state or classes before calling window.print()
+    // For now, it's simple, but it's a good place for future enhancements.
+    const queryParams = `?autoprint=true&printType=${printType}${effectiveIsExpress ? '&express=true' : ''}`;
+    // Re-navigate with print params to trigger the useEffect print logic
+    router.push(`/orders/${order.id}${queryParams}`);
   };
 
   return (
@@ -123,7 +137,7 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
         </Link>
         <div className="flex gap-2">
             <Button variant="outline" size="sm"><Edit className="mr-2 h-4 w-4" /> Edit Order</Button>
-            <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print Receipt</Button>
+            <Button variant="outline" size="sm" onClick={() => handlePrint('customer_copy')}><Printer className="mr-2 h-4 w-4" /> Print Customer Copy</Button>
         </div>
       </div>
 

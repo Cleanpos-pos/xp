@@ -15,14 +15,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription as UiCardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus } from "lucide-react"; // Added UserCog & Shield icons
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import type { StaffCredentials, UserRole } from "@/types"; // Import UserRole from @/types
+import type { StaffCredentials, UserRole } from "@/types"; 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,13 +31,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
-import { Badge } from "@/components/ui/badge"; // Import Badge
+import { Badge } from "@/components/ui/badge";
 
-// Renaming RHF components for clarity to avoid conflict with generic HTML/div elements
-// when not using RHF for a specific section (like Regional Settings)
 const RHFFormItem = FormItem;
 const RHFFormLabel = FormLabel;
 const RHFFormDescription = FormDescription;
+const UiCardDescription = CardDescription; // Alias for ShadCN CardDescription
+
 
 const userRoles: UserRole[] = ["clerk", "admin", "super_admin"];
 
@@ -51,7 +52,7 @@ const rolePermissions = {
       "Process Payments",
     ],
     cannot: [
-      "Access System Settings (Staff, Catalog, Regional)",
+      "Access System Settings (Staff, Catalog, Regional, Printer)",
       "Change Service Prices or Item Catalog",
       "Add, Edit, or Delete Staff Accounts",
       "View Full Financial Reports or Detailed Analytics",
@@ -68,6 +69,7 @@ const rolePermissions = {
       "View Detailed Reports & Analytics",
       "Apply Approved Discounts & Promotions",
       "Manage Customer Loyalty Tiers & Price Bands",
+      "Configure Printer Settings (Placeholders)"
     ],
     cannot: [
       "Manage Super Admin accounts",
@@ -95,8 +97,15 @@ export default function SettingsPage() {
   const [staffList, setStaffList] = React.useState<StaffCredentials[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = React.useState(true);
 
+  // Regional Settings State
   const [selectedCurrency, setSelectedCurrency] = React.useState<string>("USD");
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("en");
+
+  // Printer Settings State (Placeholders)
+  const [receiptPrinter, setReceiptPrinter] = React.useState<string>("thermal_80mm");
+  const [stubPrinter, setStubPrinter] = React.useState<string>("dotmatrix_76mm");
+  const [receiptHeader, setReceiptHeader] = React.useState<string>("XP Clean - Your Town Branch");
+  const [receiptFooter, setReceiptFooter] = React.useState<string>("Thank you for your business!");
 
 
   const fetchStaff = React.useCallback(async () => {
@@ -121,7 +130,7 @@ export default function SettingsPage() {
       name: "",
       loginId: "",
       password: "",
-      role: "clerk", // Default role
+      role: "clerk", 
     },
   });
 
@@ -168,6 +177,13 @@ export default function SettingsPage() {
       description: `Currency: ${selectedCurrency}, Language: ${selectedLanguage}. Full implementation requires backend integration.`,
     });
   };
+  
+  const handleSavePrinterSettings = () => {
+    toast({
+      title: "Printer Settings (Mock) Saved",
+      description: `Receipt: ${receiptPrinter}, Stub: ${stubPrinter}. Header/Footer updated. These are UI placeholders.`,
+    });
+  };
 
   const getRoleBadgeVariant = (role: UserRole): "default" | "secondary" | "destructive" | "outline" => {
     switch (role) {
@@ -182,7 +198,7 @@ export default function SettingsPage() {
     <div className="w-full max-w-4xl space-y-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Cog className="h-8 w-8" />
+          <SettingsIcon className="h-8 w-8" />
           <h1 className="text-3xl font-bold font-headline">Settings</h1>
         </div>
         <Link href="/dashboard" passHref>
@@ -193,7 +209,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="staffManagement" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6"> {/* Increased to 6 for printer tab */}
           <TabsTrigger
             value="staffManagement"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
@@ -217,6 +233,12 @@ export default function SettingsPage() {
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
             Cash Up
+          </TabsTrigger>
+          <TabsTrigger
+            value="printerSetup"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+          >
+            Printers
           </TabsTrigger>
           <TabsTrigger
             value="regionalSettings"
@@ -371,7 +393,7 @@ export default function SettingsPage() {
                 let IconComponent = ShieldQuestion;
                 if (roleKey === 'clerk') IconComponent = ShieldAlert;
                 if (roleKey === 'admin') IconComponent = ShieldCheck;
-                if (roleKey === 'super_admin') IconComponent = UserCog; // Or a more distinct "super" icon
+                if (roleKey === 'super_admin') IconComponent = UserCog;
                 
                 return (
                   <Card key={roleKey} className="bg-muted/30">
@@ -437,6 +459,63 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="printerSetup" className="mt-6">
+         <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl flex items-center">
+                <PrinterIcon className="mr-2 h-6 w-6" /> Printer Setup
+              </CardTitle>
+              <UiCardDescription>Configure default printers and receipt templates. (UI Placeholders)</UiCardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <Label htmlFor="receipt-printer" className="flex items-center"><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground" /> Default Receipt Printer</Label>
+                  <Select value={receiptPrinter} onValueChange={setReceiptPrinter}>
+                    <SelectTrigger id="receipt-printer" className="mt-1">
+                      <SelectValue placeholder="Select receipt printer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="thermal_80mm">Thermal Printer (80mm)</SelectItem>
+                      <SelectItem value="dotmatrix_76mm">Dot Matrix (76mm)</SelectItem>
+                      <SelectItem value="a4_letter">Standard A4/Letter Printer</SelectItem>
+                      <SelectItem value="none">None (Manual/No Print)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="stub-printer" className="flex items-center"><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground" /> Default Stub/Tag Printer</Label>
+                  <Select value={stubPrinter} onValueChange={setStubPrinter}>
+                    <SelectTrigger id="stub-printer" className="mt-1">
+                      <SelectValue placeholder="Select stub/tag printer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dotmatrix_76mm">Dot Matrix (76mm)</SelectItem>
+                      <SelectItem value="thermal_80mm">Thermal Printer (80mm - for labels)</SelectItem>
+                       <SelectItem value="a4_letter_sticker">A4/Letter (Sticker Sheet)</SelectItem>
+                      <SelectItem value="none">None (Manual/No Print)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="receipt-header">Receipt Header Text</Label>
+                <Textarea id="receipt-header" value={receiptHeader} onChange={(e) => setReceiptHeader(e.target.value)} placeholder="e.g., Your Company Name - Address - Phone" className="mt-1" rows={2}/>
+              </div>
+              <div>
+                <Label htmlFor="receipt-footer">Receipt Footer Text</Label>
+                <Textarea id="receipt-footer" value={receiptFooter} onChange={(e) => setReceiptFooter(e.target.value)} placeholder="e.g., Thank you! Visit us again at www.example.com" className="mt-1" rows={2}/>
+              </div>
+
+              <Button onClick={handleSavePrinterSettings}>Save Printer Settings</Button>
+               <p className="text-xs text-muted-foreground pt-4">
+                Note: These are UI placeholders. Actual printer selection and control requires system-level integration with printer drivers or specific web printing APIs, which are beyond typical web app capabilities without additional software.
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="regionalSettings" className="mt-6">
          <Card className="shadow-xl">
             <CardHeader>
@@ -495,4 +574,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -107,26 +108,71 @@ body {
   }
   body {
     background-color: white !important;
-    -webkit-print-color-adjust: exact; /* Ensures background colors print in Chrome/Safari */
-    print-color-adjust: exact; /* Standard */
+    color: black !important;
+    font-size: 10pt !important;
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact !important; /* Ensures background colors print in Chrome/Safari */
+    print-color-adjust: exact !important; /* Standard */
   }
-  .card { /* Targeting ShadCN card specifically */
+
+  /* Remove shadows and ensure borders are simple for printing */
+  .card, .shadow-lg, .shadow-xl, .shadow-md {
     box-shadow: none !important;
     border: 1px solid #ccc !important;
   }
-  main { /* Ensure main content area is not restricted */
-    padding: 0 !important;
+
+  /* Ensure main content takes up the page */
+  main, #orderDetailsPrintSection {
+    padding: 1cm !important; /* Add some margin for A4 printing */
     margin: 0 !important;
-    overflow: visible !important; /* Allow content to overflow for printing if needed */
+    width: auto !important;
+    overflow: visible !important;
   }
-  #orderDetailsPrintSection { /* Specific section for printing */
-    margin: 20px !important; /* Add some margin for the printed page */
-    width: auto !important; /* Allow it to take natural width for printing */
+
+  /* Basic table styling for print */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
   }
+  th, td {
+    border: 1px solid #ddd !important;
+    padding: 4px !important;
+    text-align: left !important;
+  }
+  th {
+    background-color: #f2f2f2 !important; /* Light gray for table headers */
+  }
+
+  /* Attempt to make badge backgrounds print if browser allows */
+  .badge {
+    border: 1px solid #ccc !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* Specific color overrides for badges for better B&W printing if needed */
+  /* Example: .bg-green-100 { background-color: #e6ffe6 !important; color: black !important; } */
+
   /* Ensure all parent containers of the print section are visible and flow naturally */
   html, body, div[data-theme], div#__next, div.min-h-screen, div.flex-col, div.flex-1 {
     display: block !important; /* Override flex behaviors for printing */
     height: auto !important;
     overflow: visible !important;
+    background: white !important; /* Ensure parents also have white background */
+  }
+
+  /* Hide popovers, dialogs specifically for print unless part of print content */
+  .radix-popover-content, .radix-dialog-content {
+    display: none !important;
   }
 }
+
+/* Placeholder for POS receipt specific styles - this is highly complex for actual POS */
+/*
+@media print and (width: 80mm) {
+  body { font-size: 8pt; }
+  #orderDetailsPrintSection { padding: 2mm !important; }
+  .print-pos-only { display: block !important; }
+  .print-a4-only { display: none !important; }
+}
+*/

@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { BarChart as BarChartIcon, LineChart as LineChartIcon, PieChart as PieChartIcon, TrendingUp, Package, Layers, CalendarIcon, CalendarRange } from "lucide-react"; // Added CalendarRange
+import { BarChart as BarChartIcon, LineChart as LineChartIcon, PieChart as PieChartIcon, TrendingUp, Package, Layers, CalendarIcon, CalendarRange, Printer } from "lucide-react"; // Added Printer
 import { AiInsights } from "@/components/reports/ai-insights";
 import {
   ChartContainer,
@@ -115,18 +115,27 @@ export default function ReportsPage() {
     })));
   }, [startDate, endDate]);
 
+  const handlePrintReport = () => {
+    window.print();
+  };
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold font-headline">Reports & Analytics</h1>
-        <p className="text-muted-foreground">
-          Gain insights into your business performance.
-        </p>
+      <div className="flex justify-between items-start print-hidden">
+        <div>
+            <h1 className="text-3xl font-bold font-headline">Reports & Analytics</h1>
+            <p className="text-muted-foreground">
+            Gain insights into your business performance.
+            </p>
+        </div>
+        <Button onClick={handlePrintReport} variant="outline">
+            <Printer className="mr-2 h-4 w-4" /> Print Report
+        </Button>
       </div>
 
+
       {/* Date Range Selector Card */}
-      <Card className="shadow-md">
+      <Card className="shadow-md print-hidden">
         <CardHeader>
           <CardTitle className="font-headline flex items-center">
             <CalendarRange className="mr-2 h-5 w-5" /> Date Range Selector
@@ -335,5 +344,4 @@ export default function ReportsPage() {
     </div>
   );
 }
-
     

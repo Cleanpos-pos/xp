@@ -309,8 +309,10 @@ export default function NewOrderPage() {
 
     if (result.success && result.orderId) {
       toast({ title: "Order Created (Pay Later)", description: result.message });
-      resetFormAndStage();
-      router.push(`/orders/${result.orderId}${isExpressOrder ? '?express=true' : ''}`);
+      // Don't resetFormAndStage yet, show print dialog first if they want to print
+      setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created!", totalAmount: orderTotal, isExpress: isExpressOrder });
+      setPrintType(null);
+      setShowPrintDialog(true); // Show print dialog even for pay later
     } else {
       toast({
         title: "Error Creating Order",
@@ -360,7 +362,7 @@ export default function NewOrderPage() {
   };
 
 
-  const handlePayLaterAndNav = () => {
+  const handlePayLaterAndNav = () => { // This now happens *after* print dialog if they skip printing for pay later
     if (!createdOrderDetails) return;
     const queryParams = createdOrderDetails.isExpress ? '?express=true' : '';
     router.push(`/orders/${createdOrderDetails.id}${queryParams}`);
@@ -662,8 +664,8 @@ export default function NewOrderPage() {
               <Button onClick={() => setActivePaymentStep("enterPaymentDetails")} className="w-full">
                 <CheckCircle className="mr-2 h-5 w-5" /> Take Payment
               </Button>
-              <Button variant="secondary" onClick={handlePayLaterAndNav} className="w-full">
-                <Clock className="mr-2 h-5 w-5" /> Pay Later & View Order
+              <Button variant="secondary" onClick={() => { setShowPrintDialog(true); }} className="w-full"> {/* Pay Later also shows print dialog */}
+                <Clock className="mr-2 h-5 w-5" /> Pay Later & Options
               </Button>
             </>
           )}
@@ -765,10 +767,10 @@ export default function NewOrderPage() {
       {createdOrderDetails && (
         <Dialog open={showPrintDialog} onOpenChange={(isOpen) => {
             setShowPrintDialog(isOpen);
+            // If dialog is closed WITHOUT making a print selection, and it was a 'Pay Later' scenario
+            // or if they just closed the dialog after payment, then navigate or reset.
             if (!isOpen && !printType && createdOrderDetails) { 
-              const queryParams = createdOrderDetails.isExpress ? '?express=true' : '';
-              router.push(`/orders/${createdOrderDetails.id}${queryParams}`);
-              resetFormAndStage();
+                handlePayLaterAndNav(); // This will navigate and reset.
             }
           }}>
           <DialogContent>
@@ -779,23 +781,20 @@ export default function NewOrderPage() {
               </DialogTitle>
               <DialogDescription>
                 Select a receipt type to print. The print dialog will open after navigating to the order details.
+                POS-style printing (80mm thermal, 76mm dot matrix) is not fully simulated.
               </DialogDescription>
             </DialogHeader>
             <div className="grid grid-cols-2 gap-4 py-4">
-              <Button onClick={() => handlePrintSelection('customer_copy')}>Customer Copy</Button>
-              <Button onClick={() => handlePrintSelection('shop_copy')}>Shop Copy</Button>
-              <Button onClick={() => handlePrintSelection('stubs')}>Print Stubs</Button>
-              <Button onClick={() => handlePrintSelection('all_tickets')}>All Tickets</Button>
+              <Button onClick={() => handlePrintSelection('customer_copy')}>Customer Copy (80mm)</Button>
+              <Button onClick={() => handlePrintSelection('shop_copy')}>Shop Copy (80mm)</Button>
+              <Button onClick={() => handlePrintSelection('stubs')}>Item Stubs (Dot Matrix)</Button>
+              <Button onClick={() => handlePrintSelection('all_tickets')}>All Tickets (Combined)</Button>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => {
                 setShowPrintDialog(false);
                 setPrintType(null); 
-                if (createdOrderDetails) { 
-                  const queryParams = createdOrderDetails.isExpress ? '?express=true' : '';
-                  router.push(`/orders/${createdOrderDetails.id}${queryParams}`);
-                }
-                resetFormAndStage();
+                handlePayLaterAndNav(); // Skip printing and proceed
               }}>
                 Skip Printing & View Order
               </Button>
