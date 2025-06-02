@@ -1,6 +1,7 @@
 
 "use client";
 
+import React, { useEffect } from 'react'; // Ensure React is imported for React.use
 import { getOrderById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,8 +11,7 @@ import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, 
 import type { OrderItem, OrderStatus, PaymentStatus } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
-import React, { useEffect } from 'react'; // Import React and useEffect
-import { useSearchParams, useRouter } from 'next/navigation'; // Import useSearchParams and useRouter
+import { useSearchParams, useRouter } from 'next/navigation';
 
 function getStatusBadgeVariant(status: OrderStatus): "default" | "secondary" | "destructive" | "outline" {
    switch (status) {
@@ -60,8 +60,12 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
 }
 
 
-export default function OrderDetailsPage({ params }: { params: { id: string } }) {
-  const order = getOrderById(params.id);
+export default function OrderDetailsPage({ params: paramsPromise }: { params: { id: string } }) {
+  // Use React.use to unwrap the params if it's a promise, as suggested by the Next.js warning.
+  // The type annotation { params: { id: string } } is what it resolves to.
+  const params = React.use(paramsPromise as unknown as Promise<{ id: string }>);
+  
+  const order = getOrderById(params.id); // Now use the resolved params.id
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -76,12 +80,12 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       const printTimeout = setTimeout(() => {
         window.print();
         // Optional: Remove query params to prevent re-print on refresh
-        // const currentPath = `/orders/${params.id}`;
+        // const currentPath = `/orders/${params.id}`; // Use resolved params.id
         // router.replace(currentPath, { scroll: false });
       }, 100); 
       return () => clearTimeout(printTimeout);
     }
-  }, [searchParams, params.id, router]);
+  }, [searchParams, params.id, router]); // Use resolved params.id in dependency array
 
 
   if (!order) {
@@ -208,4 +212,3 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     </div>
   );
 }
-
