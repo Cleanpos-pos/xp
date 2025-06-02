@@ -17,7 +17,10 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
     };
   }
 
-  const { name, parent_id, type, price, description, has_color_identifier } = validationResult.data;
+  const { name, parent_id, type, price, description } = validationResult.data;
+  // Ensure has_color_identifier is explicitly false for items if not provided, and undefined for categories
+  const has_color_identifier = type === 'item' ? (validationResult.data.has_color_identifier ?? false) : undefined;
+
 
   if (type === "item" && (price === undefined || price <= 0)) {
     return {
@@ -31,13 +34,13 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
     const newEntryData = {
       name,
       parent_id,
-      type: type as CatalogEntryType, 
-      price: type === "item" ? price : undefined, 
+      type: type as CatalogEntryType,
+      price: type === "item" ? price : undefined,
       description,
-      has_color_identifier: type === 'item' ? (has_color_identifier ?? false) : undefined,
+      has_color_identifier: has_color_identifier, // Pass the processed value
     };
     
-    const newEntry = await addCatalogEntry(newEntryData as any); 
+    const newEntry = await addCatalogEntry(newEntryData as any);
     
     revalidatePath("/settings");
     revalidatePath("/services");
@@ -71,11 +74,18 @@ export async function updateCatalogEntryAction(entryId: string, data: UpdateCata
   }
   
   try {
+    // For items, default has_color_identifier to false if not provided
+    const processedData = {
+      ...validationResult.data,
+      has_color_identifier: validationResult.data.has_color_identifier ?? false,
+    };
+
+
     const updatedEntry = await updateCatalogEntryDb(entryId, {
-      name: validationResult.data.name,
-      price: validationResult.data.price, 
-      description: validationResult.data.description,
-      has_color_identifier: validationResult.data.has_color_identifier,
+      name: processedData.name,
+      price: processedData.price, 
+      description: processedData.description,
+      has_color_identifier: processedData.has_color_identifier,
     });
 
     revalidatePath("/settings");
@@ -83,8 +93,8 @@ export async function updateCatalogEntryAction(entryId: string, data: UpdateCata
     revalidatePath("/orders/new");
 
     return { success: true, message: `Entry "${updatedEntry.name}" updated.`, updatedEntry };
-  } catch (error: any) {
-    console.error("Error updating catalog entry in action:", error);
+  } catch (error: any)
+      console.error("Error updating catalog entry in action:", error);
      let userFriendlyMessage = error.message || "Failed to update entry.";
     if (typeof error.message === 'string' && 
         (error.message.includes("Could not find the column") || error.message.includes("schema cache"))) {
@@ -124,4 +134,3 @@ export async function getCatalogHierarchyAction(): Promise<CatalogHierarchyNode[
     return [];
   }
 }
-

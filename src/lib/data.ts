@@ -439,11 +439,13 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
   };
 
   if (entry.type === 'item') {
-    entryToInsert.has_color_identifier = entry.has_color_identifier; // Should be boolean (true/false) from action
+    // Ensure has_color_identifier is explicitly boolean (true/false), defaulting to false.
+    entryToInsert.has_color_identifier = (typeof entry.has_color_identifier === 'boolean')
+      ? entry.has_color_identifier
+      : false;
     entryToInsert.price = entry.price ?? 0;
   }
-  // If type is 'category', has_color_identifier is NOT added to entryToInsert
-  // (because entry.has_color_identifier was undefined from action), relying on DB default.
+  // For categories, has_color_identifier is omitted, relying on DB default (which should be FALSE).
 
   console.log("[addCatalogEntry] Object being inserted into Supabase:", JSON.stringify(entryToInsert, null, 2));
 
@@ -493,18 +495,17 @@ export async function updateCatalogEntry(
 
   if (currentEntry.type === 'item') {
     if (dataToUpdate.price === undefined) {
-       delete updatePayload.price; // Don't update price if not provided
+       delete updatePayload.price;
     } else {
       updatePayload.price = dataToUpdate.price;
     }
-    if (dataToUpdate.has_color_identifier === undefined) {
-      delete updatePayload.has_color_identifier; // Don't update if not provided
-    } else {
-      updatePayload.has_color_identifier = dataToUpdate.has_color_identifier;
-    }
+    // For items, ensure has_color_identifier is explicitly true or false.
+    // If it's undefined in dataToUpdate, it means the form didn't send it (e.g. no switch),
+    // so we want to ensure it's at least false.
+    updatePayload.has_color_identifier = dataToUpdate.has_color_identifier ?? false;
   } else { // Category
-     updatePayload.price = null;
-     delete updatePayload.has_color_identifier; // Categories don't have this
+     updatePayload.price = null; // Categories should not have a price.
+     delete updatePayload.has_color_identifier; // Categories don't have this.
   }
 
 
@@ -616,4 +617,3 @@ export function getServiceById(id:string): ServiceItem | undefined {
 }
 
 export { generateOrderNumber };
-
