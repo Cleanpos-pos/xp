@@ -8,15 +8,15 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
-  FormItem,
-  FormLabel,
+  FormDescription, // RHF one
   FormField,
+  FormItem,       // RHF one
+  FormLabel,      // RHF one
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card"; // Added CardDescription here
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +33,8 @@ import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
 import { Badge } from "@/components/ui/badge";
 
+// Renaming RHF components for clarity to avoid conflict with generic HTML/div elements
+// when not using RHF for a specific section (like Regional Settings)
 const RHFFormItem = FormItem;
 const RHFFormLabel = FormLabel;
 const RHFFormDescription = FormDescription;
@@ -574,3 +576,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
