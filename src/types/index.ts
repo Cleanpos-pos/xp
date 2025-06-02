@@ -25,6 +25,7 @@ export type ServiceItem = {
   description?: string;
   price: number;
   category: string;
+  has_color_identifier?: boolean;
 };
 
 export type OrderItem = {
@@ -38,6 +39,8 @@ export type OrderItem = {
   itemDiscountPercentage?: number;
   totalPrice: number; // Effective total price for this line item after all its discounts/overrides
   notes?: string;
+  has_color_identifier?: boolean; // From the service item
+  color_value?: string; // User-entered color if has_color_identifier is true
 };
 
 export type OrderStatus =
@@ -76,12 +79,14 @@ export type Order = {
 };
 
 export type InventoryItem = {
-  id: string;
+  id: string; // UUID from Supabase
   name: string;
   quantity: number;
   unit: string;
-  lowStockThreshold?: number;
-  lastRestocked?: string;
+  low_stock_threshold?: number;
+  last_restocked_at?: string | null; // TIMESTAMPTZ from Supabase
+  created_at: string; // TIMESTAMPTZ from Supabase
+  updated_at: string; // TIMESTAMPTZ from Supabase
 };
 
 export type ReportData = {
@@ -100,6 +105,7 @@ export interface CatalogEntry {
   price?: number; // For items
   description?: string; // For items or categories
   sort_order: number; // To handle manual sorting later
+  has_color_identifier?: boolean; // For items, to prompt for color
   created_at?: string; // ISO string
   updated_at?: string; // ISO string
 }

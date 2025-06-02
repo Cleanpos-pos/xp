@@ -10,7 +10,7 @@ declare global {
   // eslint-disable-next-line no-var
   var mockOrdersStore: Order[] | undefined;
   // eslint-disable-next-line no-var
-  var mockInventoryStore: InventoryItem[] | undefined;
+  // var mockInventoryStore: InventoryItem[] | undefined; // To be removed
 }
 
 const generateOrderNumber = (index: number, date: Date = new Date()): string => {
@@ -76,19 +76,9 @@ const initialOrders: Order[] = [
   },
 ];
 
-const initialInventory: InventoryItem[] = [
-  { id: 'inv1', name: 'Dry Cleaning Solvent', quantity: 50, unit: 'liters', lowStockThreshold: 20, lastRestocked: new Date().toISOString() },
-  { id: 'inv2', name: 'Hangers - Wire', quantity: 850, unit: 'pieces', lowStockThreshold: 200, lastRestocked: new Date().toISOString() },
-  { id: 'inv3', name: 'Garment Bags - Clear', quantity: 400, unit: 'pieces', lowStockThreshold: 100, lastRestocked: new Date().toISOString() },
-  { id: 'inv4', name: 'Laundry Detergent', quantity: 25, unit: 'kg', lowStockThreshold: 5, lastRestocked: new Date().toISOString() },
-];
-
 
 if (!global.mockOrdersStore) {
   global.mockOrdersStore = [...initialOrders];
-}
-if (!global.mockInventoryStore) {
-  global.mockInventoryStore = [...initialInventory];
 }
 
 // Customer Data Functions (using Supabase)
@@ -287,7 +277,7 @@ export async function updateFullCustomerDb(customerId: string, customerData: Cre
 }
 
 
-// Mock Data Functions (for orders, inventory - to be migrated later)
+// Mock Order Data Functions (to be migrated later)
 
 export const getMockOrders = (): Order[] => {
   return global.mockOrdersStore!.map(order => ({
@@ -297,8 +287,6 @@ export const getMockOrders = (): Order[] => {
       dueDate: order.dueDate ? (typeof order.dueDate === 'string' ? order.dueDate : new Date(order.dueDate).toISOString()) : undefined,
   }));
 };
-export const getMockInventory = (): InventoryItem[] => global.mockInventoryStore!;
-
 
 export function getOrderById(id: string): Order | undefined {
   const orders = getMockOrders();
@@ -331,9 +319,75 @@ export function searchOrdersLocal(searchTerm: string): Order[] {
 }
 
 
-export function getInventoryItemById(id: string): InventoryItem | undefined {
-  return global.mockInventoryStore!.find(i => i.id === id);
+// Inventory Data Functions (using Supabase)
+export async function getInventoryItems(): Promise<InventoryItem[]> {
+  const { data, error } = await supabase
+    .from('inventory_items')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching inventory items from Supabase:', error);
+    throw error;
+  }
+  return ((data || []) as InventoryItem[]).map(item => ({
+    ...item,
+    last_restocked_at: item.last_restocked_at ? new Date(item.last_restocked_at).toISOString() : null,
+    created_at: new Date(item.created_at).toISOString(),
+    updated_at: new Date(item.updated_at).toISOString(),
+  }));
 }
+
+export async function createInventoryItemDb(itemData: Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>): Promise<InventoryItem> {
+  // last_restocked_at is optional and can be null/undefined
+  const itemToInsert = {
+    ...itemData,
+    low_stock_threshold: itemData.low_stock_threshold ?? 0, // Default if undefined
+  };
+
+  const { data, error } = await supabase
+    .from('inventory_items')
+    .insert(itemToInsert)
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Error adding inventory item to Supabase:', error);
+    throw error;
+  }
+  return {
+    ...data,
+    last_restocked_at: data.last_restocked_at ? new Date(data.last_restocked_at).toISOString() : null,
+    created_at: new Date(data.created_at).toISOString(),
+    updated_at: new Date(data.updated_at).toISOString(),
+  } as InventoryItem;
+}
+
+// Placeholder for getInventoryItemById - to be implemented if needed for edit functionality
+export async function getInventoryItemById(id: string): Promise<InventoryItem | undefined> {
+   const { data, error } = await supabase
+    .from('inventory_items')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      return undefined;
+    }
+    console.error(`Error fetching inventory item by ID ${id}:`, error);
+    throw error;
+  }
+  if (!data) return undefined;
+
+  return {
+    ...data,
+    last_restocked_at: data.last_restocked_at ? new Date(data.last_restocked_at).toISOString() : null,
+    created_at: new Date(data.created_at).toISOString(),
+    updated_at: new Date(data.updated_at).toISOString(),
+  } as InventoryItem;
+}
+
 
 // Catalog Entry Functions (using Supabase)
 export async function getCatalogEntries(): Promise<CatalogEntry[]> {
@@ -386,13 +440,11 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
   };
 
   if (entry.type === 'item') {
-    // Only include has_color_identifier if it's an item and the value is explicitly provided (true or false).
-    // If entry.has_color_identifier is undefined (e.g., not set in form), it will use the DB default (FALSE).
     if (typeof entry.has_color_identifier === 'boolean') {
       entryToInsert.has_color_identifier = entry.has_color_identifier;
     }
   }
-  // If type is 'category', has_color_identifier is omitted, relying on DB default.
+
 
   console.log("[addCatalogEntry] Attempting to insert into Supabase catalog_entries:", JSON.stringify(entryToInsert, null, 2));
 
@@ -429,42 +481,31 @@ export async function updateCatalogEntry(
 ): Promise<CatalogEntry> {
   const updatePayload: { [key: string]: any } = { ...dataToUpdate };
 
-  // Ensure price is null if not provided for an item, or if it's a category (though not editable here)
-  if (dataToUpdate.price === undefined) {
-    // Check current type to decide if price should be nulled or kept
-    const { data: currentEntry, error: fetchError } = await supabase
+  const { data: currentEntry, error: fetchError } = await supabase
       .from('catalog_entries')
-      .select('type, price')
+      .select('type, price, has_color_identifier')
       .eq('id', entryId)
       .single();
 
-    if (fetchError || !currentEntry) {
-      console.error(`Error fetching entry ${entryId} before update or entry not found:`, fetchError);
-      throw new Error(`Failed to fetch entry details for update: ${entryId}`);
-    }
-    if (currentEntry.type === 'item' && dataToUpdate.price === undefined) {
-      // If it's an item and price is explicitly set to undefined in payload (meaning not changed in form),
-      // it should retain its old price or be explicitly set to null if that's desired.
-      // For now, if price is not in dataToUpdate, we don't touch it in DB.
-      // If price is explicitly passed as null/0 for an item, it will be set.
-    } else if (currentEntry.type === 'category') {
-       updatePayload.price = null; // Categories shouldn't have prices
-    }
+  if (fetchError || !currentEntry) {
+    console.error(`Error fetching entry ${entryId} before update or entry not found:`, fetchError);
+    throw new Error(`Failed to fetch entry details for update: ${entryId}`);
   }
-   if (dataToUpdate.has_color_identifier === undefined) {
-    // For items, if not provided, ensure it defaults to false or current value.
-    // For categories, it should not be sent.
-    // The form for EditCatalogEntryDialog should set has_color_identifier to false by default if it was undefined.
-    // So, if it comes here as undefined, it means it's likely a category or an item where it wasn't set.
-    // It's safer to delete the key to avoid issues if it's a category.
-    const { data: currentEntryForHCI, error: hciError } = await supabase
-        .from('catalog_entries').select('type').eq('id', entryId).single();
-    if (hciError || !currentEntryForHCI) { /* handle error or assume item */ }
-    else if (currentEntryForHCI.type === 'category') {
-        delete updatePayload.has_color_identifier;
-    } else { // It's an item and HCI was not provided for update, default to false
-        updatePayload.has_color_identifier = dataToUpdate.has_color_identifier ?? false;
+
+  if (currentEntry.type === 'item') {
+    if (dataToUpdate.price === undefined) {
+       delete updatePayload.price; // Don't update price if not provided
+    } else {
+      updatePayload.price = dataToUpdate.price;
     }
+    if (dataToUpdate.has_color_identifier === undefined) {
+      delete updatePayload.has_color_identifier; // Don't update if not provided
+    } else {
+      updatePayload.has_color_identifier = dataToUpdate.has_color_identifier;
+    }
+  } else { // Category
+     updatePayload.price = null;
+     delete updatePayload.has_color_identifier; // Categories don't have this
   }
 
 
@@ -494,7 +535,6 @@ export async function updateCatalogEntry(
 }
 
 export async function deleteCatalogEntry(entryId: string): Promise<{ success: boolean, message?: string }> {
-  // Check if the entry is a category and has children
   const { data: children, error: childrenError } = await supabase
     .from('catalog_entries')
     .select('id')
@@ -509,7 +549,6 @@ export async function deleteCatalogEntry(entryId: string): Promise<{ success: bo
     return { success: false, message: "Cannot delete category: It contains sub-categories or items. Please empty the category first." };
   }
 
-  // Proceed with deletion
   const { error: deleteError, count } = await supabase
     .from('catalog_entries')
     .delete()
@@ -578,4 +617,3 @@ export function getServiceById(id:string): ServiceItem | undefined {
 }
 
 export { generateOrderNumber };
-
