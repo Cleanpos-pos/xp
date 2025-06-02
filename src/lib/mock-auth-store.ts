@@ -33,13 +33,17 @@ export async function addStaff(staffData: Omit<StaffCredentials, 'id' | 'created
     }
     throw error;
   }
-  return data as StaffCredentials;
+  return {
+    ...data,
+    enable_quick_login: data.enable_quick_login ?? false,
+    is_active: data.is_active ?? true, // Default to true if null, should be handled by DB default
+  } as StaffCredentials;
 }
 
 export async function findStaff(login_id_input: string, password_input?: string): Promise<StaffCredentials | undefined> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*') // Simplified select
+    .select('*') 
     .eq('login_id', login_id_input)
     .single();
 
@@ -52,7 +56,12 @@ export async function findStaff(login_id_input: string, password_input?: string)
     return undefined;
   }
 
-  const staffMember = data as StaffCredentials;
+  const staffMember = {
+    ...data,
+    enable_quick_login: data.enable_quick_login ?? false,
+    is_active: data.is_active ?? true, // Default to true if null, though DB default should prevent this
+  } as StaffCredentials;
+
 
   // INSECURE: Plain text password comparison.
   if (password_input && staffMember.hashed_password !== password_input) {
@@ -66,7 +75,7 @@ export async function findStaff(login_id_input: string, password_input?: string)
 export async function getAllStaff(): Promise<StaffCredentials[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*'); // Simplified select to fetch all columns
+    .select('*'); 
 
   if (error) {
     console.error("Error fetching all staff from Supabase:", error);
@@ -74,7 +83,8 @@ export async function getAllStaff(): Promise<StaffCredentials[]> {
   }
   return ((data || []) as StaffCredentials[]).map(s => ({
       ...s,
-      is_active: s.is_active ?? true // Default to true if null in DB (should not happen with DEFAULT TRUE)
+      enable_quick_login: s.enable_quick_login ?? false, // Ensure boolean
+      is_active: s.is_active ?? true // Default to true if null in DB
   }));
 }
 
@@ -108,7 +118,7 @@ export async function updateStaffActiveStatus(login_id_input: string, is_active:
 export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*') // Simplified select
+    .select('*') 
     .eq('enable_quick_login', true)
     .eq('is_active', true); // Only fetch active staff for quick login
 
@@ -118,7 +128,8 @@ export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
   }
   return ((data || []) as StaffCredentials[]).map(s => ({
       ...s,
-      is_active: s.is_active ?? true
+      enable_quick_login: s.enable_quick_login ?? false, // Should always be true here due to filter, but good for consistency
+      is_active: s.is_active ?? true // Should always be true here due to filter
   }));
 }
 
