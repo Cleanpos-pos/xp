@@ -97,6 +97,15 @@ export interface CatalogHierarchyNode extends CatalogEntry {
   children: CatalogHierarchyNode[];
 }
 
+export type Payout = {
+  id: string; // Unique ID for the payout
+  sessionId?: string; // Links to CashUpSession ID if finalized with one
+  timestamp: string; // ISO string
+  amount: number;
+  reason: string;
+  finalizedBy: string; // Staff who recorded the payout
+};
+
 export type CashUpSession = {
   id: string; // Unique ID for the session, e.g., timestamp
   timestamp: string; // ISO string
@@ -107,6 +116,7 @@ export type CashUpSession = {
   systemCard: number;
   actualCard: number;
   cardVariance: number;
+  payouts?: Payout[]; // Payouts made during this session
   finalizedBy: string; // Placeholder for staff who did it
 };
 
