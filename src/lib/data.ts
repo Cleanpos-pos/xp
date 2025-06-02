@@ -50,6 +50,9 @@ if (!global.mockInventoryStore) {
 
 // Customer Data Functions (using Supabase)
 export async function getCustomers(): Promise<Customer[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  console.log('[getCustomers] Current Supabase auth session:', session ? `User: ${session.user.id}` : 'No session');
+
   const { data, error } = await supabase
     .from('customers')
     .select('*')
@@ -67,30 +70,33 @@ export async function getCustomers(): Promise<Customer[]> {
 }
 
 export async function getCustomerById(id: string): Promise<Customer | undefined> {
-  console.log(`Fetching customer by ID from Supabase: ${id}`);
+  const trimmedId = id.trim(); // Ensure no leading/trailing whitespace
+  console.log(`[getCustomerById] Fetching customer by ID from Supabase: '${trimmedId}'`);
+
+  const { data: { session } } = await supabase.auth.getSession();
+  console.log('[getCustomerById] Current Supabase auth session:', session ? `User: ${session.user.id}` : 'No session');
+
   const { data, error } = await supabase
     .from('customers')
     .select('*')
-    .eq('id', id)
+    .eq('id', trimmedId) // Use trimmedId
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') { // "single row not found"
-      console.warn(`Customer with ID ${id} not found in Supabase (PGRST116).`);
+    if (error.code === 'PGRST116') { 
+      console.warn(`[getCustomerById] Customer with ID '${trimmedId}' not found in Supabase (PGRST116).`);
       return undefined;
     }
-    // For other errors, log and re-throw
-    console.error(`Error fetching customer by ID ${id} from Supabase:`, error);
+    console.error(`[getCustomerById] Error fetching customer by ID '${trimmedId}' from Supabase:`, error);
     throw error;
   }
 
   if (!data) {
-    // This case should ideally be covered by PGRST116 if .single() is used,
-    // but as a fallback.
-    console.warn(`Customer with ID ${id} not found in Supabase (no data returned).`);
+    console.warn(`[getCustomerById] Customer with ID '${trimmedId}' not found in Supabase (no data returned).`);
     return undefined;
   }
 
+  console.log(`[getCustomerById] Successfully fetched customer:`, data.name);
   return {
     ...data,
     created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
@@ -185,7 +191,7 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
   }
 
   if (countResult.error) {
-    console.error('Supabase error counting siblings for sort_order:', countResult.error);
+    console.error('[addCatalogEntry] Supabase error counting siblings for sort_order:', countResult.error);
     throw countResult.error;
   }
 
@@ -195,12 +201,12 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
     name: entry.name,
     parent_id: entry.parent_id,
     type: entry.type,
-    price: entry.type === 'item' ? entry.price : null, // Ensure price is null for categories
+    price: entry.type === 'item' ? entry.price : null,
     description: entry.description,
     sort_order: sort_order,
   };
 
-  console.log("Attempting to insert into Supabase catalog_entries:", JSON.stringify(entryToInsert, null, 2));
+  console.log("[addCatalogEntry] Attempting to insert into Supabase catalog_entries:", JSON.stringify(entryToInsert, null, 2));
 
   const { data, error } = await supabase
     .from('catalog_entries')
@@ -209,17 +215,17 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
     .single();
 
   if (error) {
-    console.error('Supabase error adding catalog entry:', JSON.stringify(error, null, 2));
+    console.error('[addCatalogEntry] Supabase error adding catalog entry:', JSON.stringify(error, null, 2));
     throw error;
   }
 
   if (!data) {
-    const errorMessage = 'Failed to add catalog entry: Supabase returned no data after insert. This may be due to RLS policies or other database constraints.';
+    const errorMessage = '[addCatalogEntry] Failed to add catalog entry: Supabase returned no data after insert. This may be due to RLS policies or other database constraints.';
     console.error(errorMessage, 'Entry data attempted:', JSON.stringify(entryToInsert, null, 2));
     throw new Error(errorMessage);
   }
   
-  console.log("Successfully inserted catalog entry, Supabase returned:", JSON.stringify(data, null, 2));
+  console.log("[addCatalogEntry] Successfully inserted catalog entry, Supabase returned:", JSON.stringify(data, null, 2));
   return {
     ...data,
     price: data.price !== null && data.price !== undefined ? parseFloat(data.price) : undefined,
@@ -261,24 +267,19 @@ async function getServiceItemsFromCatalog(): Promise<ServiceItem[]> {
     .map(item => ({
       id: item.id,
       name: item.name,
-      price: item.price!, // Filter ensures price is defined
+      price: item.price!, 
       description: item.description || undefined,
       category: item.parent_id ? (categoryMap.get(item.parent_id) || 'General Services') : 'General Services',
     }));
 }
 
-// Replaces the old getMockServices. Now async and fetches from Supabase.
 export async function getMockServices(): Promise<ServiceItem[]> {
   return getServiceItemsFromCatalog();
 }
 
 
-// This function might be deprecated or refactored if all services come from catalog
 export function getServiceById(id:string): ServiceItem | undefined {
-  // This would need to be async and fetch from catalog if we fully deprecate mockServices
-  // For now, it's not used by the pages we're modifying.
   console.warn("getServiceById is using a non-performant mock lookup. Refactor if used broadly.");
-  // const services = getMockServices(); // This is now async, can't call directly
-  // return services.find(s => s.id === id);
   return undefined; 
 }
+
