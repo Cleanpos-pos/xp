@@ -69,7 +69,7 @@ export default function NewOrderPage() {
 
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
-    if (!customerIdFromQuery) { 
+    if (!customerIdFromQuery) {
       console.log('[NewOrderPage] No customerIdFromQuery, fetching all customers.');
       setIsLoadingAllCustomers(true);
       getCustomers()
@@ -84,23 +84,23 @@ export default function NewOrderPage() {
         })
         .finally(() => setIsLoadingAllCustomers(false));
     } else {
-      setAllCustomers([]); 
-      setIsLoadingAllCustomers(false); 
+      setAllCustomers([]);
+      setIsLoadingAllCustomers(false);
     }
   }, [searchParams, toast]);
 
 
   React.useEffect(() => {
     const customerIdFromQueryRaw = searchParams.get('customerId');
-    
+
     if (customerIdFromQueryRaw) {
       const customerIdFromQuery = customerIdFromQueryRaw.trim();
       console.log('[NewOrderPage] useEffect for specific customer. Raw customerIdFromQuery from URL:', customerIdFromQueryRaw);
       console.log(`[NewOrderPage] Trimmed customerIdFromQuery for Supabase: '${customerIdFromQuery}' (length ${customerIdFromQuery.length})`);
-      
+
       setIsLoadingSpecificCustomer(true);
-      setSelectedCustomerName(null); 
-      form.setValue('customerId', ''); 
+      setSelectedCustomerName(null);
+      form.setValue('customerId', '');
 
       getCustomerById(customerIdFromQuery)
         .then(customer => {
@@ -113,11 +113,11 @@ export default function NewOrderPage() {
             console.warn(`[NewOrderPage] Customer NOT FOUND by ID from URL: '${customerIdFromQuery}'. getCustomerById returned null/undefined.`);
             toast({
               title: "Customer Not Loaded by ID",
-              description: `Could not load customer with ID '${customerIdFromQuery}'. They may not exist or access is restricted. Please select manually. Check server logs from 'getCustomerById'.`,
+              description: `Could not load customer with ID '${customerIdFromQuery}'. They may not exist, or there might be an issue accessing their data (check server logs from 'getCustomerById' for RLS or other DB errors). Please select manually or go back.`,
               variant: "warning",
-              duration: 15000 
+              duration: 15000
             });
-            form.setValue('customerId', ''); 
+            form.setValue('customerId', '');
             setSelectedCustomerName(null);
           }
         })
@@ -137,31 +137,52 @@ export default function NewOrderPage() {
           console.log('[NewOrderPage] Finished specific customer fetch. isLoadingSpecificCustomer:', false);
         });
     } else {
-       setIsLoadingSpecificCustomer(false); 
+       setIsLoadingSpecificCustomer(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, toast]); 
+  }, [searchParams, toast]);
 
   const watchedCustomerId = form.watch("customerId");
 
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId')?.trim();
-    
-    if (!isLoadingSpecificCustomer && watchedCustomerId) {
-      if (customerIdFromQuery && watchedCustomerId === customerIdFromQuery) {
-        // ID set by URL loading effect, name should be correct or null if failed.
-      } else {
-        const customer = allCustomers.find(c => c.id === watchedCustomerId);
-        if (customer) {
-          setSelectedCustomerName(customer.name);
-        } else if (!isLoadingAllCustomers && allCustomers.length > 0 && !selectedCustomerName) {
-            // setSelectedCustomerName(null); // This might be too aggressive if a specific load is pending for a different ID
-        }
-      }
-    } else if (!watchedCustomerId && !isLoadingSpecificCustomer && !searchParams.get('customerId')) { 
-      setSelectedCustomerName(null);
+
+    // This effect is intended to set selectedCustomerName if customerId is set manually
+    // or if it's cleared. It should NOT interfere with the initial load from query param
+    // if isLoadingSpecificCustomer is true.
+
+    if (isLoadingSpecificCustomer || (isLoadingAllCustomers && !watchedCustomerId && !customerIdFromQuery)) {
+      // If we are in the middle of any loading process that would set customerId,
+      // let those processes manage selectedCustomerName.
+      return;
     }
-  }, [watchedCustomerId, allCustomers, searchParams, isLoadingAllCustomers, isLoadingSpecificCustomer, selectedCustomerName]);
+
+    if (watchedCustomerId) {
+      // If a customerId is present in the form
+      if (customerIdFromQuery && watchedCustomerId === customerIdFromQuery) {
+        // This case is primarily handled by the specific customer loading effect.
+        // If that effect failed, selectedCustomerName would be null.
+        // If it succeeded, selectedCustomerName would be set.
+        // We only try to find from allCustomers if specific load failed AND selectedCustomerName is still null.
+        if (!selectedCustomerName) { // Check if specific load already set the name
+            const customer = allCustomers.find(c => c.id === watchedCustomerId);
+            if (customer) setSelectedCustomerName(customer.name);
+            // else, selectedCustomerName remains null, which is the correct state if specific load failed.
+        }
+      } else {
+        // This is for when a customer is selected from the dropdown,
+        // or if customerIdFromQuery is different from watchedCustomerId (an edge case).
+        const customer = allCustomers.find(c => c.id === watchedCustomerId);
+        setSelectedCustomerName(customer ? customer.name : null);
+      }
+    } else {
+      // No watchedCustomerId, so clear the name (unless a specific load is about to happen from query, handled by isLoadingSpecificCustomer check above)
+      if (!customerIdFromQuery) { // Only clear if there's no active/pending load from query
+        setSelectedCustomerName(null);
+      }
+    }
+  }, [watchedCustomerId, allCustomers, searchParams, isLoadingAllCustomers, isLoadingSpecificCustomer]);
+
 
   React.useEffect(() => {
     async function fetchServices() {
@@ -261,8 +282,8 @@ export default function NewOrderPage() {
     setStage("form");
     setCreatedOrderDetails(null);
     setSelectedCustomerName(null);
-    
-    if (!searchParams.get('customerId')) { 
+
+    if (!searchParams.get('customerId')) {
         setIsLoadingAllCustomers(true);
         getCustomers().then(data => {
             setAllCustomers(data);
@@ -370,7 +391,7 @@ export default function NewOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Customer</FormLabel>
-                      {isLoadingAllCustomers && !customerIdFromQuery && !selectedCustomerName ? ( 
+                      {(isLoadingAllCustomers && !customerIdFromQuery && !selectedCustomerName && !field.value) || (isLoadingSpecificCustomer && !selectedCustomerName && customerIdFromQuery) ? (
                         <Skeleton className="h-10 w-full" />
                       ) : (
                       <Select
@@ -386,8 +407,11 @@ export default function NewOrderPage() {
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={isLoadingSpecificCustomer ? "Loading customer..." : (isLoadingAllCustomers && !field.value ? "Loading list..." : "Select a customer")}>
-                               {selectedCustomerName || (isLoadingSpecificCustomer ? "Loading customer..." : (isLoadingAllCustomers && !field.value ? "Loading list..." : "Select a customer"))}
+                            <SelectValue placeholder={
+                                isLoadingSpecificCustomer ? "Loading customer..." :
+                                (isLoadingAllCustomers && !watchedCustomerId ? "Loading customer list..." : "Select a customer")
+                              }>
+                               {selectedCustomerName}
                             </SelectValue>
                           </SelectTrigger>
                         </FormControl>
@@ -403,13 +427,13 @@ export default function NewOrderPage() {
                       <FormDescription>
                          {isLoadingSpecificCustomer
                            ? 'Loading pre-selected customer details...'
-                           : customerIdFromQuery && !selectedCustomerName && !isLoadingSpecificCustomer 
+                           : customerIdFromQuery && !selectedCustomerName && !isLoadingSpecificCustomer
                            ? `Failed to load customer (ID: ${customerIdFromQuery}). Select manually or go back.`
-                           : customerIdFromQuery && selectedCustomerName 
+                           : customerIdFromQuery && selectedCustomerName
                            ? `Selected: ${selectedCustomerName}. To change, go back and re-select.`
-                           : isLoadingAllCustomers && !field.value && !selectedCustomerName 
+                           : isLoadingAllCustomers && !watchedCustomerId && !selectedCustomerName
                            ? 'Loading customer list...'
-                           : !watchedCustomerId && !customerIdFromQuery 
+                           : !watchedCustomerId && !customerIdFromQuery
                            ? 'Select a customer for this order.'
                            : ''}
                       </FormDescription>
@@ -556,4 +580,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
