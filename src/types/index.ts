@@ -8,8 +8,8 @@ export type Customer = {
   loyalty_status?: 'None' | 'Bronze' | 'Silver' | 'Gold';
   price_band?: 'Standard' | 'Band A' | 'Band B' | 'Band C';
   orderHistory?: Order[];
-  created_at: string;
-  updated_at: string;
+  created_at: string | null; // Changed from string
+  updated_at: string | null; // Changed from string
 };
 
 export type ServiceItem = {

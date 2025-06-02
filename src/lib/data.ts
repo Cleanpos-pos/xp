@@ -61,27 +61,40 @@ export async function getCustomers(): Promise<Customer[]> {
   }
   return ((data || []) as Customer[]).map(c => ({
     ...c,
-    created_at: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
-    updated_at: c.updated_at ? new Date(c.updated_at).toISOString() : new Date().toISOString(),
+    created_at: c.created_at ? new Date(c.created_at).toISOString() : null,
+    updated_at: c.updated_at ? new Date(c.updated_at).toISOString() : null,
   }));
 }
 
 export async function getCustomerById(id: string): Promise<Customer | undefined> {
+  console.log(`Fetching customer by ID from Supabase: ${id}`);
   const { data, error } = await supabase
     .from('customers')
     .select('*')
     .eq('id', id)
     .single();
 
-  if (error && error.code !== 'PGRST116') { // PGRST116: "single row not found"
-    console.error('Error fetching customer by ID from Supabase:', error);
+  if (error) {
+    if (error.code === 'PGRST116') { // "single row not found"
+      console.warn(`Customer with ID ${id} not found in Supabase (PGRST116).`);
+      return undefined;
+    }
+    // For other errors, log and re-throw
+    console.error(`Error fetching customer by ID ${id} from Supabase:`, error);
     throw error;
   }
-  if (!data) return undefined;
+
+  if (!data) {
+    // This case should ideally be covered by PGRST116 if .single() is used,
+    // but as a fallback.
+    console.warn(`Customer with ID ${id} not found in Supabase (no data returned).`);
+    return undefined;
+  }
+
   return {
     ...data,
-    created_at: data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString(),
-    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : new Date().toISOString(),
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
+    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : null,
   } as Customer;
 }
 
@@ -107,8 +120,8 @@ export async function createCustomer(customerData: CreateCustomerInput): Promise
   }
   return {
     ...data,
-    created_at: data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString(),
-    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : new Date().toISOString(),
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
+    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : null,
   } as Customer;
 }
 
@@ -182,7 +195,7 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
     name: entry.name,
     parent_id: entry.parent_id,
     type: entry.type,
-    price: entry.type === 'item' ? entry.price : null,
+    price: entry.type === 'item' ? entry.price : null, // Ensure price is null for categories
     description: entry.description,
     sort_order: sort_order,
   };
