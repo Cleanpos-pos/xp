@@ -13,6 +13,10 @@ export const CreateCustomerSchema = z.object({
   address: z.string().optional(),
   loyaltyStatus: LoyaltyStatusEnum,
   priceBand: PriceBandEnum,
+  smsOptIn: z.boolean().optional().default(false),
+  emailOptIn: z.boolean().optional().default(false),
+  hasPreferredPricing: z.boolean().optional().default(false),
+  isAccountClient: z.boolean().optional().default(false),
 });
 
 export type CreateCustomerInput = z.infer<typeof CreateCustomerSchema>;

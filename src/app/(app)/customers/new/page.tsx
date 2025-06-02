@@ -21,6 +21,7 @@ import { CreateCustomerSchema, type CreateCustomerInput } from "./customer.schem
 import { createCustomerAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { Switch } from "@/components/ui/switch"; // Import Switch
 
 const loyaltyStatuses = ["None", "Bronze", "Silver", "Gold"] as const;
 const priceBands = ["Standard", "Band A", "Band B", "Band C"] as const;
@@ -39,6 +40,10 @@ export default function NewCustomerPage() {
       address: "",
       loyaltyStatus: "None",
       priceBand: "Standard",
+      smsOptIn: false,
+      emailOptIn: false,
+      hasPreferredPricing: false,
+      isAccountClient: false,
     },
   });
 
@@ -171,6 +176,93 @@ export default function NewCustomerPage() {
                   )}
                 />
             </div>
+
+            <div className="space-y-2 border-t pt-6">
+              <h3 className="text-md font-medium text-muted-foreground">Preferences & Account Settings</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              <FormField
+                control={form.control}
+                name="smsOptIn"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <FormLabel>SMS Opt-In</FormLabel>
+                      <FormDescription className="text-xs">
+                        Allow SMS notifications for order updates.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="emailOptIn"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <FormLabel>Email Opt-In</FormLabel>
+                      <FormDescription className="text-xs">
+                        Allow email receipts and promotions.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="hasPreferredPricing"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <FormLabel>Preferred Pricing</FormLabel>
+                      <FormDescription className="text-xs">
+                        Enable special pricing for this customer.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="isAccountClient"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <FormLabel>Account Client</FormLabel>
+                      <FormDescription className="text-xs">
+                        Allow this customer to pay on account.
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? "Adding Customer..." : "Add Customer & Start Order"}
             </Button>
