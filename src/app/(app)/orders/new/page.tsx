@@ -24,7 +24,7 @@ import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer, Zap, ListPlus } from "lucide-react";
+import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer, Zap, PlusCircle, MinusCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,12 +51,17 @@ const getNextOccurrenceOfWeekday = (targetDay: number, startDate: Date = new Dat
   currentDate.setHours(0, 0, 0, 0); // Start from beginning of the day
   const currentDay = getDay(currentDate); // Sunday is 0, Monday is 1, etc.
   let daysToAdd = (targetDay - currentDay + 7) % 7;
-  if (daysToAdd === 0 && !isToday(startDate) && currentDay === targetDay) { // If it's today and target is today, use today. Otherwise, next week.
-     // Exception: if start date is already the target day but not today, we want next week's target day
-     // No, if targetDay is today, and startDate is today, daysToAdd is 0.
-     // If targetDay is e.g. Monday, and today is Monday, it should be today.
-     // If targetDay is e.g. Monday, and today is Tuesday, it should be next Monday.
-     // This seems correct. If daysToAdd is 0, it means currentDay is targetDay.
+  // If daysToAdd is 0, it means currentDay is targetDay.
+  // If startDate is already the targetDay and it's not today, we want next week's.
+  // However, if targetDay is today (e.g. currentDay === targetDay) and startDate is today, daysToAdd is 0, which is correct.
+  // The modulo logic correctly handles advancing to the next week if the targetDay has passed in the current week.
+  if (daysToAdd === 0 && currentDate.getTime() !== new Date(new Date().setHours(0,0,0,0)).getTime() && currentDay === targetDay) {
+      // This condition handles if the startDate is the targetDay but isn't 'today'.
+      // In this specific case, if we want the *next* occurrence, we should add 7 days.
+      // However, the common expectation for "Next Monday" when today is Monday, is *today's* Monday.
+      // The current (daysToAdd - currentDay + 7) % 7 logic should handle this.
+      // If today is Monday (1) and targetDay is Monday (1), daysToAdd = (1-1+7)%7 = 0. Correct.
+      // If today is Tuesday (2) and targetDay is Monday (1), daysToAdd = (1-2+7)%7 = 6. Correct.
   }
   const resultDate = addDays(currentDate, daysToAdd);
   return resultDate;
@@ -82,7 +87,6 @@ export default function NewOrderPage() {
   const [isLoadingServices, setIsLoadingServices] = React.useState(true);
   const [servicesByCategory, setServicesByCategory] = React.useState<ServicesByCategory>({});
   const [serviceCategoryNames, setServiceCategoryNames] = React.useState<string[]>([]);
-  const [isServiceSelectionActive, setIsServiceSelectionActive] = React.useState(true);
 
 
   // Payment related states
@@ -239,10 +243,6 @@ export default function NewOrderPage() {
     } else {
       append({ serviceItemId: service.id, serviceName: service.name, unitPrice: service.price, quantity: 1, notes: "" });
     }
-    // After adding or updating, if there are items, minimize the service selection
-    if (form.getValues("items").length > 0) {
-      setIsServiceSelectionActive(false);
-    }
   };
 
   const watchedItems = form.watch("items");
@@ -261,7 +261,6 @@ export default function NewOrderPage() {
     setPrintType(null);
     setIsExpressOrder(false);
     setIsDatePickerOpen(false);
-    setIsServiceSelectionActive(true);
 
 
     if (!searchParams.get('customerId')) {
@@ -492,17 +491,72 @@ export default function NewOrderPage() {
 
             {fields.length > 0 && (
               <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                {fields.map((item, index) => (
-                  <Card key={item.id} className="p-3 space-y-3 bg-background border rounded-md shadow-sm">
-                    <div>
-                      <h4 className="font-medium text-sm">{watchedItems[index]?.serviceName}</h4>
-                      <p className="text-xs text-muted-foreground">Price: ${watchedItems[index]?.unitPrice?.toFixed(2)}</p>
+                {fields.map((fieldItem, index) => (
+                  <Card key={fieldItem.id} className="p-3 space-y-2 bg-background border rounded-md shadow-sm">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium text-sm">{watchedItems[index]?.serviceName}</h4>
+                        <p className="text-xs text-muted-foreground">Price: ${watchedItems[index]?.unitPrice?.toFixed(2)}</p>
+                      </div>
+                      <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-7 w-7" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Remove Item</span>
+                      </Button>
                     </div>
-                    <div className="flex items-end gap-3">
-                      <FormField control={form.control} name={`items.${index}.quantity`} render={({ field: itemField }) => (<FormItem className="flex-1"><FormLabel className="text-xs">Qty</FormLabel><FormControl><Input type="number" {...itemField} min="1" className="h-9"/></FormControl><FormMessage /></FormItem>)} />
-                      <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /><span className="sr-only">Remove Item</span></Button>
+                    <div className="flex items-center gap-2">
+                      <FormLabel className="text-xs whitespace-nowrap">Qty:</FormLabel>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => {
+                          const currentQuantity = watchedItems[index].quantity;
+                          if (currentQuantity > 1) {
+                            update(index, { ...watchedItems[index], quantity: currentQuantity - 1 });
+                          } else {
+                            remove(index);
+                          }
+                        }}
+                      >
+                        <MinusCircle className="h-4 w-4" />
+                      </Button>
+                      <Input
+                        type="number"
+                        readOnly
+                        value={watchedItems[index].quantity}
+                        className="h-7 w-12 text-center px-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => {
+                          const currentQuantity = watchedItems[index].quantity;
+                          update(index, { ...watchedItems[index], quantity: currentQuantity + 1 });
+                        }}
+                      >
+                        <PlusCircle className="h-4 w-4" />
+                      </Button>
+                      <FormField
+                        control={form.control}
+                        name={`items.${index}.notes`}
+                        render={({ field }) => (
+                          <FormItem className="flex-grow">
+                            <FormControl>
+                              <Input placeholder="Item notes..." {...field} className="h-7 text-xs" />
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                    <FormField control={form.control} name={`items.${index}.notes`} render={({ field: itemField }) => (<FormItem><FormLabel className="text-xs">Item Notes (Optional)</FormLabel><FormControl><Textarea placeholder="e.g., Heavy starch" {...itemField} rows={1} className="text-xs"/></FormControl><FormMessage /></FormItem>)} />
+                     <FormField
+                        control={form.control}
+                        name={`items.${index}.quantity`}
+                        render={() => <FormMessage className="text-xs pt-1" />}
+                      />
                   </Card>
                 ))}
               </div>
@@ -756,36 +810,28 @@ export default function NewOrderPage() {
             <CardDescription>Choose a category, then click a service to add it to the order.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isServiceSelectionActive ? (
-              <>
-                {isLoadingServices ? (
-                  <div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
-                ) : serviceCategoryNames.length > 0 ? (
-                  <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">
-                      {serviceCategoryNames.map((category) => (<TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">{category}</TabsTrigger>))}
-                    </TabsList>
-                    {serviceCategoryNames.map((category) => (
-                      <TabsContent key={category} value={category}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
-                          {servicesByCategory[category]?.map((service) => (
-                            <Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}>
-                              <span className="font-medium text-sm">{service.name}</span>
-                              <span className="text-xs text-primary">${service.price.toFixed(2)}</span>
-                            </Button>
-                          ))}
-                        </div>
-                      </TabsContent>
-                    ))}
-                  </Tabs>
-                ) : (
-                  <p>No services available. Add items to your catalog in Settings.</p>
-                )}
-              </>
+            {isLoadingServices ? (
+              <div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
+            ) : serviceCategoryNames.length > 0 ? (
+              <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">
+                  {serviceCategoryNames.map((category) => (<TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">{category}</TabsTrigger>))}
+                </TabsList>
+                {serviceCategoryNames.map((category) => (
+                  <TabsContent key={category} value={category}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
+                      {servicesByCategory[category]?.map((service) => (
+                        <Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}>
+                          <span className="font-medium text-sm">{service.name}</span>
+                          <span className="text-xs text-primary">${service.price.toFixed(2)}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </TabsContent>
+                ))}
+              </Tabs>
             ) : (
-              <Button onClick={() => setIsServiceSelectionActive(true)} className="w-full" variant="outline" size="lg">
-                <ListPlus className="mr-2 h-5 w-5" /> Add / Modify Services
-              </Button>
+              <p>No services available. Add items to your catalog in Settings.</p>
             )}
           </CardContent>
         </Card>
