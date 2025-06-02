@@ -8,18 +8,18 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormItem as RHFFormItem, 
-  FormLabel as RHFFormLabel, 
+  FormItem as RHFFormItem,
+  FormLabel as RHFFormLabel,
   FormMessage,
-  FormField, 
+  FormField,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
-import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
+import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2 } from "lucide-react";
 import Link from 'next/link';
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
@@ -37,6 +37,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 const FormLabel = RHFFormLabel;
 const FormItem = RHFFormItem;
@@ -100,6 +111,9 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const [staffList, setStaffList] = React.useState<StaffCredentials[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = React.useState(true);
+  const [staffToRemove, setStaffToRemove] = React.useState<StaffCredentials | null>(null);
+  const [isRemoveStaffDialogOpen, setIsRemoveStaffDialogOpen] = React.useState(false);
+
 
   // Company & Regional Settings State
   const [companyName, setCompanyName] = React.useState<string>("XP Clean Ltd.");
@@ -210,6 +224,25 @@ export default function SettingsPage() {
       toast({ title: "Error", description: result.message, variant: "destructive" });
     }
   };
+
+  const handleOpenRemoveStaffDialog = (staff: StaffCredentials) => {
+    setStaffToRemove(staff);
+    setIsRemoveStaffDialogOpen(true);
+  };
+
+  const handleConfirmRemoveStaff = async () => {
+    if (!staffToRemove) return;
+    const result = await removeStaffAction(staffToRemove.login_id);
+    if (result.success) {
+      toast({ title: "Staff Removed", description: result.message });
+      fetchStaff(); // Refresh the staff list
+    } else {
+      toast({ title: "Error", description: result.message || "Failed to remove staff.", variant: "destructive" });
+    }
+    setIsRemoveStaffDialogOpen(false);
+    setStaffToRemove(null);
+  };
+
 
   const handleSaveCompanyRegionalSettings = () => {
     toast({
@@ -433,16 +466,26 @@ export default function SettingsPage() {
                           {staff.role ? staff.role.replace('_', ' ') : 'Clerk'}
                         </Badge>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id={`quick-login-${staff.login_id}`}
-                          checked={!!staff.enable_quick_login}
-                          onCheckedChange={(checked) => handleQuickLoginToggle(staff.login_id, checked)}
-                          aria-label={`Enable quick login for ${staff.name}`}
-                        />
-                        <Label htmlFor={`quick-login-${staff.login_id}`} className="text-sm">
-                          Quick Login
-                        </Label>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            id={`quick-login-${staff.login_id}`}
+                            checked={!!staff.enable_quick_login}
+                            onCheckedChange={(checked) => handleQuickLoginToggle(staff.login_id, checked)}
+                            aria-label={`Enable quick login for ${staff.name}`}
+                          />
+                          <Label htmlFor={`quick-login-${staff.login_id}`} className="text-sm">
+                            Quick Login
+                          </Label>
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => handleOpenRemoveStaffDialog(staff)}
+                          aria-label={`Remove staff member ${staff.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </li>
                   ))}
@@ -913,6 +956,27 @@ export default function SettingsPage() {
         </TabsContent>
 
       </Tabs>
+
+      {staffToRemove && (
+        <AlertDialog open={isRemoveStaffDialogOpen} onOpenChange={setIsRemoveStaffDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Staff Removal</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove staff member "{staffToRemove.name}" (Login ID: {staffToRemove.login_id})?
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => { setIsRemoveStaffDialogOpen(false); setStaffToRemove(null); }}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmRemoveStaff} className={buttonVariants({ variant: "destructive" })}>
+                Remove Staff
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
+

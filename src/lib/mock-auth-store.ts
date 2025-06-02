@@ -23,7 +23,7 @@ export interface StaffCredentials {
 
 export async function addStaff(staffData: Omit<StaffCredentials, 'id' | 'created_at' | 'updated_at' | 'hashed_password'> & { password: string }): Promise<StaffCredentials> {
   console.warn("SECURITY WARNING: Storing plain text password in 'hashed_password' column. Implement proper hashing for production.");
-  
+
   const { error, data } = await supabase
     .from('staff')
     .insert({
@@ -108,4 +108,17 @@ export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
     throw error;
   }
   return (data as StaffCredentials[]) || [];
+}
+
+export async function deleteStaff(login_id_input: string): Promise<boolean> {
+  const { error, count } = await supabase
+    .from('staff')
+    .delete()
+    .eq('login_id', login_id_input);
+
+  if (error) {
+    console.error("Error deleting staff from Supabase:", error);
+    throw error;
+  }
+  return count !== null && count > 0;
 }
