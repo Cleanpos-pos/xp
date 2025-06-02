@@ -66,13 +66,39 @@ function CatalogNodeDisplay({ node, onAddEntry, onEditEntry, onDeleteEntry, leve
             )}
           </div>
           <div className="flex items-center space-x-1">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onEditEntry(node); }}>
-              <Edit3 className="h-4 w-4" />
-              <span className="sr-only">Edit {node.name}</span>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+            >
+              <span
+                onClick={(e) => { e.stopPropagation(); onEditEntry(node); }}
+                className="cursor-pointer p-1 flex items-center justify-center rounded-sm hover:bg-accent"
+                role="button"
+                tabIndex={0}
+                aria-label={`Edit ${node.name}`}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onEditEntry(node);}}}
+              >
+                <Edit3 className="h-4 w-4" />
+              </span>
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onDeleteEntry(node); }}>
-              <Trash2 className="h-4 w-4" />
-              <span className="sr-only">Delete {node.name}</span>
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <span
+                onClick={(e) => { e.stopPropagation(); onDeleteEntry(node); }}
+                className="cursor-pointer p-1 flex items-center justify-center rounded-sm hover:bg-destructive/10"
+                role="button"
+                tabIndex={0}
+                aria-label={`Delete ${node.name}`}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onDeleteEntry(node);}}}
+              >
+                <Trash2 className="h-4 w-4" />
+              </span>
             </Button>
           </div>
         </div>
