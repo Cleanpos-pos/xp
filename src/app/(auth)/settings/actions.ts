@@ -70,13 +70,13 @@ export async function toggleQuickLoginAction(data: ToggleQuickLoginInput) {
     }
     return {
       success: false,
-      message: "Failed to update quick login status in Supabase. Staff member may not exist."
+      message: `Failed to update quick login status for ${validationResult.data.loginId} in Supabase. The staff member might not exist or the update operation affected 0 rows.`
     };
   } catch (error: any) {
     console.error("Error toggling quick login in Supabase via action:", error);
     return {
       success: false,
-      message: error.message || "Failed to toggle quick login status in Supabase.",
+      message: error.message || `Failed to toggle quick login status for ${validationResult.data.loginId} in Supabase due to an error.`,
     };
   }
 }
@@ -98,13 +98,13 @@ export async function toggleStaffActiveStatusAction(data: ToggleStaffActiveStatu
     }
     return {
       success: false,
-      message: "Failed to update active status in Supabase. Staff member may not exist."
+      message: `Failed to update active status for ${validationResult.data.loginId} in Supabase. The staff member might not exist or the update operation affected 0 rows.`
     };
   } catch (error: any) {
     console.error("Error toggling active status in Supabase via action:", error);
     return {
       success: false,
-      message: error.message || "Failed to toggle active status in Supabase.",
+      message: error.message || `Failed to toggle active status for ${validationResult.data.loginId} in Supabase due to an error.`,
     };
   }
 }

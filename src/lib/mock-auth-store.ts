@@ -43,7 +43,7 @@ export async function addStaff(staffData: Omit<StaffCredentials, 'id' | 'created
 export async function findStaff(login_id_input: string, password_input?: string): Promise<StaffCredentials | undefined> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*') 
+    .select('*')
     .eq('login_id', login_id_input)
     .single();
 
@@ -75,7 +75,7 @@ export async function findStaff(login_id_input: string, password_input?: string)
 export async function getAllStaff(): Promise<StaffCredentials[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*'); 
+    .select('*');
 
   if (error) {
     console.error("Error fetching all staff from Supabase:", error);
@@ -83,34 +83,38 @@ export async function getAllStaff(): Promise<StaffCredentials[]> {
   }
   return ((data || []) as StaffCredentials[]).map(s => ({
       ...s,
-      enable_quick_login: s.enable_quick_login ?? false, // Ensure boolean
-      is_active: s.is_active ?? true // Default to true if null in DB
+      enable_quick_login: s.enable_quick_login ?? false,
+      is_active: s.is_active ?? true
   }));
 }
 
 export async function updateStaffQuickLoginStatus(login_id_input: string, enable: boolean): Promise<boolean> {
+  console.log(`[updateStaffQuickLoginStatus] Attempting to update login_id: '${login_id_input}' to enable_quick_login: ${enable}`);
   const { error, count } = await supabase
     .from('staff')
     .update({ enable_quick_login: enable })
     .eq('login_id', login_id_input);
 
   if (error) {
-    console.error("Error updating quick login status in Supabase:", error);
+    console.error(`[updateStaffQuickLoginStatus] Error updating quick login for '${login_id_input}':`, error);
     throw error;
   }
+  console.log(`[updateStaffQuickLoginStatus] Update for '${login_id_input}' affected ${count} rows.`);
   return count !== null && count > 0;
 }
 
 export async function updateStaffActiveStatus(login_id_input: string, is_active: boolean): Promise<boolean> {
+  console.log(`[updateStaffActiveStatus] Attempting to update login_id: '${login_id_input}' to is_active: ${is_active}`);
   const { error, count } = await supabase
     .from('staff')
     .update({ is_active: is_active })
     .eq('login_id', login_id_input);
 
   if (error) {
-    console.error("Error updating staff active status in Supabase:", error);
+    console.error(`[updateStaffActiveStatus] Error updating active status for '${login_id_input}':`, error);
     throw error;
   }
+  console.log(`[updateStaffActiveStatus] Update for '${login_id_input}' affected ${count} rows.`);
   return count !== null && count > 0;
 }
 
@@ -118,7 +122,7 @@ export async function updateStaffActiveStatus(login_id_input: string, is_active:
 export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('*') 
+    .select('*')
     .eq('enable_quick_login', true)
     .eq('is_active', true); // Only fetch active staff for quick login
 
@@ -128,8 +132,8 @@ export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
   }
   return ((data || []) as StaffCredentials[]).map(s => ({
       ...s,
-      enable_quick_login: s.enable_quick_login ?? false, // Should always be true here due to filter, but good for consistency
-      is_active: s.is_active ?? true // Should always be true here due to filter
+      enable_quick_login: s.enable_quick_login ?? false,
+      is_active: s.is_active ?? true
   }));
 }
 
