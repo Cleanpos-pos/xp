@@ -146,7 +146,7 @@ export default function NewOrderPage() {
       setIsLoadingSpecificCustomer(false); // Ensure this is false if no ID from query
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerIdFromQuery, toast]); // form.setValue removed
+  }, [customerIdFromQuery, toast]);
 
   const watchedCustomerId = form.watch("customerId");
 
@@ -156,25 +156,21 @@ export default function NewOrderPage() {
     }
 
     if (watchedCustomerId) {
-      // If customerId came from URL and matches current form value, name is likely set by specific load
       if (customerIdFromQuery && watchedCustomerId === customerIdFromQuery) {
-        // selectedCustomerName should have been set by the specific customer fetch.
-        // If somehow it's not, try to find from allCustomers as a fallback (though allCustomers might be empty here).
         if (!selectedCustomerName && allCustomers.length > 0) {
            const customer = allCustomers.find(c => c.id === watchedCustomerId);
            if (customer) setSelectedCustomerName(customer.name);
         }
-      } else { // Customer was selected from dropdown
+      } else { 
         const customer = allCustomers.find(c => c.id === watchedCustomerId);
         if (customer) {
           setSelectedCustomerName(customer.name);
            console.log(`[NewOrderPage] Customer selected from dropdown: ID: '${customer.id}' (length ${customer.id.length}), Name: ${customer.name}`);
-        } else if (!customerIdFromQuery) { // Only clear if not initiated by URL param
+        } else if (!customerIdFromQuery) { 
           setSelectedCustomerName(null);
         }
       }
     } else {
-      // If no customerId is in form and none came from URL, ensure name is cleared
       if (!customerIdFromQuery) {
         setSelectedCustomerName(null);
       }
@@ -249,8 +245,8 @@ export default function NewOrderPage() {
       toast({ title: "Order Created", description: result.message });
       setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created!", totalAmount: orderTotal });
       setStage("paymentOptions");
-      setActivePaymentStep("selectAction"); // Reset to action selection
-      setAmountTendered(orderTotal.toFixed(2)); // Pre-fill amount tendered
+      setActivePaymentStep("selectAction"); 
+      setAmountTendered(orderTotal.toFixed(2)); 
       setSelectedPaymentMethod(null);
       setPaymentNote("");
     } else {
@@ -296,6 +292,7 @@ export default function NewOrderPage() {
 
     if (selectedPaymentMethod === "On Account") {
       paymentDetailsMessage = `Order ${createdOrderDetails.id} ($${createdOrderDetails.totalAmount.toFixed(2)}) marked as 'Payment on Account'.`;
+      if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`;
     } else if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Card") {
       const paymentType = selectedPaymentMethod === "Cash" ? "Cash" : "Card";
       let paymentSummary = `Paid ${numericAmountTendered.toFixed(2)} by ${paymentType}.`;
@@ -305,8 +302,10 @@ export default function NewOrderPage() {
         paymentSummary += ` Change: $${(numericAmountTendered - createdOrderDetails.totalAmount).toFixed(2)}.`;
       }
       paymentDetailsMessage = `Payment for order ${createdOrderDetails.id}: ${paymentSummary}`;
+      if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`;
     } else {
        paymentDetailsMessage = `Order ${createdOrderDetails.id} processed. No payment method selected or amount tendered.`;
+       if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`;
     }
 
 
@@ -330,17 +329,16 @@ export default function NewOrderPage() {
 
   const handleAmountKeypadConfirm = (value: string) => {
     setAmountTendered(value);
-    // Basic validation, ensure it's a non-negative number after confirm
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue < 0) {
-        setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00"); // Revert to total or 0 if invalid
+        setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00"); 
         toast({title: "Invalid Amount", description: "Please enter a valid numeric amount.", variant: "destructive"});
     }
   };
   
   const handlePayOnAccount = () => {
     setSelectedPaymentMethod("On Account");
-    setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00"); // Set to full amount conceptually
+    setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00"); 
     setPaymentNote(`Order total of $${createdOrderDetails?.totalAmount.toFixed(2)} will be charged to customer account.`);
   };
 
@@ -366,7 +364,11 @@ export default function NewOrderPage() {
                     <Skeleton className="h-10 w-full" />
                   ) : (
                   <Select
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      const customer = allCustomers.find(c => c.id === value);
+                      setSelectedCustomerName(customer ? customer.name : null);
+                    }}
                     value={field.value}
                     disabled={!!customerIdFromQuery || isLoadingAllCustomers || isLoadingSpecificCustomer}
                   >
@@ -374,11 +376,10 @@ export default function NewOrderPage() {
                        <SelectTrigger>
                         <SelectValue placeholder={
                             isLoadingSpecificCustomer ? "Loading customer..." :
-                            selectedCustomerName ? selectedCustomerName : // Primary display for selected name
-                            (isLoadingAllCustomers && !watchedCustomerId && !field.value) ? "Loading customer list..." :
+                            (isLoadingAllCustomers && !field.value && !customerIdFromQuery) ? "Loading list..." :
                             "Select a customer"
                           }>
-                           {selectedCustomerName || (field.value && !isLoadingSpecificCustomer && "Select a customer")}
+                           {selectedCustomerName || (field.value && !isLoadingSpecificCustomer && !selectedCustomerName && "Select a customer")}
                         </SelectValue>
                       </SelectTrigger>
                     </FormControl>
@@ -393,7 +394,7 @@ export default function NewOrderPage() {
                   )}
                   <FormDescription>
                      {isLoadingSpecificCustomer ? 'Loading pre-selected customer details...'
-                       : customerIdFromQuery && selectedCustomerName ? `Selected: ${selectedCustomerName}. To change, go back.`
+                       : customerIdFromQuery && selectedCustomerName ? `Selected: ${selectedCustomerName}. To change, go back and re-select.`
                        : customerIdFromQuery && !selectedCustomerName && !isLoadingSpecificCustomer ? `Failed to load customer (ID: ${customerIdFromQuery}). Select manually or go back.`
                        : isLoadingAllCustomers && !watchedCustomerId && !selectedCustomerName ? 'Loading customer list...'
                        : !watchedCustomerId && !customerIdFromQuery ? 'Select a customer for this order.'
@@ -459,7 +460,7 @@ export default function NewOrderPage() {
                   onClick={handleCreateAndPayLater}
                   disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingSpecificCustomer || (isLoadingAllCustomers && !watchedCustomerId && !selectedCustomerName) || isLoadingServices}
                   className="w-full">
-                  {form.formState.isSubmitting ? "Creating..." : `Create & Pay Later`}
+                  {form.formState.isSubmitting ? "Creating..." : `Create Order & Pay Later`}
                   <Clock className="ml-2 h-4 w-4" />
                 </Button>
               </div>
@@ -502,11 +503,12 @@ export default function NewOrderPage() {
           {activePaymentStep === "enterPaymentDetails" && (
             <div className="space-y-4">
               <div>
-                <FormLabel htmlFor="amountTendered">Amount Tendered</FormLabel>
+                {/* Using a div instead of FormLabel to avoid useFormContext error */}
+                <div className="text-sm font-medium mb-1">Amount Tendered</div>
                 <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setIsKeypadOpen(true)}>
                     <Input
                         id="amountTendered"
-                        type="text" // Keep as text to display formatted value from keypad
+                        type="text" 
                         value={selectedPaymentMethod === "On Account" ? numericTotalAmount.toFixed(2) : amountTendered}
                         readOnly
                         placeholder="Tap to enter amount"
@@ -571,9 +573,9 @@ export default function NewOrderPage() {
       <AlphanumericKeypadModal
         isOpen={isKeypadOpen}
         onOpenChange={setIsKeypadOpen}
-        inputValue={amountTendered} // Bind to amountTendered
-        onInputChange={setAmountTendered} // Update amountTendered directly
-        onConfirm={handleAmountKeypadConfirm} // Use specific confirm handler
+        inputValue={amountTendered} 
+        onInputChange={setAmountTendered} 
+        onConfirm={handleAmountKeypadConfirm} 
         title="Enter Amount Tendered"
       />
       <div className="lg:col-span-2 space-y-6">
