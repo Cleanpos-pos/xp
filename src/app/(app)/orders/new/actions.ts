@@ -15,7 +15,7 @@ export async function createOrderAction(data: CreateOrderInput) {
   }
 
   // Simulate API call or database insertion
-  console.log("New order data:", validationResult.data); // Includes isExpress if provided
+  console.log("New order data (with discounts/overrides if any):", validationResult.data);
   await new Promise(resolve => setTimeout(resolve, 1000));
 
   const mockOrderIndex = Math.floor(Math.random() * 100);
@@ -24,8 +24,7 @@ export async function createOrderAction(data: CreateOrderInput) {
 
   return {
     success: true,
-    message: `Order ${mockOrderId} ${validationResult.data.isExpress ? '(Express) ' : ''}created successfully!`,
+    message: `Order ${mockOrderId} ${validationResult.data.isExpress ? '(Express) ' : ''}created successfully! Discount/override data logged.`,
     orderId: mockOrderId,
-    // In a real scenario, you'd also pass back the isExpress status or the full order object
   };
 }

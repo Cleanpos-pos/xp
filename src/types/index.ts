@@ -32,8 +32,11 @@ export type OrderItem = {
   serviceItemId: string;
   serviceName: string;
   quantity: number;
-  unitPrice: number;
-  totalPrice: number;
+  unitPrice: number; // This will be the price after manual override, before item discounts
+  originalUnitPrice?: number; // The price from the catalog/service item
+  itemDiscountAmount?: number;
+  itemDiscountPercentage?: number;
+  totalPrice: number; // Effective total price for this line item after all its discounts/overrides
   notes?: string;
 };
 
@@ -58,7 +61,11 @@ export type Order = {
   customerId: string;
   customerName: string;
   items: OrderItem[];
-  totalAmount: number;
+  subtotalAmount?: number; // Sum of item totals before cart discounts
+  cartDiscountAmount?: number;
+  cartDiscountPercentage?: number;
+  cartPriceOverride?: number; // If set, this is the final price
+  totalAmount: number; // Final amount due after all calculations
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   created_at: string;
