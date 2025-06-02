@@ -13,7 +13,7 @@ import {
   FileText,
   Archive,
   Settings,
-  Search,
+  Search, // Keep Search icon if we rename "Find or Add Customer"
 } from 'lucide-react';
 import {
   SidebarMenu,
@@ -25,18 +25,17 @@ import {
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/orders/new', label: 'New Order', icon: ClipboardPlus },
+  // The /find-or-add-customer page now handles both customer and order finding
+  { href: '/find-or-add-customer', label: 'Find Customer/Order', icon: Search }, 
+  { href: '/orders/new', label: 'New Order (Direct)', icon: ClipboardPlus }, // Kept for direct access if needed, or can be removed
   { href: '/orders', label: 'Order Tracking', icon: Shirt },
-  { href: '/find-ticket', label: 'Find Ticket', icon: Search },
-  { href: '/customers', label: 'Customers', icon: Users },
+  { href: '/customers', label: 'Customer List', icon: Users }, // Renamed for clarity
   { href: '/services', label: 'Services', icon: Tags },
   { href: '/reports', label: 'Reports', icon: FileText },
   { href: '/inventory', label: 'Inventory', icon: Archive },
 ];
 
-const secondaryNavItems = [
- { href: '/settings', label: 'Settings', icon: Settings },
-];
+// Removed '/find-ticket' as its functionality is merged.
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -44,7 +43,10 @@ export function SidebarNav() {
   const renderNavItems = (items: typeof navItems) => items.map((item) => {
     const Icon = item.icon;
     // For dashboard, exact match. For others, startsWith.
-    const isActive = item.href === '/dashboard' ? pathname === item.href : (item.href !== '/' && pathname.startsWith(item.href));
+    // Special handling for /find-or-add-customer as it's a primary interaction point now
+    const isActive = item.href === '/dashboard' ? pathname === item.href 
+                    : item.href === '/find-or-add-customer' ? pathname.startsWith(item.href) || pathname === '/orders/new' // Also active if on new order page as it's often the next step
+                    : (item.href !== '/' && pathname.startsWith(item.href));
     
     return (
       <SidebarMenuItem key={item.href}>
@@ -73,12 +75,8 @@ export function SidebarNav() {
         <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
         <SidebarMenu>{renderNavItems(navItems)}</SidebarMenu>
       </SidebarGroup>
-      {/* Example of a secondary group, can be used for settings, help etc. */}
-      {/* <SidebarSeparator />
-      <SidebarGroup>
-        <SidebarGroupLabel>System</SidebarGroupLabel>
-        <SidebarMenu>{renderNavItems(secondaryNavItems)}</SidebarMenu>
-      </SidebarGroup> */}
     </>
   );
 }
+
+    
