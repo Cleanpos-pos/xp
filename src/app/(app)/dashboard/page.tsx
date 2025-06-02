@@ -96,7 +96,7 @@ export default function DashboardPage() {
             <Link href="/reports"><Button className="w-full" variant="secondary">View Reports</Button></Link>
             <Link href="/services"><Button className="w-full" variant="secondary">Manage Services</Button></Link>
             <Link href="/settings" className="col-span-2">
-              <Button className="w-full" variant="outline">
+              <Button className="w-full bg-green-600 text-white hover:bg-green-700">
                 <Briefcase className="mr-2 h-4 w-4" /> Cash Up EOD / Settings
               </Button>
             </Link>
