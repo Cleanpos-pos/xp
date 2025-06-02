@@ -93,3 +93,16 @@ export interface CatalogEntry {
 export interface CatalogHierarchyNode extends CatalogEntry {
   children: CatalogHierarchyNode[];
 }
+
+export type CashUpSession = {
+  id: string; // Unique ID for the session, e.g., timestamp
+  timestamp: string; // ISO string
+  floatAmount: number;
+  systemCash: number;
+  actualCash: number;
+  cashVariance: number;
+  systemCard: number;
+  actualCard: number;
+  cardVariance: number;
+  finalizedBy: string; // Placeholder for staff who did it
+};

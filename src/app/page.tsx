@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -83,7 +84,7 @@ export default function RootLoginPage() {
         title: "Login Successful",
         description: result.message,
       });
-      router.push("/find-or-add-customer");
+      router.push("/dashboard"); // Redirect to dashboard
     } else {
       if (result.errors) {
         if (result.errors.employeeId) form.setError("employeeId", { message: result.errors.employeeId.join(', ') });

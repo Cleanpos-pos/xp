@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription as UiCardDescription, CardHeader, Ca
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { StaffCredentials } from "@/lib/mock-auth-store";
@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CatalogManagementTab } from "@/components/settings/catalog-management";
+import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
 
 
 export default function SettingsPage() {
@@ -103,9 +104,9 @@ export default function SettingsPage() {
           <Cog className="h-8 w-8" />
           <h1 className="text-3xl font-bold font-headline">Settings</h1>
         </div>
-        <Link href="/" passHref>
+        <Link href="/dashboard" passHref> {/* Changed from / to /dashboard */}
             <Button variant="outline" size="sm">
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Login
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
             </Button>
         </Link>
       </div>
@@ -114,7 +115,7 @@ export default function SettingsPage() {
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-3">
           <TabsTrigger value="staffManagement">Staff Management</TabsTrigger>
           <TabsTrigger value="itemCatalog">Service &amp; Item Catalog</TabsTrigger>
-          {/* Add more tabs here as needed */}
+          <TabsTrigger value="cashUp">Cash Up</TabsTrigger>
         </TabsList>
 
         <TabsContent value="staffManagement" className="mt-6 space-y-8">
@@ -229,6 +230,20 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <CatalogManagementTab />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="cashUp" className="mt-6">
+          <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl flex items-center">
+                <DollarSign className="mr-2 h-6 w-6" /> Cash Up Management
+              </CardTitle>
+              <UiCardDescription>Perform end-of-day cash reconciliation and view history.</UiCardDescription>
+            </CardHeader>
+            <CardContent>
+              <CashUpManagementTab />
             </CardContent>
           </Card>
         </TabsContent>
