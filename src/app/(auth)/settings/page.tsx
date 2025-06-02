@@ -16,12 +16,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription as UiCardDescription, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription as UiCardDescription } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image"; // Import next/image
 import { ArrowLeft } from "lucide-react";
 import type { StaffCredentials, UserRole } from "@/types"; 
 import { Switch } from "@/components/ui/switch";
@@ -36,6 +37,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+
+const FormLabel = RHFFormLabel; // Alias for clarity if needed elsewhere or for future refactor
+const FormDescription = RHFFormDescription;
+const FormItem = RHFFormItem;
 
 const userRoles: UserRole[] = ["clerk", "admin", "super_admin"];
 
@@ -105,6 +110,8 @@ export default function SettingsPage() {
   const [includeVatInPrices, setIncludeVatInPrices] = React.useState<boolean>(true);
   const [selectedCurrency, setSelectedCurrency] = React.useState<string>("GBP");
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("en");
+  const [companyLogoUrl, setCompanyLogoUrl] = React.useState<string | null>("https://placehold.co/150x50.png?text=Your+Logo");
+
 
   // Printer Settings State
   const [receiptPrinter, setReceiptPrinter] = React.useState<string>("thermal_80mm");
@@ -134,6 +141,7 @@ export default function SettingsPage() {
 
   const [spendGet_Threshold, setSpendGet_Threshold] = React.useState<string>("50.00");
   const [spendGet_FreeItemDesc, setSpendGet_FreeItemDesc] = React.useState<string>("1 Free Shirt Press");
+  const [spendGet_Notes, setSpendGet_Notes] = React.useState<string>(""); // Added state for spend & get notes
   const [spendGet_Active, setSpendGet_Active] = React.useState<boolean>(false);
   const [spendGet_ValidFrom, setSpendGet_ValidFrom] = React.useState<Date | undefined>();
   const [spendGet_ValidTo, setSpendGet_ValidTo] = React.useState<Date | undefined>();
@@ -176,10 +184,10 @@ export default function SettingsPage() {
       form.reset();
       fetchStaff();
     } else {
-      if (result.errors?.name) form.setError("name", { message: result.errors.name.join(', ') });
-      if (result.errors?.loginId) form.setError("loginId", { message: result.errors.loginId.join(', ') });
-      if (result.errors?.password) form.setError("password", { message: result.errors.password.join(', ') });
-      if (result.errors?.role) form.setError("role", { message: result.errors.role.join(', ') });
+      if (result.errors?.name && Array.isArray(result.errors.name)) form.setError("name", { message: result.errors.name.join(', ') });
+      if (result.errors?.loginId && Array.isArray(result.errors.loginId)) form.setError("loginId", { message: result.errors.loginId.join(', ') });
+      if (result.errors?.password && Array.isArray(result.errors.password)) form.setError("password", { message: result.errors.password.join(', ') });
+      if (result.errors?.role && Array.isArray(result.errors.role)) form.setError("role", { message: result.errors.role.join(', ') });
       
       toast({
         title: "Error",
@@ -207,7 +215,7 @@ export default function SettingsPage() {
     // In a real app, these values would be persisted
     toast({
       title: "Company & Regional Settings (Mock) Saved",
-      description: `Company: ${companyName}, Currency: ${selectedCurrency}, Language: ${selectedLanguage}, VAT Rate: ${vatSalesTaxRate}%, VAT Included: ${includeVatInPrices}. Full implementation requires backend.`,
+      description: `Company: ${companyName}, Currency: ${selectedCurrency}, Language: ${selectedLanguage}, VAT Rate: ${vatSalesTaxRate}%, VAT Included: ${includeVatInPrices}. Logo URL (mock): ${companyLogoUrl}. Full implementation requires backend.`,
     });
   };
   
@@ -236,6 +244,15 @@ export default function SettingsPage() {
       default: return "secondary";
     }
   };
+  
+  const handleLogoUploadPlaceholder = () => {
+    toast({
+      title: "Logo Upload (Placeholder)",
+      description: "Actual logo upload functionality requires backend integration for file storage and processing. This is a UI placeholder.",
+      duration: 5000,
+    });
+  };
+
 
   return (
     <div className="w-full max-w-4xl space-y-8">
@@ -312,13 +329,13 @@ export default function SettingsPage() {
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <RHFFormItem>
-                        <RHFFormLabel>Staff Full Name</RHFFormLabel>
+                      <FormItem>
+                        <FormLabel>Staff Full Name</FormLabel>
                         <FormControl>
                           <Input placeholder="e.g., Jane Doe" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </RHFFormItem>
+                      </FormItem>
                     )}
                   />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -326,21 +343,21 @@ export default function SettingsPage() {
                       control={form.control}
                       name="loginId"
                       render={({ field }) => (
-                        <RHFFormItem>
-                          <RHFFormLabel>Login ID</RHFFormLabel>
+                        <FormItem>
+                          <FormLabel>Login ID</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g., STAFF002" {...field} />
                           </FormControl>
                           <FormMessage />
-                        </RHFFormItem>
+                        </FormItem>
                       )}
                     />
                      <FormField
                       control={form.control}
                       name="role"
                       render={({ field }) => (
-                        <RHFFormItem>
-                          <RHFFormLabel>Role</RHFFormLabel>
+                        <FormItem>
+                          <FormLabel>Role</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -356,7 +373,7 @@ export default function SettingsPage() {
                             </SelectContent>
                           </Select>
                           <FormMessage />
-                        </RHFFormItem>
+                        </FormItem>
                       )}
                     />
                   </div>
@@ -364,16 +381,16 @@ export default function SettingsPage() {
                     control={form.control}
                     name="password"
                     render={({ field }) => (
-                      <RHFFormItem>
-                        <RHFFormLabel>Password</RHFFormLabel>
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
                         <FormControl>
                           <Input type="password" placeholder="••••••••" {...field} />
                         </FormControl>
-                         <RHFFormDescription>
+                         <FormDescription>
                           NOTE: Passwords are NOT hashed in this prototype. Implement hashing for production.
-                        </RHFFormDescription>
+                        </FormDescription>
                         <FormMessage />
-                      </RHFFormItem>
+                      </FormItem>
                     )}
                   />
                   <Button type="submit" className="w-full sm:w-auto" disabled={form.formState.isSubmitting}>
@@ -663,7 +680,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <Label htmlFor="spendGet-notes">Additional Offer Details/Exclusions (Notes)</Label>
-                <Textarea id="spendGet-notes" value={spendGet_FreeItemDesc} onChange={(e) => setSpendGet_FreeItemDesc(e.target.value)} placeholder="e.g., Not valid with other offers. Excludes leather items." className="mt-1" rows={2} />
+                <Textarea id="spendGet-notes" value={spendGet_Notes} onChange={(e) => setSpendGet_Notes(e.target.value)} placeholder="e.g., Not valid with other offers. Excludes leather items." className="mt-1" rows={2} />
               </div>
               <div className="flex items-center space-x-2">
                 <Switch id="spendGet-active" checked={spendGet_Active} onCheckedChange={setSpendGet_Active} />
@@ -775,6 +792,32 @@ export default function SettingsPage() {
               <UiCardDescription>Manage company details, system currency, language, and tax settings. (UI Placeholders)</UiCardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+               <div className="space-y-2">
+                <Label>Company Logo</Label>
+                <div className="flex items-center gap-4">
+                  {companyLogoUrl ? (
+                    <Image
+                      src={companyLogoUrl}
+                      alt="Company Logo Placeholder"
+                      width={150}
+                      height={50}
+                      className="rounded-md border object-contain"
+                      data-ai-hint="company logo"
+                    />
+                  ) : (
+                    <div className="w-[150px] h-[50px] flex items-center justify-center rounded-md border border-dashed text-muted-foreground">
+                      No Logo
+                    </div>
+                  )}
+                  <Button variant="outline" onClick={handleLogoUploadPlaceholder}>
+                    <ImageUp className="mr-2 h-4 w-4" /> Upload / Change Logo
+                  </Button>
+                </div>
+                <FormDescription className="text-xs">
+                  Placeholder for logo upload. Actual file upload requires backend integration.
+                </FormDescription>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div>
                     <Label htmlFor="company-name">Company Name</Label>
