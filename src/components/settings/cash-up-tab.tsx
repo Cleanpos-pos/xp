@@ -19,7 +19,7 @@ const MOCK_SYSTEM_CARD = 850.25;  // Placeholder
 export function CashUpManagementTab() {
   const { toast } = useToast();
 
-  const [floatAmount, setFloatAmount] = useState<number>(100.00); // Initial float
+  const [floatAmount, setFloatAmount] = useState<number>(100.00);
   const [actualCash, setActualCash] = useState<number>(0);
   const [actualCard, setActualCard] = useState<number>(0);
   
@@ -47,14 +47,21 @@ export function CashUpManagementTab() {
     if (storedHistory) {
       setCashUpHistory(JSON.parse(storedHistory));
     }
-     setFloatInputValue(floatAmount.toFixed(2));
+    const currentFloat = parseFloat(localStorage.getItem("cashUpFloat") || "100.00");
+    setFloatAmount(currentFloat);
+    setFloatInputValue(currentFloat.toFixed(2));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("cashUpFloat", floatAmount.toString());
   }, [floatAmount]);
+
 
   const handleSetOrAdjustFloat = () => {
     const newFloat = parseFloat(floatInputValue);
     if (isNaN(newFloat) || newFloat < 0) {
       toast({ title: "Invalid Amount", description: "Float amount must be a positive number.", variant: "destructive" });
-      setFloatInputValue(floatAmount.toFixed(2));
+      setFloatInputValue(floatAmount.toFixed(2)); // Reset input to current float
       return;
     }
     setFloatAmount(newFloat);
@@ -65,17 +72,24 @@ export function CashUpManagementTab() {
     const newActualCash = parseFloat(cashEntryInputValue);
     if (isNaN(newActualCash) || newActualCash < 0) {
       toast({ title: "Invalid Amount", description: "Actual cash amount must be a positive number.", variant: "destructive" });
-      setCashEntryInputValue(actualCash.toFixed(2));
+      setCashEntryInputValue(actualCash > 0 ? actualCash.toFixed(2) : "");
       return;
     }
     setActualCash(newActualCash);
+  };
+  
+  const handleEnterExactCash = () => {
+    const exactCash = systemCash + floatAmount;
+    setActualCash(exactCash);
+    setCashEntryInputValue(exactCash.toFixed(2));
+    toast({ title: "Cash Total Entered", description: `Actual cash total set to system expected (incl. float): $${exactCash.toFixed(2)}.`});
   };
 
   const handleEnterActualCard = () => {
     const newActualCard = parseFloat(cardEntryInputValue);
     if (isNaN(newActualCard) || newActualCard < 0) {
       toast({ title: "Invalid Amount", description: "Actual card amount must be a positive number.", variant: "destructive" });
-      setCardEntryInputValue(actualCard.toFixed(2));
+      setCardEntryInputValue(actualCard > 0 ? actualCard.toFixed(2) : "");
       return;
     }
     setActualCard(newActualCard);
@@ -83,13 +97,13 @@ export function CashUpManagementTab() {
 
   const handleEnterExactCard = () => {
     setActualCard(systemCard);
-    setCardEntryInputValue(systemCard.toFixed(2)); // Also update input value for consistency if modal was open
+    setCardEntryInputValue(systemCard.toFixed(2));
     toast({ title: "Card Total Entered", description: `Actual card total set to system expected: $${systemCard.toFixed(2)}.`});
   };
 
 
   const handleFinalizeCashUp = () => {
-    if (actualCash === 0 && actualCard === 0 && !selectedCashUpId) { // only check if not viewing history
+    if (actualCash === 0 && actualCard === 0 && !selectedCashUpId) {
         toast({ title: "Cannot Finalize", description: "Please enter actual cash or card amounts for the current session.", variant: "warning" });
         return;
     }
@@ -112,10 +126,11 @@ export function CashUpManagementTab() {
     
     setActualCash(0);
     setActualCard(0);
-    setCashEntryInputValue("0.00");
-    setCardEntryInputValue("0.00");
-    setSystemCash(0); 
-    setSystemCard(0);
+    setCashEntryInputValue(""); // Reset for next entry
+    setCardEntryInputValue(""); // Reset for next entry
+    // Reset system values to mock defaults for a new session, or fetch new values
+    setSystemCash(MOCK_SYSTEM_CASH); 
+    setSystemCard(MOCK_SYSTEM_CARD);
     setSelectedCashUpId(newSession.id); 
   };
   
@@ -142,24 +157,14 @@ export function CashUpManagementTab() {
       setSystemCard(MOCK_SYSTEM_CARD);
       setActualCash(0);
       setActualCard(0);
-      setCashEntryInputValue("0.00");
-      setCardEntryInputValue("0.00");
+      setCashEntryInputValue("");
+      setCardEntryInputValue("");
     }
   };
-
-  useEffect(() => {
-    const currentFloat = parseFloat(localStorage.getItem("cashUpFloat") || "100.00");
-    setFloatAmount(currentFloat);
-    setFloatInputValue(currentFloat.toFixed(2));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("cashUpFloat", floatAmount.toString());
-  }, [floatAmount]);
   
   const renderVariance = (variance: number) => {
     const isPositive = variance >= 0;
-    const isZero = variance === 0;
+    const isZero = Math.abs(variance) < 0.001; // Account for potential float precision issues
     const Icon = isPositive ? (isZero ? CheckCircle : TrendingUp) : TrendingDown;
     const colorClass = isPositive ? (isZero ? "text-muted-foreground" : "text-green-600") : "text-red-600";
     return (
@@ -236,13 +241,23 @@ export function CashUpManagementTab() {
               <Label>Actual Cash Counted:</Label>
               <span className="font-mono text-lg font-semibold text-blue-600">${actualCash.toFixed(2)}</span>
             </div>
-             <Button 
-                onClick={() => {setCashEntryInputValue(actualCash > 0 ? actualCash.toFixed(2) : ""); setIsCashEntryModalOpen(true);}} 
-                className="w-full"
-                disabled={!!selectedCashUpId}
-            >
-              <Edit3 className="mr-2 h-4 w-4" /> Enter Actual Cash
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                  onClick={() => {setCashEntryInputValue(actualCash > 0 ? actualCash.toFixed(2) : ""); setIsCashEntryModalOpen(true);}} 
+                  className="w-full"
+                  disabled={!!selectedCashUpId}
+              >
+                <Edit3 className="mr-2 h-4 w-4" /> Enter Cash
+              </Button>
+              <Button 
+                  onClick={handleEnterExactCash} 
+                  variant="outline" 
+                  className="w-full"
+                  disabled={!!selectedCashUpId}
+              >
+                  <CheckSquare className="mr-2 h-4 w-4" /> Enter Exact
+              </Button>
+            </div>
             <div className="flex justify-between items-center border-t pt-3 mt-3">
               <Label>Cash Variance:</Label>
               {renderVariance(cashVariance)}
@@ -269,7 +284,7 @@ export function CashUpManagementTab() {
                     className="w-full"
                     disabled={!!selectedCashUpId}
                 >
-                    <Edit3 className="mr-2 h-4 w-4" /> Enter Card Total
+                    <Edit3 className="mr-2 h-4 w-4" /> Enter Card
                 </Button>
                 <Button 
                     onClick={handleEnterExactCard} 
@@ -302,7 +317,7 @@ export function CashUpManagementTab() {
       <Card>
         <CardHeader>
           <CardTitle>Cash Up History</CardTitle>
-          <CardDescription>Review past cash up sessions. (Stored in browser)</CardDescription>
+          <CardDescription>Review past cash up sessions. (Stored in browser local storage)</CardDescription>
         </CardHeader>
         <CardContent>
           {cashUpHistory.length === 0 ? (
@@ -328,22 +343,22 @@ export function CashUpManagementTab() {
                 <div className="font-medium pt-2">Float:</div>
                 <div className="flex justify-between"><span>Opening Float:</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.floatAmount.toFixed(2)}</span></div>
                 
-                <div className="font-medium pt-2">Cash:</div>
+                <div className="font-medium pt-2">Cash (Net of Float):</div>
                 <div className="flex justify-between"><span>System Expected (Net):</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.systemCash.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span>Actual Counted:</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.actualCash.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span>Variance:</span> {renderVariance(cashUpHistory.find(s => s.id === selectedCashUpId)!.cashVariance)}</div>
+                <div className="flex justify-between"><span>Actual Counted (Incl. Float):</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.actualCash.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span>Cash Variance:</span> {renderVariance(cashUpHistory.find(s => s.id === selectedCashUpId)!.cashVariance)}</div>
 
                 <div className="font-medium pt-2">Card:</div>
                 <div className="flex justify-between"><span>System Expected:</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.systemCard.toFixed(2)}</span></div>
                 <div className="flex justify-between"><span>Actual from Terminal:</span> <span className="font-mono">${cashUpHistory.find(s => s.id === selectedCashUpId)!.actualCard.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span>Variance:</span> {renderVariance(cashUpHistory.find(s => s.id === selectedCashUpId)!.cardVariance)}</div>
+                <div className="flex justify-between"><span>Card Variance:</span> {renderVariance(cashUpHistory.find(s => s.id === selectedCashUpId)!.cardVariance)}</div>
             </div>
            )}
         </CardContent>
+         <CardFooter>
+            <p className="text-xs text-muted-foreground">Note: System expected values are currently placeholders. In a real app, these would be dynamically fetched from order data.</p>
+        </CardFooter>
       </Card>
     </div>
   );
 }
-
-
-    
