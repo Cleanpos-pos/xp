@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
+  FormDescription as RHFFormDescription, // Renamed to avoid conflict
   FormField,
-  FormItem,
-  FormLabel,
+  FormItem as RHFFormItem, // Renamed to avoid conflict
+  FormLabel as RHFFormLabel, // Renamed to avoid conflict
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { StaffCredentials } from "@/lib/mock-auth-store";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // Generic Label
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -149,42 +149,42 @@ export default function SettingsPage() {
                     control={form.control}
                     name="name"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Staff Full Name</FormLabel>
+                      <RHFFormItem>
+                        <RHFFormLabel>Staff Full Name</RHFFormLabel>
                         <FormControl>
                           <Input placeholder="e.g., Jane Doe" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
+                      </RHFFormItem>
                     )}
                   />
                   <FormField
                     control={form.control}
                     name="loginId"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Login ID</FormLabel>
+                      <RHFFormItem>
+                        <RHFFormLabel>Login ID</RHFFormLabel>
                         <FormControl>
                           <Input placeholder="e.g., STAFF002" {...field} />
                         </FormControl>
                         <FormMessage />
-                      </FormItem>
+                      </RHFFormItem>
                     )}
                   />
                   <FormField
                     control={form.control}
                     name="password"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
+                      <RHFFormItem>
+                        <RHFFormLabel>Password</RHFFormLabel>
                         <FormControl>
                           <Input type="password" placeholder="••••••••" {...field} />
                         </FormControl>
-                         <FormDescription>
+                         <RHFFormDescription>
                           NOTE: Passwords are NOT hashed in this prototype. Implement hashing for production.
-                        </FormDescription>
+                        </RHFFormDescription>
                         <FormMessage />
-                      </FormItem>
+                      </RHFFormItem>
                     )}
                   />
                   <Button type="submit" className="w-full sm:w-auto" disabled={form.formState.isSubmitting}>
@@ -273,14 +273,12 @@ export default function SettingsPage() {
               <UiCardDescription>Manage system currency and language preferences. (UI Placeholders)</UiCardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <FormItem>
-                <FormLabel className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-muted-foreground" /> System Currency</FormLabel>
+              <div className="space-y-2">
+                <Label htmlFor="system-currency" className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-muted-foreground" /> System Currency</Label>
                 <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                  </FormControl>
+                  <SelectTrigger id="system-currency">
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USD">USD - US Dollar</SelectItem>
                     <SelectItem value="EUR">EUR - Euro</SelectItem>
@@ -289,19 +287,17 @@ export default function SettingsPage() {
                     <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormDescription>
+                <p className="text-sm text-muted-foreground">
                   Select the primary currency for transactions and reporting.
-                </FormDescription>
-              </FormItem>
+                </p>
+              </div>
 
-              <FormItem>
-                <FormLabel className="flex items-center"><Globe className="mr-2 h-4 w-4 text-muted-foreground" /> Language</FormLabel>
+              <div className="space-y-2">
+                <Label htmlFor="system-language" className="flex items-center"><Globe className="mr-2 h-4 w-4 text-muted-foreground" /> Language</Label>
                 <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                  </FormControl>
+                   <SelectTrigger id="system-language">
+                    <SelectValue placeholder="Select language" />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="en">English</SelectItem>
                     <SelectItem value="es">Español (Spanish)</SelectItem>
@@ -309,10 +305,10 @@ export default function SettingsPage() {
                     <SelectItem value="de">Deutsch (German)</SelectItem>
                   </SelectContent>
                 </Select>
-                <FormDescription>
+                <p className="text-sm text-muted-foreground">
                   Select the display language for the application interface.
-                </FormDescription>
-              </FormItem>
+                </p>
+              </div>
 
               <Button onClick={handleSaveRegionalSettings}>Save Regional Preferences</Button>
                <p className="text-xs text-muted-foreground pt-4">
@@ -326,3 +322,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
