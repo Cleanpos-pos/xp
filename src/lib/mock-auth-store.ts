@@ -93,7 +93,7 @@ export async function updateStaffQuickLoginStatus(login_id_input: string, enable
 
   const { data: testSelectData, error: testSelectError } = await supabase
     .from('staff')
-    .select('id, login_id, name, enable_quick_login')
+    .select('id, login_id, name, enable_quick_login, is_active')
     .eq('login_id', login_id_input)
     .maybeSingle();
 
@@ -105,10 +105,17 @@ export async function updateStaffQuickLoginStatus(login_id_input: string, enable
     console.log(`[updateStaffQuickLoginStatus] PRE-UPDATE SELECT SUCCEEDED for login_id '${login_id_input}'. Found:`, testSelectData);
   }
 
-  const { error, count } = await supabase
+  // const { error, count } = await supabase
+  //   .from('staff')
+  //   .update({ enable_quick_login: enable, updated_at: new Date().toISOString() }) 
+  //   .eq('login_id', login_id_input);
+
+  // Temporarily remove updated_at for debugging if it causes issues.
+   const { error, count } = await supabase
     .from('staff')
-    .update({ enable_quick_login: enable /*, updated_at: new Date().toISOString() */ }) // Temporarily removed updated_at
+    .update({ enable_quick_login: enable })
     .eq('login_id', login_id_input);
+
 
   if (error) {
     console.error(`[updateStaffQuickLoginStatus] Error updating quick login for '${login_id_input}':`, error);
@@ -123,7 +130,7 @@ export async function updateStaffActiveStatus(login_id_input: string, is_active:
   
   const { data: testSelectData, error: testSelectError } = await supabase
     .from('staff')
-    .select('id, login_id, name, is_active')
+    .select('id, login_id, name, enable_quick_login, is_active')
     .eq('login_id', login_id_input)
     .maybeSingle();
 
@@ -135,9 +142,15 @@ export async function updateStaffActiveStatus(login_id_input: string, is_active:
     console.log(`[updateStaffActiveStatus] PRE-UPDATE SELECT SUCCEEDED for login_id '${login_id_input}'. Found:`, testSelectData);
   }
 
-  const { error, count } = await supabase
+  // const { error, count } = await supabase
+  //   .from('staff')
+  //   .update({ is_active: is_active, updated_at: new Date().toISOString() })
+  //   .eq('login_id', login_id_input);
+
+  // Temporarily remove updated_at for debugging if it causes issues.
+   const { error, count } = await supabase
     .from('staff')
-    .update({ is_active: is_active /*, updated_at: new Date().toISOString() */ }) // Temporarily removed updated_at
+    .update({ is_active: is_active })
     .eq('login_id', login_id_input);
 
   if (error) {
@@ -150,21 +163,28 @@ export async function updateStaffActiveStatus(login_id_input: string, is_active:
 
 
 export async function getQuickLoginStaff(): Promise<StaffCredentials[]> {
-  const { data, error } = await supabase
+  console.log("[getQuickLoginStaff] Fetching users with enable_quick_login=true AND is_active=true.");
+  const { data, error, count } = await supabase
     .from('staff')
-    .select('*')
+    .select('*', { count: 'exact' }) // Request count
     .eq('enable_quick_login', true)
-    .eq('is_active', true); // Only fetch active staff for quick login
+    .eq('is_active', true);
 
   if (error) {
-    console.error("Error fetching quick login staff from Supabase:", error);
+    console.error("[getQuickLoginStaff] Error fetching quick login staff from Supabase:", error);
     throw error;
   }
-  return ((data || []) as StaffCredentials[]).map(s => ({
+
+  console.log(`[getQuickLoginStaff] Supabase returned ${count} record(s). Raw data:`, data);
+
+  const mappedData = ((data || []) as StaffCredentials[]).map(s => ({
       ...s,
-      enable_quick_login: s.enable_quick_login ?? false, // Default to false if null
-      is_active: s.is_active ?? true // Default to true if null
+      enable_quick_login: s.enable_quick_login ?? false,
+      is_active: s.is_active ?? true,
   }));
+
+  console.log("[getQuickLoginStaff] Mapped data being returned:", mappedData);
+  return mappedData;
 }
 
 export async function deleteStaff(login_id_input: string): Promise<boolean> {
