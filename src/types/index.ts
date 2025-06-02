@@ -135,6 +135,7 @@ export interface StaffCredentials {
   password?: string; // For input
   enable_quick_login?: boolean;
   role: UserRole; // Added user role
+  is_active?: boolean; // Added for active status
   created_at?: string;
   updated_at?: string;
 }

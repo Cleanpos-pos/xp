@@ -5,10 +5,11 @@ import {
   addStaff as addStaffToDb,
   getAllStaff as getAllStaffFromDb,
   updateStaffQuickLoginStatus,
-  deleteStaff as deleteStaffFromDb, // Import new delete function
+  deleteStaff as deleteStaffFromDb,
+  updateStaffActiveStatus, // Import new function
 } from "@/lib/mock-auth-store";
 import type { StaffCredentials } from "@/types"; // Use StaffCredentials from @/types
-import { type AddStaffInput, AddStaffSchema, type ToggleQuickLoginInput, ToggleQuickLoginSchema } from "./settings.schema";
+import { type AddStaffInput, AddStaffSchema, type ToggleQuickLoginInput, ToggleQuickLoginSchema, type ToggleStaffActiveStatusInput, ToggleStaffActiveStatusSchema } from "./settings.schema";
 
 export async function addStaffAction(data: AddStaffInput) {
   const validationResult = AddStaffSchema.safeParse(data);
@@ -27,11 +28,12 @@ export async function addStaffAction(data: AddStaffInput) {
       login_id: validationResult.data.loginId,
       password: validationResult.data.password,
       role: validationResult.data.role, // Pass the role
-      enable_quick_login: false,
+      enable_quick_login: false, // Default for new staff
+      // is_active will be true by default in DB
     });
     return {
       success: true,
-      message: `Staff member ${validationResult.data.name} (Role: ${validationResult.data.role}) with Login ID ${validationResult.data.loginId} added to Supabase. Quick login is initially disabled.`,
+      message: `Staff member ${validationResult.data.name} (Role: ${validationResult.data.role}) with Login ID ${validationResult.data.loginId} added to Supabase. Quick login is initially disabled. Account is active.`,
     };
   } catch (error: any) {
     console.error("Error adding staff to Supabase via action:", error);
@@ -78,6 +80,35 @@ export async function toggleQuickLoginAction(data: ToggleQuickLoginInput) {
     };
   }
 }
+
+export async function toggleStaffActiveStatusAction(data: ToggleStaffActiveStatusInput) {
+  const validationResult = ToggleStaffActiveStatusSchema.safeParse(data);
+  if (!validationResult.success) {
+    return { success: false, message: "Invalid input for active status toggle." };
+  }
+
+  try {
+    const success = await updateStaffActiveStatus(validationResult.data.loginId, validationResult.data.isActive);
+
+    if (success) {
+      return {
+        success: true,
+        message: `Staff member ${validationResult.data.loginId} ${validationResult.data.isActive ? 'activated' : 'deactivated'} in Supabase.`
+      };
+    }
+    return {
+      success: false,
+      message: "Failed to update active status in Supabase. Staff member may not exist."
+    };
+  } catch (error: any) {
+    console.error("Error toggling active status in Supabase via action:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to toggle active status in Supabase.",
+    };
+  }
+}
+
 
 export async function removeStaffAction(loginId: string) {
   if (!loginId || typeof loginId !== 'string' || loginId.trim() === '') {

@@ -16,10 +16,15 @@ export async function loginAction(data: LoginInput) {
   }
 
   try {
-    // mock-auth-store's findStaff now interacts with Supabase
     const staffMember = await findStaff(validationResult.data.employeeId, validationResult.data.password);
 
     if (staffMember) {
+      if (staffMember.is_active === false) { // Check if staff member is active
+        return {
+          success: false,
+          message: "Account is inactive. Please contact an administrator.",
+        };
+      }
       return {
         success: true,
         message: `Login successful! Welcome ${staffMember.name}. (Using Supabase)`,
@@ -41,9 +46,8 @@ export async function loginAction(data: LoginInput) {
 }
 
 export async function getQuickLoginStaffAction(): Promise<StaffCredentials[]> {
-  // mock-auth-store's getQuickLoginStaff now interacts with Supabase
   try {
-    return await getQuickLoginStaff();
+    return await getQuickLoginStaff(); // This now only returns active staff
   } catch (error) {
     console.error("Error fetching quick login staff in action:", error);
     return []; // Return empty array on error

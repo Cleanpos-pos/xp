@@ -4,22 +4,22 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Form,
   FormControl,
   FormItem as RHFFormItem,
   FormLabel as RHFFormLabel,
   FormMessage,
-  FormField,
+  FormField, // Ensure FormField is imported
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
-import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffAction } from "./actions";
+import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffAction, toggleStaffActiveStatusAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2 } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon } from "lucide-react";
 import Link from 'next/link';
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
@@ -225,6 +225,20 @@ export default function SettingsPage() {
     }
   };
 
+  const handleStaffActiveToggle = async (login_id: string, isActive: boolean) => {
+    const result = await toggleStaffActiveStatusAction({ loginId: login_id, isActive });
+    if (result.success) {
+      toast({ title: "Staff Status Updated", description: result.message });
+      setStaffList(prevList =>
+        prevList.map(staff =>
+          staff.login_id === login_id ? { ...staff, is_active: isActive } : staff
+        )
+      );
+    } else {
+      toast({ title: "Error", description: result.message, variant: "destructive" });
+    }
+  };
+
   const handleOpenRemoveStaffDialog = (staff: StaffCredentials) => {
     setStaffToRemove(staff);
     setIsRemoveStaffDialogOpen(true);
@@ -351,7 +365,7 @@ export default function SettingsPage() {
               value="companyRegional"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
             >
-              Company
+             <Building className="mr-1.5 h-4 w-4" /> Company
             </TabsTrigger>
           </TabsList>
         </div>
@@ -362,7 +376,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <Users className="mr-2 h-6 w-6" /> Add New Staff
               </CardTitle>
-              <CardDescription>Add new staff members to the system (uses Supabase). Ensure you have added a 'role' column to your 'staff' table in Supabase.</CardDescription>
+              <CardDescription>Add new staff members to the system (uses Supabase). Ensure you have added 'role' and 'is_active' columns to your 'staff' table in Supabase.</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -446,45 +460,60 @@ export default function SettingsPage() {
           <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex items-center">
-                <KeyRound className="mr-2 h-6 w-6" /> Manage Staff Quick Login &amp; Roles
+                <KeyRound className="mr-2 h-6 w-6" /> Manage Staff
               </CardTitle>
-              <CardDescription>View staff roles and enable or disable quick login (uses Supabase).</CardDescription>
+              <CardDescription>View staff roles, toggle quick login, active status, or remove staff (uses Supabase).</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingStaff ? (
                 <div className="space-y-4">
-                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
                 </div>
               ) : staffList.length > 0 ? (
                 <ul className="space-y-4">
                   {staffList.map((staff) => (
-                    <li key={staff.login_id} className="flex items-center justify-between p-3 border rounded-md bg-background shadow-sm">
+                    <li key={staff.login_id} className={cn("flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-md bg-background shadow-sm gap-4", !staff.is_active && "opacity-60 bg-muted/50")}>
                       <div className="flex flex-col">
-                        <p className="font-medium">{staff.name}</p>
+                        <p className={cn("font-medium", !staff.is_active && "line-through")}>{staff.name}</p>
                         <p className="text-sm text-muted-foreground">ID: {staff.login_id}</p>
                          <Badge variant={getRoleBadgeVariant(staff.role || 'clerk')} className="w-fit mt-1 capitalize">
                           {staff.role ? staff.role.replace('_', ' ') : 'Clerk'}
                         </Badge>
+                         {!staff.is_active && <Badge variant="outline" className="w-fit mt-1 text-destructive border-destructive">Inactive</Badge>}
                       </div>
-                      <div className="flex items-center space-x-3">
-                        <div className="flex items-center space-x-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-3 w-full sm:w-auto">
+                        <div className="flex items-center space-x-2 justify-between w-full sm:w-auto">
+                          <Label htmlFor={`active-status-${staff.login_id}`} className="text-sm whitespace-nowrap flex items-center">
+                            {staff.is_active ? <UserCheckIcon className="mr-1.5 h-4 w-4 text-green-600" /> : <UserXIcon className="mr-1.5 h-4 w-4 text-red-600" />}
+                            Active
+                          </Label>
+                          <Switch
+                            id={`active-status-${staff.login_id}`}
+                            checked={!!staff.is_active}
+                            onCheckedChange={(checked) => handleStaffActiveToggle(staff.login_id, checked)}
+                            aria-label={`Toggle active status for ${staff.name}`}
+                          />
+                        </div>
+                        <div className="flex items-center space-x-2 justify-between w-full sm:w-auto">
+                          <Label htmlFor={`quick-login-${staff.login_id}`} className="text-sm whitespace-nowrap">
+                            Quick Login
+                          </Label>
                           <Switch
                             id={`quick-login-${staff.login_id}`}
                             checked={!!staff.enable_quick_login}
                             onCheckedChange={(checked) => handleQuickLoginToggle(staff.login_id, checked)}
                             aria-label={`Enable quick login for ${staff.name}`}
+                            disabled={!staff.is_active}
                           />
-                          <Label htmlFor={`quick-login-${staff.login_id}`} className="text-sm">
-                            Quick Login
-                          </Label>
                         </div>
                         <Button
                           variant="destructive"
-                          size="icon"
+                          size="sm"
+                          className="w-full sm:w-auto"
                           onClick={() => handleOpenRemoveStaffDialog(staff)}
                           aria-label={`Remove staff member ${staff.name}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="mr-0 sm:mr-1.5 h-4 w-4" /> <span className="sm:hidden">Remove</span>
                         </Button>
                       </div>
                     </li>
@@ -542,9 +571,9 @@ export default function SettingsPage() {
               })}
             </CardContent>
              <CardFooter>
-              <CardDescription className="text-xs">
+              <p className={cn("text-muted-foreground", "text-xs")}>
                 Note: Assigning roles is now possible when adding staff. However, the actual restriction of access based on these roles (e.g., hiding buttons, preventing actions) is not yet implemented in this prototype and would require further development across the application.
-              </CardDescription>
+              </p>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -755,9 +784,9 @@ export default function SettingsPage() {
               <Button onClick={() => handleSaveSpecialOffer("Spend & Get", spendGet_ValidFrom, spendGet_ValidTo)}>Save Offer Settings</Button>
             </CardContent>
              <CardFooter>
-                <CardDescription className="text-xs">
+                <p className={cn("text-muted-foreground", "text-xs")}>
                     Note: The parameters set here are for configuration purposes. Applying these offers to orders requires additional logic in the order creation process.
-                </CardDescription>
+                </p>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -979,4 +1008,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

@@ -19,6 +19,13 @@ export const ToggleQuickLoginSchema = z.object({
 });
 export type ToggleQuickLoginInput = z.infer<typeof ToggleQuickLoginSchema>;
 
+export const ToggleStaffActiveStatusSchema = z.object({
+  loginId: z.string().min(1, "Login ID is required"),
+  isActive: z.boolean(),
+});
+export type ToggleStaffActiveStatusInput = z.infer<typeof ToggleStaffActiveStatusSchema>;
+
+
 export const UpdateCustomerAccountDetailsSchema = z.object({
   customerId: z.string().uuid("Invalid customer ID."),
   is_account_client: z.boolean().optional(),
