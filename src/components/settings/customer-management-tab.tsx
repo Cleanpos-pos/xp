@@ -4,91 +4,17 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCustomers } from "@/lib/data";
-import { updateCustomerAccountDetailsAction } from "@/app/(auth)/settings/customer-actions.ts";
+import { updateCustomerAction } from "@/app/(auth)/settings/customer-actions";
 import type { Customer } from "@/types";
+import type { CreateCustomerInput } from "@/app/(app)/customers/new/customer.schema";
 import { useToast } from "@/hooks/use-toast";
-import { UserCircle, Phone, Mail, Home, FileText, Briefcase, Save } from "lucide-react";
-
-interface CustomerCardProps {
-  customer: Customer;
-  onSave: (customerId: string, isAccountClient: boolean, accountId: string | null) => Promise<void>;
-}
-
-function CustomerRecordCard({ customer, onSave }: CustomerCardProps) {
-  const [isAccountClient, setIsAccountClient] = useState(customer.is_account_client || false);
-  const [accountId, setAccountId] = useState(customer.account_id || "");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    await onSave(customer.id, isAccountClient, accountId || null);
-    setIsSaving(false);
-  };
-  
-  // Sync with prop changes
-  useEffect(() => {
-    setIsAccountClient(customer.is_account_client || false);
-    setAccountId(customer.account_id || "");
-  }, [customer.is_account_client, customer.account_id]);
-
-
-  return (
-    <Card className="shadow-md hover:shadow-lg transition-shadow">
-      <CardHeader>
-        <CardTitle className="flex items-center text-lg font-headline">
-          <UserCircle className="mr-2 h-5 w-5 text-primary" /> {customer.name}
-        </CardTitle>
-        <CardDescription>ID: {customer.id}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
-        {customer.phone && <div className="flex items-center"><Phone className="mr-2 h-4 w-4 text-muted-foreground" /> {customer.phone}</div>}
-        {customer.email && <div className="flex items-center"><Mail className="mr-2 h-4 w-4 text-muted-foreground" /> {customer.email}</div>}
-        {customer.address && <div className="flex items-center"><Home className="mr-2 h-4 w-4 text-muted-foreground" /> {customer.address}</div>}
-        
-        <div className="border-t pt-3 mt-3 space-y-2">
-            <p className="text-xs text-muted-foreground flex items-center"><FileText className="mr-1.5 h-3 w-3"/> Transactions: (Placeholder for transaction list)</p>
-            <p className="text-xs text-muted-foreground">Total Spend: $XXX.XX (Placeholder)</p>
-        </div>
-
-        <div className="border-t pt-3 mt-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <Label htmlFor={`invoice-client-${customer.id}`} className="flex items-center">
-                <Briefcase className="mr-2 h-4 w-4"/> Invoice Only Client
-            </Label>
-            <Switch
-              id={`invoice-client-${customer.id}`}
-              checked={isAccountClient}
-              onCheckedChange={setIsAccountClient}
-            />
-          </div>
-          {isAccountClient && (
-            <div>
-              <Label htmlFor={`account-id-${customer.id}`}>Account ID</Label>
-              <Input
-                id={`account-id-${customer.id}`}
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                placeholder="Enter Account ID"
-                className="mt-1 h-8 text-xs"
-              />
-            </div>
-          )}
-        </div>
-      </CardContent>
-      <CardFooter>
-        <Button onClick={handleSave} size="sm" className="w-full" disabled={isSaving}>
-          <Save className="mr-2 h-4 w-4" /> {isSaving ? "Saving..." : "Save Account Settings"}
-        </Button>
-      </CardFooter>
-    </Card>
-  );
-}
-
+import { Edit3, UserCircle, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EditCustomerForm } from "./edit-customer-form"; // Import the new form
 
 export function CustomerManagementTab() {
   const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
@@ -97,7 +23,11 @@ export function CustomerManagementTab() {
 
   const [filterName, setFilterName] = useState("");
   const [filterPhone, setFilterPhone] = useState("");
-  const [filterPostcode, setFilterPostcode] = useState(""); // Will search in address field
+  const [filterPostcode, setFilterPostcode] = useState("");
+
+  const [selectedCustomerToEdit, setSelectedCustomerToEdit] = useState<Customer | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     setIsLoading(true);
@@ -122,25 +52,37 @@ export function CustomerManagementTab() {
       const phoneMatch = filterPhone ? customer.phone?.includes(filterPhone) : true;
       const postcodeMatch = filterPostcode ? customer.address?.toLowerCase().includes(filterPostcode.toLowerCase()) : true;
       return nameMatch && phoneMatch && postcodeMatch;
-    });
+    }).sort((a, b) => a.name.localeCompare(b.name));
   }, [allCustomers, filterName, filterPhone, filterPostcode]);
 
-  const handleSaveChanges = async (customerId: string, isAccountClient: boolean, accountId: string | null) => {
-    const result = await updateCustomerAccountDetailsAction({
-      customerId,
-      is_account_client: isAccountClient,
-      account_id: accountId,
-    });
+  const handleOpenEditModal = (customer: Customer) => {
+    setSelectedCustomerToEdit(customer);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setSelectedCustomerToEdit(null);
+    setIsEditModalOpen(false);
+  };
+
+  const handleSaveChanges = async (updatedData: CreateCustomerInput) => {
+    if (!selectedCustomerToEdit) return;
+    setIsSaving(true);
+    const result = await updateCustomerAction(selectedCustomerToEdit.id, updatedData);
+    setIsSaving(false);
 
     if (result.success && result.customer) {
       toast({ title: "Success", description: result.message });
-      // Update the customer in the local state to reflect changes immediately
-      setAllCustomers(prev => prev.map(c => c.id === customerId ? { ...c, is_account_client: result.customer?.is_account_client, account_id: result.customer?.account_id } : c));
+      fetchCustomers(); // Re-fetch to get the latest list with updates
+      handleCloseEditModal();
     } else {
-      toast({ title: "Error", description: result.message || "Failed to save changes.", variant: "destructive" });
+      let errorMessages = result.message || "Failed to save changes.";
+      if (result.errors) {
+          errorMessages += " " + result.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(", ");
+      }
+      toast({ title: "Error", description: errorMessages, variant: "destructive" });
     }
   };
-
 
   return (
     <div className="space-y-6">
@@ -157,19 +99,68 @@ export function CustomerManagementTab() {
       </Card>
 
       {isLoading ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => (
-            <Card key={i}><CardHeader><Skeleton className="h-6 w-3/4" /><Skeleton className="h-4 w-1/2 mt-1" /></CardHeader><CardContent><Skeleton className="h-20 w-full" /></CardContent><CardFooter><Skeleton className="h-10 w-full" /></CardFooter></Card>
-          ))}
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
       ) : filteredCustomers.length > 0 ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCustomers.map(customer => (
-            <CustomerRecordCard key={customer.id} customer={customer} onSave={handleSaveChanges} />
-          ))}
-        </div>
+        <Card>
+          <CardHeader>
+             <CardTitle>Customer List ({filteredCustomers.length})</CardTitle>
+             <CardDescription>Click 'Edit' to modify customer details.</CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredCustomers.map(customer => (
+                  <TableRow key={customer.id}>
+                    <TableCell className="font-medium">{customer.name}</TableCell>
+                    <TableCell>{customer.phone || 'N/A'}</TableCell>
+                    <TableCell>{customer.email || 'N/A'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => handleOpenEditModal(customer)}>
+                        <Edit3 className="mr-2 h-4 w-4" /> Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       ) : (
         <p className="text-center text-muted-foreground py-8">No customers found matching your criteria, or no customers in the system.</p>
+      )}
+
+      {selectedCustomerToEdit && (
+        <Dialog open={isEditModalOpen} onOpenChange={(isOpen) => { if (!isOpen) handleCloseEditModal(); else setIsEditModalOpen(true);}}>
+          <DialogContent className="sm:max-w-2xl"> {/* Increased width for the form */}
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <UserCircle className="mr-2 h-6 w-6 text-primary" />
+                Edit Customer: {selectedCustomerToEdit.name}
+              </DialogTitle>
+              <DialogDescription>
+                Modify the details for this customer. Changes will be saved to the database.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <EditCustomerForm
+              customer={selectedCustomerToEdit}
+              onSave={handleSaveChanges}
+              onCancel={handleCloseEditModal}
+              isSaving={isSaving}
+            />
+            
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

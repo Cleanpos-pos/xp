@@ -98,7 +98,7 @@ export async function getCustomers(): Promise<Customer[]> {
 
   const { data, error } = await supabase
     .from('customers')
-    .select('*, is_account_client, account_id') // Ensure new fields are selected
+    .select('*, is_account_client, account_id, sms_opt_in, email_opt_in, has_preferred_pricing')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -109,6 +109,7 @@ export async function getCustomers(): Promise<Customer[]> {
     ...c,
     created_at: c.created_at ? new Date(c.created_at).toISOString() : null,
     updated_at: c.updated_at ? new Date(c.updated_at).toISOString() : null,
+    account_id: c.account_id === null ? undefined : c.account_id, // Ensure null from DB becomes undefined for form
   }));
 }
 
@@ -125,7 +126,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
 
   const { data, error } = await supabase
     .from('customers')
-    .select('*, is_account_client, account_id') // Ensure new fields are selected
+    .select('*, is_account_client, account_id, sms_opt_in, email_opt_in, has_preferred_pricing') 
     .eq('id', trimmedId) 
     .single();
 
@@ -148,6 +149,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
     ...data,
     created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
     updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : null,
+    account_id: data.account_id === null ? undefined : data.account_id,
   } as Customer;
 }
 
@@ -159,8 +161,11 @@ export async function createCustomer(customerData: CreateCustomerInput): Promise
     address: customerData.address || null,
     loyalty_status: customerData.loyaltyStatus || 'None',
     price_band: customerData.priceBand || 'Standard',
-    is_account_client: customerData.isAccountClient || false, // Added
-    account_id: customerData.accountId || null, // Added
+    is_account_client: customerData.isAccountClient || false,
+    account_id: customerData.accountId || null,
+    sms_opt_in: customerData.smsOptIn || false,
+    email_opt_in: customerData.emailOptIn || false,
+    has_preferred_pricing: customerData.hasPreferredPricing || false,
   };
 
   const { data, error } = await supabase
@@ -177,6 +182,7 @@ export async function createCustomer(customerData: CreateCustomerInput): Promise
     ...data,
     created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
     updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : null,
+    account_id: data.account_id === null ? undefined : data.account_id,
   } as Customer;
 }
 
@@ -189,25 +195,22 @@ export async function updateCustomerAccountDetailsDb(
     updateData.is_account_client = details.is_account_client;
   }
   if (details.account_id !== undefined) {
-    // Ensure empty string becomes null for DB, or pass as is
     updateData.account_id = details.account_id === "" ? null : details.account_id;
   }
 
   if (Object.keys(updateData).length === 0) {
-    // If nothing to update, fetch and return current customer data or throw error
     const currentCustomer = await getCustomerById(customerId);
     if (!currentCustomer) throw new Error("Customer not found for update and no details provided.");
     return currentCustomer;
   }
   
-  // Add updated_at timestamp manually
   updateData.updated_at = new Date().toISOString();
 
   const { data, error } = await supabase
     .from('customers')
     .update(updateData)
     .eq('id', customerId)
-    .select()
+    .select('*, is_account_client, account_id, sms_opt_in, email_opt_in, has_preferred_pricing')
     .single();
 
   if (error) {
@@ -221,6 +224,45 @@ export async function updateCustomerAccountDetailsDb(
     ...data,
     created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
     updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : null,
+    account_id: data.account_id === null ? undefined : data.account_id,
+  } as Customer;
+}
+
+export async function updateFullCustomerDb(customerId: string, customerData: CreateCustomerInput): Promise<Customer> {
+  const dataToUpdate = {
+    name: customerData.name,
+    phone: customerData.phone || null,
+    email: customerData.email || null,
+    address: customerData.address || null,
+    loyalty_status: customerData.loyaltyStatus || 'None',
+    price_band: customerData.priceBand || 'Standard',
+    sms_opt_in: customerData.smsOptIn || false,
+    email_opt_in: customerData.emailOptIn || false,
+    has_preferred_pricing: customerData.hasPreferredPricing || false,
+    is_account_client: customerData.isAccountClient || false,
+    account_id: customerData.isAccountClient ? (customerData.accountId || null) : null, // only set accountId if isAccountClient is true
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from('customers')
+    .update(dataToUpdate)
+    .eq('id', customerId)
+    .select('*, is_account_client, account_id, sms_opt_in, email_opt_in, has_preferred_pricing')
+    .single();
+
+  if (error) {
+    console.error('Error updating full customer details in Supabase:', error);
+    throw error;
+  }
+  if (!data) {
+    throw new Error(`Customer with ID ${customerId} not found or update failed.`);
+  }
+  return {
+    ...data,
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
+    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : null,
+    account_id: data.account_id === null ? undefined : data.account_id,
   } as Customer;
 }
 
@@ -244,7 +286,6 @@ export function getOrderById(id: string): Order | undefined {
   if (order && !order.paymentStatus) {
     order.paymentStatus = 'Unpaid';
   }
-  // Ensure isExpress is at least false if not set
   if (order && typeof order.isExpress === 'undefined') {
     order.isExpress = false;
   }

@@ -1,10 +1,12 @@
 
 "use server";
 
-import { updateCustomerAccountDetailsDb } from "@/lib/data";
+import { updateCustomerAccountDetailsDb, updateFullCustomerDb } from "@/lib/data";
 import { UpdateCustomerAccountDetailsSchema, type UpdateCustomerAccountDetailsInput } from "./settings.schema";
+import { CreateCustomerSchema, type CreateCustomerInput } from "@/app/(app)/customers/new/customer.schema";
 import type { Customer } from "@/types";
 import { revalidatePath } from "next/cache";
+import type { z } from "zod";
 
 interface ActionResult {
   success: boolean;
@@ -21,7 +23,7 @@ export async function updateCustomerAccountDetailsAction(
   if (!validationResult.success) {
     return {
       success: false,
-      message: "Invalid data provided.",
+      message: "Invalid data provided for account details.",
       errors: validationResult.error.issues,
     };
   }
@@ -31,12 +33,12 @@ export async function updateCustomerAccountDetailsAction(
   try {
     const updatedCustomer = await updateCustomerAccountDetailsDb(customerId, {
       is_account_client,
-      account_id: account_id === "" ? null : account_id, // Ensure empty string becomes null
+      account_id: account_id === "" ? null : account_id, 
     });
     
-    revalidatePath("/settings"); // Revalidate the settings page to show updated data
-    revalidatePath("/customers"); // Also revalidate customers list page if it uses this data
-    revalidatePath(`/customers/${customerId}`); // And specific customer details if applicable
+    revalidatePath("/settings"); 
+    revalidatePath("/customers"); 
+    revalidatePath(`/customers/${customerId}`); 
 
     return {
       success: true,
@@ -48,6 +50,42 @@ export async function updateCustomerAccountDetailsAction(
     return {
       success: false,
       message: error.message || "Failed to update customer account details.",
+      errors: null,
+    };
+  }
+}
+
+export async function updateCustomerAction(
+  customerId: string,
+  data: CreateCustomerInput
+): Promise<ActionResult> {
+  const validationResult = CreateCustomerSchema.safeParse(data);
+
+  if (!validationResult.success) {
+    return {
+      success: false,
+      message: "Invalid customer data provided.",
+      errors: validationResult.error.issues,
+    };
+  }
+
+  try {
+    const updatedCustomer = await updateFullCustomerDb(customerId, validationResult.data);
+    
+    revalidatePath("/settings");
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${customerId}`);
+
+    return {
+      success: true,
+      message: `Customer ${updatedCustomer.name}'s details updated successfully.`,
+      customer: updatedCustomer,
+    };
+  } catch (error: any) {
+    console.error("Error in updateCustomerAction:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to update customer details.",
       errors: null,
     };
   }

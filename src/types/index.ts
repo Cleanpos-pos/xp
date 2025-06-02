@@ -12,8 +12,11 @@ export type Customer = {
   orderHistory?: Order[];
   created_at: string | null;
   updated_at: string | null;
-  is_account_client?: boolean; // Added for invoice client status
-  account_id?: string; // Added for account ID
+  is_account_client?: boolean;
+  account_id?: string | null; // Allow null for account_id
+  sms_opt_in?: boolean;
+  email_opt_in?: boolean;
+  has_preferred_pricing?: boolean;
 };
 
 export type ServiceItem = {
