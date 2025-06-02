@@ -21,7 +21,7 @@ import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp } from "lucide-react";
-import Link from "next/link";
+import Link from 'next/link';
 import Image from "next/image"; // Import next/image
 import { ArrowLeft } from "lucide-react";
 import type { StaffCredentials, UserRole } from "@/types"; 
@@ -38,11 +38,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-const FormLabel = RHFFormLabel; // Alias for clarity if needed elsewhere or for future refactor
-const FormDescription = RHFFormDescription;
+const FormLabel = RHFFormLabel; 
 const FormItem = RHFFormItem;
-
-const userRoles: UserRole[] = ["clerk", "admin", "super_admin"];
+const FormDescription = RHFFormDescription; // This alias is fine, but its usage must be within a FormField
 
 const rolePermissions = {
   clerk: {
@@ -95,6 +93,8 @@ const rolePermissions = {
   },
 };
 
+const userRoles: UserRole[] = ["clerk", "admin", "super_admin"];
+
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -105,12 +105,12 @@ export default function SettingsPage() {
   const [companyName, setCompanyName] = React.useState<string>("XP Clean Ltd.");
   const [companyAddress, setCompanyAddress] = React.useState<string>("123 Clean Street, Suite 100, YourTown, YT 54321");
   const [companyPhone, setCompanyPhone] = React.useState<string>("(555) 123-4567");
+  const [companyLogoUrl, setCompanyLogoUrl] = React.useState<string | null>("https://placehold.co/150x50.png?text=Your+Logo");
   const [vatTaxId, setVatTaxId] = React.useState<string>("GB123456789");
   const [vatSalesTaxRate, setVatSalesTaxRate] = React.useState<string>("20");
   const [includeVatInPrices, setIncludeVatInPrices] = React.useState<boolean>(true);
   const [selectedCurrency, setSelectedCurrency] = React.useState<string>("GBP");
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("en");
-  const [companyLogoUrl, setCompanyLogoUrl] = React.useState<string | null>("https://placehold.co/150x50.png?text=Your+Logo");
 
 
   // Printer Settings State
@@ -212,10 +212,9 @@ export default function SettingsPage() {
   };
 
   const handleSaveCompanyRegionalSettings = () => {
-    // In a real app, these values would be persisted
     toast({
       title: "Company & Regional Settings (Mock) Saved",
-      description: `Company: ${companyName}, Currency: ${selectedCurrency}, Language: ${selectedLanguage}, VAT Rate: ${vatSalesTaxRate}%, VAT Included: ${includeVatInPrices}. Logo URL (mock): ${companyLogoUrl}. Full implementation requires backend.`,
+      description: `Company: ${companyName}, Address: ${companyAddress}, Phone: ${companyPhone}, Logo URL (mock): ${companyLogoUrl}, Currency: ${selectedCurrency}, Language: ${selectedLanguage}, VAT ID: ${vatTaxId}, VAT Rate: ${vatSalesTaxRate}%, VAT Included: ${includeVatInPrices}. Full implementation requires backend.`,
     });
   };
   
@@ -813,9 +812,9 @@ export default function SettingsPage() {
                     <ImageUp className="mr-2 h-4 w-4" /> Upload / Change Logo
                   </Button>
                 </div>
-                <FormDescription className="text-xs">
+                <p className={cn("text-sm text-muted-foreground", "text-xs")}>
                   Placeholder for logo upload. Actual file upload requires backend integration.
-                </FormDescription>
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -893,4 +892,6 @@ export default function SettingsPage() {
     </div>
   );
 }
+    
+
     
