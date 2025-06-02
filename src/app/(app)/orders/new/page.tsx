@@ -154,22 +154,20 @@ export default function NewOrderPage() {
 
     if (watchedCustomerId) {
       if (customerIdFromQuery && watchedCustomerId === customerIdFromQuery) {
-        // If it's the pre-selected customer, their name should already be set or is being set by the effect above.
-        // If allCustomers has data (e.g. from a previous non-ID load), we can try to find name, but prioritize specific load.
         if (!selectedCustomerName && allCustomers.length > 0) {
            const customer = allCustomers.find(c => c.id === watchedCustomerId);
            if (customer) setSelectedCustomerName(customer.name);
         }
-      } else { // Customer selected manually from dropdown
+      } else { 
         const customer = allCustomers.find(c => c.id === watchedCustomerId);
         if (customer) {
           setSelectedCustomerName(customer.name);
-        } else if (!customerIdFromQuery) { // Only clear if no customerId was from query (avoid race with specific load)
+        } else if (!customerIdFromQuery) { 
           setSelectedCustomerName(null);
         }
       }
-    } else { // No customerId watched (e.g. form reset or initial state without query)
-      if (!customerIdFromQuery) { // Don't clear if a query ID is present and specific load might be pending
+    } else { 
+      if (!customerIdFromQuery) { 
         setSelectedCustomerName(null);
       }
     }
@@ -222,7 +220,6 @@ export default function NewOrderPage() {
     form.reset({ customerId: "", items: [], dueDate: undefined, notes: "" });
     setStage("form");
     setCreatedOrderDetails(null);
-    // setSelectedCustomerName(null); // Keep if customerIdFromQuery is present
     setActivePaymentStep("selectAction");
     setAmountTendered("");
     setSelectedPaymentMethod(null);
@@ -232,14 +229,11 @@ export default function NewOrderPage() {
     setPrintType(null);
 
     if (!searchParams.get('customerId')) {
-        setSelectedCustomerName(null); // Clear name only if not from query
+        setSelectedCustomerName(null); 
         setIsLoadingAllCustomers(true);
         getCustomers().then(data => setAllCustomers(data))
         .catch(() => {})
         .finally(() => setIsLoadingAllCustomers(false));
-    } else {
-      // If customerIdFromQuery exists, the effect for loading specific customer will run
-      // and potentially re-set selectedCustomerName
     }
   }, [form, searchParams]);
 
@@ -250,7 +244,8 @@ export default function NewOrderPage() {
       setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created!", totalAmount: orderTotal });
       setStage("paymentOptions");
       setActivePaymentStep("selectAction");
-      setAmountTendered(orderTotal.toFixed(2));
+      // Set initial amount tendered to order total, user can change it for cash.
+      setAmountTendered(orderTotal > 0 ? orderTotal.toFixed(2) : "0.00");
       setSelectedPaymentMethod(null);
       setPaymentNote("");
     } else {
@@ -291,18 +286,19 @@ export default function NewOrderPage() {
   const handleConfirmPayment = () => {
     if (!createdOrderDetails) return;
     let paymentDetailsMessage = "";
+    const numericTotalAmount = createdOrderDetails.totalAmount;
     const numericAmountTendered = parseFloat(amountTendered) || 0;
 
     if (selectedPaymentMethod === "On Account") {
-      paymentDetailsMessage = `Order ${createdOrderDetails.id} ($${createdOrderDetails.totalAmount.toFixed(2)}) marked as 'Payment on Account'.`;
+      paymentDetailsMessage = `Order ${createdOrderDetails.id} ($${numericTotalAmount.toFixed(2)}) marked as 'Payment on Account'.`;
       if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`;
     } else if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Card") {
       const paymentType = selectedPaymentMethod === "Cash" ? "Cash" : "Card";
       let paymentSummary = `Paid ${numericAmountTendered.toFixed(2)} by ${paymentType}.`;
-      if (numericAmountTendered < createdOrderDetails.totalAmount) {
-        paymentSummary += ` (Partial Payment - $${(createdOrderDetails.totalAmount - numericAmountTendered).toFixed(2)} remaining).`;
-      } else if (numericAmountTendered > createdOrderDetails.totalAmount && selectedPaymentMethod === "Cash") {
-        paymentSummary += ` Change: $${(numericAmountTendered - createdOrderDetails.totalAmount).toFixed(2)}.`;
+      if (numericAmountTendered < numericTotalAmount) {
+        paymentSummary += ` (Partial Payment - $${(numericTotalAmount - numericAmountTendered).toFixed(2)} remaining).`;
+      } else if (numericAmountTendered > numericTotalAmount && selectedPaymentMethod === "Cash") {
+        paymentSummary += ` Change: $${(numericAmountTendered - numericTotalAmount).toFixed(2)}.`;
       }
       paymentDetailsMessage = `Payment for order ${createdOrderDetails.id}: ${paymentSummary}`;
       if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`;
@@ -313,7 +309,7 @@ export default function NewOrderPage() {
 
     toast({ title: "Payment Processed (Mocked)", description: paymentDetailsMessage });
     setPrintType(null); 
-    setShowPrintDialog(true);
+    setShowPrintDialog(true); // Open print options dialog
   };
 
   const handlePrintSelection = (selectedType: string) => {
@@ -340,22 +336,26 @@ export default function NewOrderPage() {
   const handleGoToDashboard = () => router.push('/dashboard');
 
   const handleAmountKeypadConfirm = (value: string) => {
-    setAmountTendered(value);
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue < 0) {
         setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00");
         toast({title: "Invalid Amount", description: "Please enter a valid numeric amount.", variant: "destructive"});
+    } else {
+        setAmountTendered(numValue.toFixed(2));
     }
   };
 
   const handlePayOnAccount = () => {
     setSelectedPaymentMethod("On Account");
-    setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00");
-    setPaymentNote(`Order total of $${createdOrderDetails?.totalAmount.toFixed(2)} will be charged to customer account.`);
+    if (createdOrderDetails) {
+      setAmountTendered(createdOrderDetails.totalAmount.toFixed(2));
+      setPaymentNote(`Order total of $${createdOrderDetails.totalAmount.toFixed(2)} will be charged to customer account.`);
+    }
   };
-
+  
   const handleOpenAmountKeypad = React.useCallback(() => {
-    if (selectedPaymentMethod !== "On Account") {
+    // Allow manual keypad opening for Cash or if no method is yet selected (defaults to numeric for amount)
+    if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === null) {
       setIsKeypadOpen(true);
     }
   }, [selectedPaymentMethod, setIsKeypadOpen]);
@@ -492,7 +492,9 @@ export default function NewOrderPage() {
   const renderPaymentOptionsCard = () => {
     if (!createdOrderDetails) return null;
     const numericTotalAmount = createdOrderDetails.totalAmount;
-    const numericAmountTendered = parseFloat(amountTendered) || 0;
+    let numericAmountTendered = parseFloat(amountTendered);
+    if (isNaN(numericAmountTendered)) numericAmountTendered = 0;
+
     const changeDue = (selectedPaymentMethod === "Cash" && numericAmountTendered > numericTotalAmount)
       ? (numericAmountTendered - numericTotalAmount).toFixed(2)
       : null;
@@ -528,19 +530,35 @@ export default function NewOrderPage() {
                         type="text"
                         value={selectedPaymentMethod === "On Account" ? numericTotalAmount.toFixed(2) : amountTendered}
                         readOnly
-                        placeholder="Tap to enter amount"
+                        placeholder={selectedPaymentMethod === "Cash" ? "Tap to enter cash amount" : numericTotalAmount.toFixed(2) }
                         className="cursor-pointer flex-grow"
-                        disabled={selectedPaymentMethod === "On Account"}
+                        disabled={selectedPaymentMethod === "On Account" || selectedPaymentMethod === "Card"}
                     />
                     <Grid className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <Button variant={selectedPaymentMethod === "Cash" ? "default" : "outline"} onClick={() => { setSelectedPaymentMethod("Cash"); setPaymentNote("");}}>
+                <Button 
+                  variant={selectedPaymentMethod === "Cash" ? "default" : "outline"} 
+                  onClick={() => { 
+                    setSelectedPaymentMethod("Cash"); 
+                    setPaymentNote("");
+                    if (numericTotalAmount > 0) setAmountTendered(""); // Clear for cash input
+                    else setAmountTendered("0.00");
+                    setIsKeypadOpen(true); // Auto-open keypad for cash
+                  }}
+                >
                   <Banknote className="mr-2 h-4 w-4"/> Cash
                 </Button>
-                <Button variant={selectedPaymentMethod === "Card" ? "default" : "outline"} onClick={() => { setSelectedPaymentMethod("Card"); setPaymentNote("");}}>
+                <Button 
+                  variant={selectedPaymentMethod === "Card" ? "default" : "outline"} 
+                  onClick={() => { 
+                    setSelectedPaymentMethod("Card"); 
+                    setPaymentNote("");
+                    setAmountTendered(numericTotalAmount.toFixed(2)); // Card usually pays exact total
+                  }}
+                >
                   <WalletCards className="mr-2 h-4 w-4"/> Card
                 </Button>
               </div>
@@ -551,14 +569,14 @@ export default function NewOrderPage() {
               {paymentNote && <p className="text-sm text-muted-foreground">{paymentNote}</p>}
 
               {changeDue !== null && (
-                <p className="text-md font-semibold">Change Due: ${changeDue}</p>
+                <p className="text-md font-semibold text-green-600">Change Due: ${changeDue}</p>
               )}
 
               <div className="space-y-2 border-t pt-4">
                 <Button
                   onClick={handleConfirmPayment}
                   className="w-full"
-                  disabled={!selectedPaymentMethod || (selectedPaymentMethod !== "On Account" && (!amountTendered || parseFloat(amountTendered) <=0 && numericTotalAmount > 0))}
+                  disabled={!selectedPaymentMethod || (selectedPaymentMethod !== "On Account" && (amountTendered === "" || parseFloat(amountTendered) < 0 ) && numericTotalAmount > 0)}
                 >
                   Confirm Payment & Print Options
                 </Button>
@@ -594,6 +612,7 @@ export default function NewOrderPage() {
         onInputChange={setAmountTendered}
         onConfirm={handleAmountKeypadConfirm}
         title="Enter Amount Tendered"
+        numericOnly={true} // Use numeric keypad for amount tendered
       />
       {createdOrderDetails && (
         <Dialog open={showPrintDialog} onOpenChange={(isOpen) => {
@@ -619,8 +638,10 @@ export default function NewOrderPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => {
                 setShowPrintDialog(false);
-                setPrintType(null);
-                router.push(`/orders/${createdOrderDetails.id}`);
+                setPrintType(null); // Ensure printType is reset
+                if (createdOrderDetails) { // Check again before pushing
+                   router.push(`/orders/${createdOrderDetails.id}`);
+                }
                 resetFormAndStage();
               }}>
                 Skip Printing & View Order
