@@ -93,7 +93,7 @@ export async function updateCatalogEntryAction(entryId: string, data: UpdateCata
     revalidatePath("/orders/new");
 
     return { success: true, message: `Entry "${updatedEntry.name}" updated.`, updatedEntry };
-  } catch (error: any)
+  } catch (error: any) {
       console.error("Error updating catalog entry in action:", error);
      let userFriendlyMessage = error.message || "Failed to update entry.";
     if (typeof error.message === 'string' && 
