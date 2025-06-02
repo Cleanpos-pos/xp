@@ -8,19 +8,19 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription, // RHF one
+  FormDescription as RHFFormDescription,
   FormField,
-  FormItem,       // RHF one
-  FormLabel,      // RHF one
+  FormItem as RHFFormItem,
+  FormLabel as RHFFormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card"; // Added CardDescription here
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription as UiCardDescription } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift } from "lucide-react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { StaffCredentials, UserRole } from "@/types"; 
@@ -33,12 +33,10 @@ import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
 import { Badge } from "@/components/ui/badge";
 
-// Renaming RHF components for clarity to avoid conflict with generic HTML/div elements
-// when not using RHF for a specific section (like Regional Settings)
-const RHFFormItem = FormItem;
-const RHFFormLabel = FormLabel;
-const RHFFormDescription = FormDescription;
-const UiCardDescription = CardDescription; // Alias for ShadCN CardDescription
+// Renaming RHF components for clarity
+// const RHFFormItem = FormItem; // Original error source if FormItem not imported before this line
+// const RHFFormLabel = FormLabel; // Original error source if FormLabel not imported before this line
+// const RHFFormDescription = FormDescription; // Original error source if FormDescription not imported before this line
 
 
 const userRoles: UserRole[] = ["clerk", "admin", "super_admin"];
@@ -54,11 +52,11 @@ const rolePermissions = {
       "Process Payments",
     ],
     cannot: [
-      "Access System Settings (Staff, Catalog, Regional, Printer)",
+      "Access System Settings (Staff, Catalog, Regional, Printer, Offers)",
       "Change Service Prices or Item Catalog",
       "Add, Edit, or Delete Staff Accounts",
       "View Full Financial Reports or Detailed Analytics",
-      "Override standard pricing or apply non-approved discounts",
+      "Override standard pricing or apply non-approved discounts (unless system allows via offer)",
     ],
   },
   admin: {
@@ -66,6 +64,7 @@ const rolePermissions = {
     can: [
       "All Clerk permissions",
       "Manage Service & Item Catalog (Add, Edit, Price Changes)",
+      "Manage Special Offers",
       "Add, Edit Staff Accounts (Clerks & other Admins)",
       "Manage Inventory & Supplies",
       "View Detailed Reports & Analytics",
@@ -108,6 +107,21 @@ export default function SettingsPage() {
   const [stubPrinter, setStubPrinter] = React.useState<string>("dotmatrix_76mm");
   const [receiptHeader, setReceiptHeader] = React.useState<string>("XP Clean - Your Town Branch");
   const [receiptFooter, setReceiptFooter] = React.useState<string>("Thank you for your business!");
+
+  // Special Offers State
+  const [buyXgetY_X, setBuyXgetY_X] = React.useState<string>("3");
+  const [buyXgetY_Y, setBuyXgetY_Y] = React.useState<string>("2");
+  const [buyXgetY_Notes, setBuyXgetY_Notes] = React.useState<string>("");
+  const [buyXgetY_Active, setBuyXgetY_Active] = React.useState<boolean>(false);
+
+  const [bundle_Items, setBundle_Items] = React.useState<string>("2");
+  const [bundle_Price, setBundle_Price] = React.useState<string>("10.00");
+  const [bundle_Notes, setBundle_Notes] = React.useState<string>("");
+  const [bundle_Active, setBundle_Active] = React.useState<boolean>(false);
+
+  const [spendGet_Threshold, setSpendGet_Threshold] = React.useState<string>("50.00");
+  const [spendGet_FreeItemDesc, setSpendGet_FreeItemDesc] = React.useState<string>("1 Free Shirt Press");
+  const [spendGet_Active, setSpendGet_Active] = React.useState<boolean>(false);
 
 
   const fetchStaff = React.useCallback(async () => {
@@ -187,6 +201,13 @@ export default function SettingsPage() {
     });
   };
 
+  const handleSaveSpecialOffer = (offerType: string) => {
+     toast({
+      title: "Special Offer (Mock) Saved",
+      description: `${offerType} parameters have been 'saved'. Implementation of offer logic is pending.`,
+    });
+  };
+
   const getRoleBadgeVariant = (role: UserRole): "default" | "secondary" | "destructive" | "outline" => {
     switch (role) {
       case "super_admin": return "destructive";
@@ -211,7 +232,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="staffManagement" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6"> {/* Increased to 6 for printer tab */}
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
           <TabsTrigger
             value="staffManagement"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
@@ -222,13 +243,19 @@ export default function SettingsPage() {
             value="rolesPermissions"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
-            Roles & Permissions
+            Roles &amp; Permissions
           </TabsTrigger>
           <TabsTrigger
             value="itemCatalog"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
             Catalog
+          </TabsTrigger>
+           <TabsTrigger
+            value="specialOffers"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+          >
+             <Percent className="mr-1.5 h-4 w-4" /> Offers
           </TabsTrigger>
           <TabsTrigger
             value="cashUp"
@@ -340,7 +367,7 @@ export default function SettingsPage() {
           <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex items-center">
-                <KeyRound className="mr-2 h-6 w-6" /> Manage Staff Quick Login & Roles
+                <KeyRound className="mr-2 h-6 w-6" /> Manage Staff Quick Login &amp; Roles
               </CardTitle>
               <UiCardDescription>View staff roles and enable or disable quick login (uses Supabase).</UiCardDescription>
             </CardHeader>
@@ -385,7 +412,7 @@ export default function SettingsPage() {
           <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex items-center">
-                <UserCog className="mr-2 h-6 w-6" /> User Roles & Permissions Overview
+                <UserCog className="mr-2 h-6 w-6" /> User Roles &amp; Permissions Overview
               </CardTitle>
               <UiCardDescription>This section outlines the capabilities of different user roles. Actual enforcement of these permissions requires further development.</UiCardDescription>
             </CardHeader>
@@ -444,6 +471,97 @@ export default function SettingsPage() {
             <CardContent>
               <CatalogManagementTab />
             </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="specialOffers" className="mt-6 space-y-6">
+          <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-xl flex items-center">
+                <Gift className="mr-2 h-5 w-5 text-green-600" /> "Buy X Get Y (Cheapest Free)" Offer
+              </CardTitle>
+              <UiCardDescription>Configure a "cheapest item free" type of promotion.</UiCardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="buyXgetY-X">Items to Buy (X)</Label>
+                  <Input id="buyXgetY-X" type="number" value={buyXgetY_X} onChange={(e) => setBuyXgetY_X(e.target.value)} placeholder="e.g., 3" className="mt-1" />
+                </div>
+                <div>
+                  <Label htmlFor="buyXgetY-Y">Items to Pay For (Y)</Label>
+                  <Input id="buyXgetY-Y" type="number" value={buyXgetY_Y} onChange={(e) => setBuyXgetY_Y(e.target.value)} placeholder="e.g., 2" className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="buyXgetY-notes">Applicable Items/Categories (Notes)</Label>
+                <Textarea id="buyXgetY-notes" value={buyXgetY_Notes} onChange={(e) => setBuyXgetY_Notes(e.target.value)} placeholder="e.g., Applies to all shirts, or specific promotional items. Cheapest of the X items is free." className="mt-1" rows={2} />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch id="buyXgetY-active" checked={buyXgetY_Active} onCheckedChange={setBuyXgetY_Active} />
+                <Label htmlFor="buyXgetY-active">Offer Active</Label>
+              </div>
+              <Button onClick={() => handleSaveSpecialOffer("Buy X Get Y")}>Save Offer Settings</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-xl flex items-center">
+                <Percent className="mr-2 h-5 w-5 text-blue-600" /> "Bundle Deal (X Items for £Y)"
+              </CardTitle>
+              <UiCardDescription>Set a fixed price for a bundle of items.</UiCardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="bundle-items">Number of Items in Bundle</Label>
+                  <Input id="bundle-items" type="number" value={bundle_Items} onChange={(e) => setBundle_Items(e.target.value)} placeholder="e.g., 3" className="mt-1" />
+                </div>
+                <div>
+                  <Label htmlFor="bundle-price">Fixed Price for Bundle (£)</Label>
+                  <Input id="bundle-price" type="number" step="0.01" value={bundle_Price} onChange={(e) => setBundle_Price(e.target.value)} placeholder="e.g., 15.00" className="mt-1" />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="bundle-notes">Applicable Items/Categories (Notes)</Label>
+                <Textarea id="bundle-notes" value={bundle_Notes} onChange={(e) => setBundle_Notes(e.target.value)} placeholder="e.g., Mix and match any 3 standard shirts." className="mt-1" rows={2} />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch id="bundle-active" checked={bundle_Active} onCheckedChange={setBundle_Active} />
+                <Label htmlFor="bundle-active">Offer Active</Label>
+              </div>
+              <Button onClick={() => handleSaveSpecialOffer("Bundle Deal")}>Save Offer Settings</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-xl flex items-center">
+                <DollarSign className="mr-2 h-5 w-5 text-yellow-500" /> "Spend &amp; Get Free Item" Offer
+              </CardTitle>
+              <UiCardDescription>Offer a free item when a customer spends a certain amount.</UiCardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="spendGet-threshold">Spend Threshold (£)</Label>
+                <Input id="spendGet-threshold" type="number" step="0.01" value={spendGet_Threshold} onChange={(e) => setSpendGet_Threshold(e.target.value)} placeholder="e.g., 50.00" className="mt-1" />
+              </div>
+              <div>
+                <Label htmlFor="spendGet-freeItem">Description of Free Item</Label>
+                <Input id="spendGet-freeItem" value={spendGet_FreeItemDesc} onChange={(e) => setSpendGet_FreeItemDesc(e.target.value)} placeholder="e.g., 1 Free Tie Clean, Cheapest item up to £5" className="mt-1" />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch id="spendGet-active" checked={spendGet_Active} onCheckedChange={setSpendGet_Active} />
+                <Label htmlFor="spendGet-active">Offer Active</Label>
+              </div>
+              <Button onClick={() => handleSaveSpecialOffer("Spend & Get")}>Save Offer Settings</Button>
+            </CardContent>
+             <CardFooter>
+                <UiCardDescription className="text-xs">
+                    Note: The parameters set here are for configuration purposes. Applying these offers to orders requires additional logic in the order creation process.
+                </UiCardDescription>
+            </CardFooter>
           </Card>
         </TabsContent>
 
@@ -528,37 +646,41 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="system-currency" className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-muted-foreground" /> System Currency</Label>
-                <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-                  <SelectTrigger id="system-currency">
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD - US Dollar</SelectItem>
-                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                    <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                    <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                    <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-1">
+                  <Label htmlFor="system-currency" className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-muted-foreground" /> System Currency</Label>
+                  <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+                    <SelectTrigger id="system-currency">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USD">USD - US Dollar</SelectItem>
+                      <SelectItem value="EUR">EUR - Euro</SelectItem>
+                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                      <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                      <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Select the primary currency for transactions and reporting.
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="system-language" className="flex items-center"><Globe className="mr-2 h-4 w-4 text-muted-foreground" /> Language</Label>
-                <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                   <SelectTrigger id="system-language">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Español (Spanish)</SelectItem>
-                    <SelectItem value="fr">Français (French)</SelectItem>
-                    <SelectItem value="de">Deutsch (German)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-1">
+                  <Label htmlFor="system-language" className="flex items-center"><Globe className="mr-2 h-4 w-4 text-muted-foreground" /> Language</Label>
+                  <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                    <SelectTrigger id="system-language">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Español (Spanish)</SelectItem>
+                      <SelectItem value="fr">Français (French)</SelectItem>
+                      <SelectItem value="de">Deutsch (German)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <p className="text-sm text-muted-foreground">
                   Select the display language for the application interface.
                 </p>
@@ -576,5 +698,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
