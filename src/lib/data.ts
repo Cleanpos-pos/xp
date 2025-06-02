@@ -31,6 +31,36 @@ const initialOrders: Order[] = [
     updated_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
     dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
   },
+  {
+    id: 'order2',
+    orderNumber: generateOrderNumber(2),
+    customerId: 'cust2',
+    customerName: 'Jane Smith',
+    items: [
+      { id: 'item3', serviceItemId: 'serv3', serviceName: 'Dress - Silk', quantity: 1, unitPrice: 18.00, totalPrice: 18.00 },
+    ],
+    totalAmount: 18.00,
+    status: 'Cleaning' as OrderStatus,
+    paymentStatus: 'Unpaid' as PaymentStatus,
+    created_at: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
+    updated_at: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(),
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+  },
+  {
+    id: 'order3',
+    orderNumber: generateOrderNumber(3),
+    customerId: 'cust1', // Another order for John Doe
+    customerName: 'John Doe',
+    items: [
+      { id: 'item4', serviceItemId: 'serv4', serviceName: 'Trousers - Cotton', quantity: 2, unitPrice: 7.00, totalPrice: 14.00 },
+    ],
+    totalAmount: 14.00,
+    status: 'Received' as OrderStatus,
+    paymentStatus: 'Unpaid' as PaymentStatus,
+    created_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+    updated_at: new Date(new Date().setDate(new Date().getDate() - 0)).toISOString(),
+    dueDate: new Date(new Date().setDate(new Date().getDate() + 4)).toISOString(),
+  },
 ];
 
 const initialInventory: InventoryItem[] = [
@@ -156,6 +186,25 @@ export function getOrderById(id: string): Order | undefined {
   }
   return order;
 }
+
+export function getOrdersByCustomerIdLocal(customerId: string): Order[] {
+  if (!customerId) return [];
+  return getMockOrders().filter(order => order.customerId === customerId);
+}
+
+export function searchOrdersLocal(searchTerm: string): Order[] {
+  const term = searchTerm.toLowerCase().trim();
+  if (!term) return [];
+
+  return getMockOrders().filter(order => {
+    return (
+      order.orderNumber.toLowerCase().includes(term) ||
+      order.customerName.toLowerCase().includes(term) ||
+      order.customerId.toLowerCase().includes(term)
+    );
+  });
+}
+
 
 export function getInventoryItemById(id: string): InventoryItem | undefined {
   return global.mockInventoryStore!.find(i => i.id === id);
