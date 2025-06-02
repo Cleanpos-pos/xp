@@ -51,9 +51,6 @@ const getNextOccurrenceOfWeekday = (targetDay: number, startDate: Date = new Dat
   currentDate.setHours(0, 0, 0, 0); // Start from beginning of the day
   const currentDay = getDay(currentDate); // Sunday is 0, Monday is 1, etc.
   let daysToAdd = (targetDay - currentDay + 7) % 7;
-  // If targetDay is today and we want "next" (inclusive of today), and it's not already past,
-  // daysToAdd might be 0. If we always want a future date, adjust logic.
-  // For this use case, if targetDay is today, we want today.
   const resultDate = addDays(currentDate, daysToAdd);
   return resultDate;
 };
@@ -92,6 +89,7 @@ export default function NewOrderPage() {
 
   // Express order state
   const [isExpressOrder, setIsExpressOrder] = React.useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
 
 
   const form = useForm<CreateOrderInput>({
@@ -249,6 +247,7 @@ export default function NewOrderPage() {
     setShowPrintDialog(false);
     setPrintType(null);
     setIsExpressOrder(false);
+    setIsDatePickerOpen(false);
 
     if (!searchParams.get('customerId')) {
         setSelectedCustomerName(null); 
@@ -401,6 +400,7 @@ export default function NewOrderPage() {
     } else {
       setIsExpressOrder(false);
     }
+    setIsDatePickerOpen(false); // Auto-close popover on date selection
   };
   
   const clearDueDate = () => {
@@ -516,11 +516,15 @@ export default function NewOrderPage() {
                  <Button type="button" variant="outline" size="sm" onClick={clearDueDate} className="h-9 px-2 text-xs col-span-1 self-center">Clear</Button>
               </div>
                <div className="mt-2 flex gap-2 items-center">
-                <Popover><PopoverTrigger asChild><FormControl>
-                  <Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>
-                    {watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick specific date</span>}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button></FormControl></PopoverTrigger>
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>
+                        {watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick specific date</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar mode="single" selected={watchedDueDate ? new Date(watchedDueDate) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/>
                   </PopoverContent>
