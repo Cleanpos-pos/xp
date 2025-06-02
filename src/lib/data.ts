@@ -376,15 +376,23 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
 
   const sort_order = countResult.count || 0;
 
-  const entryToInsert = {
+  const entryToInsert: any = {
     name: entry.name,
     parent_id: entry.parent_id,
     type: entry.type,
     price: entry.type === 'item' ? entry.price : null,
     description: entry.description,
-    has_color_identifier: entry.type === 'item' ? (entry.has_color_identifier ?? false) : null,
     sort_order: sort_order,
   };
+
+  if (entry.type === 'item') {
+    // Only include has_color_identifier if it's an item and the value is explicitly provided (true or false).
+    // If entry.has_color_identifier is undefined (e.g., not set in form), it will use the DB default (FALSE).
+    if (typeof entry.has_color_identifier === 'boolean') {
+      entryToInsert.has_color_identifier = entry.has_color_identifier;
+    }
+  }
+  // If type is 'category', has_color_identifier is omitted, relying on DB default.
 
   console.log("[addCatalogEntry] Attempting to insert into Supabase catalog_entries:", JSON.stringify(entryToInsert, null, 2));
 
@@ -444,7 +452,19 @@ export async function updateCatalogEntry(
     }
   }
    if (dataToUpdate.has_color_identifier === undefined) {
-    delete updatePayload.has_color_identifier; // Don't update if not provided
+    // For items, if not provided, ensure it defaults to false or current value.
+    // For categories, it should not be sent.
+    // The form for EditCatalogEntryDialog should set has_color_identifier to false by default if it was undefined.
+    // So, if it comes here as undefined, it means it's likely a category or an item where it wasn't set.
+    // It's safer to delete the key to avoid issues if it's a category.
+    const { data: currentEntryForHCI, error: hciError } = await supabase
+        .from('catalog_entries').select('type').eq('id', entryId).single();
+    if (hciError || !currentEntryForHCI) { /* handle error or assume item */ }
+    else if (currentEntryForHCI.type === 'category') {
+        delete updatePayload.has_color_identifier;
+    } else { // It's an item and HCI was not provided for update, default to false
+        updatePayload.has_color_identifier = dataToUpdate.has_color_identifier ?? false;
+    }
   }
 
 
