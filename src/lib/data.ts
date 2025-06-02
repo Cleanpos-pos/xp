@@ -98,7 +98,7 @@ export async function getCustomers(): Promise<Customer[]> {
 
   const { data, error } = await supabase
     .from('customers')
-    .select('*')
+    .select('*, is_account_client, account_id') // Ensure new fields are selected
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -125,7 +125,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
 
   const { data, error } = await supabase
     .from('customers')
-    .select('*')
+    .select('*, is_account_client, account_id') // Ensure new fields are selected
     .eq('id', trimmedId) 
     .single();
 
@@ -159,6 +159,8 @@ export async function createCustomer(customerData: CreateCustomerInput): Promise
     address: customerData.address || null,
     loyalty_status: customerData.loyaltyStatus || 'None',
     price_band: customerData.priceBand || 'Standard',
+    is_account_client: customerData.isAccountClient || false, // Added
+    account_id: customerData.accountId || null, // Added
   };
 
   const { data, error } = await supabase
@@ -177,6 +179,51 @@ export async function createCustomer(customerData: CreateCustomerInput): Promise
     updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : null,
   } as Customer;
 }
+
+export async function updateCustomerAccountDetailsDb(
+  customerId: string,
+  details: { is_account_client?: boolean; account_id?: string | null }
+): Promise<Customer> {
+  const updateData: Partial<Customer> = {};
+  if (details.is_account_client !== undefined) {
+    updateData.is_account_client = details.is_account_client;
+  }
+  if (details.account_id !== undefined) {
+    // Ensure empty string becomes null for DB, or pass as is
+    updateData.account_id = details.account_id === "" ? null : details.account_id;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    // If nothing to update, fetch and return current customer data or throw error
+    const currentCustomer = await getCustomerById(customerId);
+    if (!currentCustomer) throw new Error("Customer not found for update and no details provided.");
+    return currentCustomer;
+  }
+  
+  // Add updated_at timestamp manually
+  updateData.updated_at = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from('customers')
+    .update(updateData)
+    .eq('id', customerId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error(`Error updating customer account details for ID ${customerId} in Supabase:`, error);
+    throw error;
+  }
+  if (!data) {
+    throw new Error(`Customer with ID ${customerId} not found or update failed.`);
+  }
+  return {
+    ...data,
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
+    updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : null,
+  } as Customer;
+}
+
 
 // Mock Data Functions (for orders, inventory - to be migrated later)
 

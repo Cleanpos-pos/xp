@@ -17,6 +17,7 @@ export const CreateCustomerSchema = z.object({
   emailOptIn: z.boolean().optional().default(false),
   hasPreferredPricing: z.boolean().optional().default(false),
   isAccountClient: z.boolean().optional().default(false),
+  accountId: z.string().optional(), // Added for account ID
 });
 
 export type CreateCustomerInput = z.infer<typeof CreateCustomerSchema>;

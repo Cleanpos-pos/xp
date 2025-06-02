@@ -8,21 +8,19 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription as RHFFormDescription,
-  FormField,
-  FormItem as RHFFormItem,
-  FormLabel as RHFFormLabel,
+  FormItem as RHFFormItem, // Renamed to avoid conflict
+  FormLabel as RHFFormLabel, // Renamed to avoid conflict
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription as UiCardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact } from "lucide-react"; // Added Contact
 import Link from 'next/link';
-import Image from "next/image"; // Import next/image
+import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import type { StaffCredentials, UserRole } from "@/types"; 
 import { Switch } from "@/components/ui/switch";
@@ -32,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
+import { CustomerManagementTab } from "@/components/settings/customer-management-tab"; // Added
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -40,7 +39,7 @@ import { cn } from "@/lib/utils";
 
 const FormLabel = RHFFormLabel; 
 const FormItem = RHFFormItem;
-const FormDescription = RHFFormDescription; // This alias is fine, but its usage must be within a FormField
+
 
 const rolePermissions = {
   clerk: {
@@ -141,7 +140,7 @@ export default function SettingsPage() {
 
   const [spendGet_Threshold, setSpendGet_Threshold] = React.useState<string>("50.00");
   const [spendGet_FreeItemDesc, setSpendGet_FreeItemDesc] = React.useState<string>("1 Free Shirt Press");
-  const [spendGet_Notes, setSpendGet_Notes] = React.useState<string>(""); // Added state for spend & get notes
+  const [spendGet_Notes, setSpendGet_Notes] = React.useState<string>("");
   const [spendGet_Active, setSpendGet_Active] = React.useState<boolean>(false);
   const [spendGet_ValidFrom, setSpendGet_ValidFrom] = React.useState<Date | undefined>();
   const [spendGet_ValidTo, setSpendGet_ValidTo] = React.useState<Date | undefined>();
@@ -268,7 +267,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="staffManagement" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8">
           <TabsTrigger
             value="staffManagement"
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
@@ -280,6 +279,12 @@ export default function SettingsPage() {
             className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
           >
             Roles &amp; Permissions
+          </TabsTrigger>
+          <TabsTrigger
+            value="customerManagement"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+          >
+            <Contact className="mr-1.5 h-4 w-4" />Customers
           </TabsTrigger>
           <TabsTrigger
             value="itemCatalog"
@@ -319,7 +324,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <Users className="mr-2 h-6 w-6" /> Add New Staff
               </CardTitle>
-              <UiCardDescription>Add new staff members to the system (uses Supabase). Ensure you have added a 'role' column to your 'staff' table in Supabase.</UiCardDescription>
+              <CardDescription>Add new staff members to the system (uses Supabase). Ensure you have added a 'role' column to your 'staff' table in Supabase.</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -385,9 +390,9 @@ export default function SettingsPage() {
                         <FormControl>
                           <Input type="password" placeholder="••••••••" {...field} />
                         </FormControl>
-                         <FormDescription>
+                         <p className="text-sm text-muted-foreground">
                           NOTE: Passwords are NOT hashed in this prototype. Implement hashing for production.
-                        </FormDescription>
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -405,7 +410,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <KeyRound className="mr-2 h-6 w-6" /> Manage Staff Quick Login &amp; Roles
               </CardTitle>
-              <UiCardDescription>View staff roles and enable or disable quick login (uses Supabase).</UiCardDescription>
+              <CardDescription>View staff roles and enable or disable quick login (uses Supabase).</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoadingStaff ? (
@@ -450,7 +455,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <UserCog className="mr-2 h-6 w-6" /> User Roles &amp; Permissions Overview
               </CardTitle>
-              <UiCardDescription>This section outlines the capabilities of different user roles. Actual enforcement of these permissions requires further development.</UiCardDescription>
+              <CardDescription>This section outlines the capabilities of different user roles. Actual enforcement of these permissions requires further development.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {(Object.keys(rolePermissions) as UserRole[]).map((roleKey) => {
@@ -489,10 +494,24 @@ export default function SettingsPage() {
               })}
             </CardContent>
              <CardFooter>
-              <UiCardDescription className="text-xs">
+              <CardDescription className="text-xs">
                 Note: Assigning roles is now possible when adding staff. However, the actual restriction of access based on these roles (e.g., hiding buttons, preventing actions) is not yet implemented in this prototype and would require further development across the application.
-              </UiCardDescription>
+              </CardDescription>
             </CardFooter>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="customerManagement" className="mt-6">
+          <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl flex items-center">
+                <Contact className="mr-2 h-6 w-6" /> Customer Account Management
+              </CardTitle>
+              <CardDescription>View and manage customer account settings like invoice status and account ID.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CustomerManagementTab />
+            </CardContent>
           </Card>
         </TabsContent>
         
@@ -502,7 +521,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <ShoppingBasket className="mr-2 h-6 w-6" /> Service &amp; Item Catalog Management
               </CardTitle>
-              <UiCardDescription>Organize your services and items into hierarchical categories.</UiCardDescription>
+              <CardDescription>Organize your services and items into hierarchical categories.</CardDescription>
             </CardHeader>
             <CardContent>
               <CatalogManagementTab />
@@ -516,7 +535,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-xl flex items-center">
                 <Gift className="mr-2 h-5 w-5 text-green-600" /> "Buy X Get Y (Cheapest Free)" Offer
               </CardTitle>
-              <UiCardDescription>Configure a "cheapest item free" type of promotion.</UiCardDescription>
+              <CardDescription>Configure a "cheapest item free" type of promotion.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -576,7 +595,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-xl flex items-center">
                 <Percent className="mr-2 h-5 w-5 text-blue-600" /> "Bundle Deal (X Items for Price Y)"
               </CardTitle>
-              <UiCardDescription>Set a fixed price for a bundle of items.</UiCardDescription>
+              <CardDescription>Set a fixed price for a bundle of items.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -636,7 +655,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-xl flex items-center">
                 <DollarSign className="mr-2 h-5 w-5 text-yellow-500" /> "Spend &amp; Get Free Item" Offer
               </CardTitle>
-              <UiCardDescription>Offer a free item when a customer spends a certain amount.</UiCardDescription>
+              <CardDescription>Offer a free item when a customer spends a certain amount.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -688,9 +707,9 @@ export default function SettingsPage() {
               <Button onClick={() => handleSaveSpecialOffer("Spend & Get", spendGet_ValidFrom, spendGet_ValidTo)}>Save Offer Settings</Button>
             </CardContent>
              <CardFooter>
-                <UiCardDescription className="text-xs">
+                <CardDescription className="text-xs">
                     Note: The parameters set here are for configuration purposes. Applying these offers to orders requires additional logic in the order creation process.
-                </UiCardDescription>
+                </CardDescription>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -701,7 +720,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <DollarSign className="mr-2 h-6 w-6" /> Cash Up Management
               </CardTitle>
-              <UiCardDescription>Perform end-of-day cash reconciliation and view history.</UiCardDescription>
+              <CardDescription>Perform end-of-day cash reconciliation and view history.</CardDescription>
             </CardHeader>
             <CardContent>
               <CashUpManagementTab />
@@ -715,7 +734,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <PrinterIcon className="mr-2 h-6 w-6" /> Printer Setup
               </CardTitle>
-              <UiCardDescription>Configure default printers and receipt templates. (UI Placeholders)</UiCardDescription>
+              <CardDescription>Configure default printers and receipt templates. (UI Placeholders)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
@@ -788,7 +807,7 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <Building className="mr-2 h-6 w-6" /> Company &amp; Regional Settings
               </CardTitle>
-              <UiCardDescription>Manage company details, system currency, language, and tax settings. (UI Placeholders)</UiCardDescription>
+              <CardDescription>Manage company details, system currency, language, and tax settings. (UI Placeholders)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                <div className="space-y-2">
@@ -892,6 +911,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-    
-
-    

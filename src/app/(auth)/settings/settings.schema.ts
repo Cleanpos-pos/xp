@@ -18,3 +18,10 @@ export const ToggleQuickLoginSchema = z.object({
   enable: z.boolean(),
 });
 export type ToggleQuickLoginInput = z.infer<typeof ToggleQuickLoginSchema>;
+
+export const UpdateCustomerAccountDetailsSchema = z.object({
+  customerId: z.string().uuid("Invalid customer ID."),
+  is_account_client: z.boolean().optional(),
+  account_id: z.string().max(50, "Account ID too long").nullable().optional(),
+});
+export type UpdateCustomerAccountDetailsInput = z.infer<typeof UpdateCustomerAccountDetailsSchema>;

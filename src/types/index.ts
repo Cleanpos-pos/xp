@@ -10,8 +10,10 @@ export type Customer = {
   loyalty_status?: 'None' | 'Bronze' | 'Silver' | 'Gold';
   price_band?: 'Standard' | 'Band A' | 'Band B' | 'Band C';
   orderHistory?: Order[];
-  created_at: string | null; // Changed from string
-  updated_at: string | null; // Changed from string
+  created_at: string | null;
+  updated_at: string | null;
+  is_account_client?: boolean; // Added for invoice client status
+  account_id?: string; // Added for account ID
 };
 
 export type ServiceItem = {
