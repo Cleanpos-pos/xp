@@ -72,7 +72,7 @@ export default function OrderTrackingPage() {
               <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                 <TableCell className="font-medium">{order.orderNumber}</TableCell>
                 <TableCell>{order.customerName}</TableCell>
-                <TableCell>{format(new Date(order.createdAt), 'MMM dd, yyyy')}</TableCell>
+                <TableCell>{order.created_at ? format(new Date(order.created_at), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                 <TableCell>{order.dueDate ? format(new Date(order.dueDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                 <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
                 <TableCell>
