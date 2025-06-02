@@ -8,10 +8,9 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription as RHFFormDescription, // Renamed to avoid conflict
-  FormField,
-  FormItem as RHFFormItem, // Renamed to avoid conflict
-  FormLabel as RHFFormLabel, // Renamed to avoid conflict
+  // FormDescription as RHFFormDescription, // Renamed to avoid conflict
+  // FormItem as RHFFormItem, // Renamed to avoid conflict
+  // FormLabel as RHFFormLabel, // Renamed to avoid conflict
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -30,6 +29,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
+
+// Renaming RHF components for clarity to avoid conflict with generic HTML/div elements
+// when not using RHF for a specific section (like Regional Settings)
+const RHFFormItem = FormItem; 
+const RHFFormLabel = FormLabel;
+const RHFFormDescription = FormDescription;
 
 
 export default function SettingsPage() {
@@ -128,10 +133,30 @@ export default function SettingsPage() {
 
       <Tabs defaultValue="staffManagement" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-          <TabsTrigger value="staffManagement" className="data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">Staff Management</TabsTrigger>
-          <TabsTrigger value="itemCatalog" className="data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">Service &amp; Item Catalog</TabsTrigger>
-          <TabsTrigger value="cashUp" className="data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">Cash Up</TabsTrigger>
-          <TabsTrigger value="regionalSettings" className="data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">Regional</TabsTrigger>
+          <TabsTrigger 
+            value="staffManagement" 
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+          >
+            Staff Management
+          </TabsTrigger>
+          <TabsTrigger 
+            value="itemCatalog" 
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+          >
+            Service &amp; Item Catalog
+          </TabsTrigger>
+          <TabsTrigger 
+            value="cashUp" 
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+          >
+            Cash Up
+          </TabsTrigger>
+          <TabsTrigger 
+            value="regionalSettings" 
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+          >
+            Regional
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="staffManagement" className="mt-6 space-y-8">
