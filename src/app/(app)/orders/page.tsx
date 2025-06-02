@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { getMockOrders } from '@/lib/data';
 import type { Order, OrderStatus } from '@/types';
-import { Eye, Pencil, MoreHorizontal } from 'lucide-react';
+import { Eye, Pencil, MoreHorizontal, Zap } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 
@@ -70,7 +70,10 @@ export default function OrderTrackingPage() {
           <TableBody>
             {orders.map((order) => (
               <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
-                <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                <TableCell className="font-medium">
+                  {order.orderNumber}
+                  {order.isExpress && <Badge variant="destructive" className="ml-2 text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
+                </TableCell>
                 <TableCell>{order.customerName}</TableCell>
                 <TableCell>{order.created_at ? format(new Date(order.created_at), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                 <TableCell>{order.dueDate ? format(new Date(order.dueDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
@@ -89,7 +92,7 @@ export default function OrderTrackingPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/orders/${order.id}`} className="flex items-center">
+                        <Link href={`/orders/${order.id}${order.isExpress ? '?express=true' : ''}`} className="flex items-center">
                           <Eye className="mr-2 h-4 w-4" /> View Details
                         </Link>
                       </DropdownMenuItem>

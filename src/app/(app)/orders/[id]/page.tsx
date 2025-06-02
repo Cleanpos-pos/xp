@@ -1,13 +1,13 @@
 
 "use client";
 
-import React, { useEffect } from 'react'; // Ensure React is imported for React.use
+import React, { useEffect } from 'react'; 
 import { getOrderById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert, Zap } from 'lucide-react';
 import type { OrderItem, OrderStatus, PaymentStatus } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
@@ -61,31 +61,28 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
 
 
 export default function OrderDetailsPage({ params: paramsPromise }: { params: { id: string } }) {
-  // Use React.use to unwrap the params if it's a promise, as suggested by the Next.js warning.
-  // The type annotation { params: { id: string } } is what it resolves to.
   const params = React.use(paramsPromise as unknown as Promise<{ id: string }>);
-  
-  const order = getOrderById(params.id); // Now use the resolved params.id
   const searchParams = useSearchParams();
   const router = useRouter();
+  
+  const order = getOrderById(params.id); 
+  const isExpressFromQuery = searchParams.get('express') === 'true';
+  const effectiveIsExpress = order?.isExpress || isExpressFromQuery;
+
 
   useEffect(() => {
     const autoprint = searchParams.get('autoprint');
     const printTypeParam = searchParams.get('printType');
 
     if (autoprint === 'true') {
-      console.log("Attempting to print for type:", printTypeParam); // For future use with different templates
+      console.log("Attempting to print for type:", printTypeParam); 
       
-      // Small delay to ensure content is rendered
       const printTimeout = setTimeout(() => {
         window.print();
-        // Optional: Remove query params to prevent re-print on refresh
-        // const currentPath = `/orders/${params.id}`; // Use resolved params.id
-        // router.replace(currentPath, { scroll: false });
       }, 100); 
       return () => clearTimeout(printTimeout);
     }
-  }, [searchParams, params.id, router]); // Use resolved params.id in dependency array
+  }, [searchParams, params.id, router]); 
 
 
   if (!order) {
@@ -134,7 +131,10 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-2xl font-headline">Order {order.orderNumber}</CardTitle>
+              <CardTitle className="text-2xl font-headline flex items-center">
+                Order {order.orderNumber}
+                {effectiveIsExpress && <Badge variant="destructive" className="ml-2 text-sm px-2 py-0.5"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
+              </CardTitle>
               <CardDescription>
                 Details for order placed on {order.created_at ? format(new Date(order.created_at), 'MMMM dd, yyyy') : 'N/A'}
               </CardDescription>

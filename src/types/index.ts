@@ -58,6 +58,7 @@ export type Order = {
   updated_at: string;
   dueDate?: string;
   notes?: string;
+  isExpress?: boolean; // Added for express orders
 };
 
 export type InventoryItem = {
@@ -106,3 +107,4 @@ export type CashUpSession = {
   cardVariance: number;
   finalizedBy: string; // Placeholder for staff who did it
 };
+

@@ -24,15 +24,17 @@ import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer } from "lucide-react";
+import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer, Zap } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-modal";
+import { Badge } from "@/components/ui/badge";
+
 
 interface ServicesByCategory {
   [category: string]: ServiceItem[];
@@ -48,7 +50,7 @@ export default function NewOrderPage() {
   const searchParams = useSearchParams();
 
   const [stage, setStage] = React.useState<OrderCreationStage>("form");
-  const [createdOrderDetails, setCreatedOrderDetails] = React.useState<{ id: string; message: string; totalAmount: number } | null>(null);
+  const [createdOrderDetails, setCreatedOrderDetails] = React.useState<{ id: string; message: string; totalAmount: number; isExpress?: boolean } | null>(null);
 
   // Customer related states
   const [allCustomers, setAllCustomers] = React.useState<Customer[]>([]);
@@ -73,6 +75,9 @@ export default function NewOrderPage() {
   const [showPrintDialog, setShowPrintDialog] = React.useState(false);
   const [printType, setPrintType] = React.useState<string | null>(null);
 
+  // Express order state
+  const [isExpressOrder, setIsExpressOrder] = React.useState(false);
+
 
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
@@ -81,6 +86,7 @@ export default function NewOrderPage() {
       items: [],
       dueDate: undefined,
       notes: "",
+      isExpress: false,
     },
   });
 
@@ -217,7 +223,7 @@ export default function NewOrderPage() {
   const orderTotal = React.useMemo(() => watchedItems.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0), [watchedItems]);
 
   const resetFormAndStage = React.useCallback(() => {
-    form.reset({ customerId: "", items: [], dueDate: undefined, notes: "" });
+    form.reset({ customerId: "", items: [], dueDate: undefined, notes: "", isExpress: false });
     setStage("form");
     setCreatedOrderDetails(null);
     setActivePaymentStep("selectAction");
@@ -227,6 +233,7 @@ export default function NewOrderPage() {
     setPaymentNote("");
     setShowPrintDialog(false);
     setPrintType(null);
+    setIsExpressOrder(false);
 
     if (!searchParams.get('customerId')) {
         setSelectedCustomerName(null); 
@@ -238,13 +245,13 @@ export default function NewOrderPage() {
   }, [form, searchParams]);
 
   async function proceedToPaymentSubmit(data: CreateOrderInput) {
-    const result = await createOrderAction(data);
+    const submissionData = { ...data, isExpress: isExpressOrder };
+    const result = await createOrderAction(submissionData);
     if (result.success && result.orderId) {
       toast({ title: "Order Created", description: result.message });
-      setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created!", totalAmount: orderTotal });
+      setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created!", totalAmount: orderTotal, isExpress: isExpressOrder });
       setStage("paymentOptions");
       setActivePaymentStep("selectAction");
-      // Set initial amount tendered to order total, user can change it for cash.
       setAmountTendered(orderTotal > 0 ? orderTotal.toFixed(2) : "0.00");
       setSelectedPaymentMethod(null);
       setPaymentNote("");
@@ -269,11 +276,14 @@ export default function NewOrderPage() {
       return;
     }
     const data = form.getValues();
-    const result = await createOrderAction(data);
+    const submissionData = { ...data, isExpress: isExpressOrder };
+    const result = await createOrderAction(submissionData);
+
     if (result.success && result.orderId) {
       toast({ title: "Order Created (Pay Later)", description: result.message });
       resetFormAndStage();
-      router.push('/find-or-add-customer'); 
+      // Navigate to order details page, appending isExpress status for potential styling
+      router.push(`/orders/${result.orderId}${isExpressOrder ? '?express=true' : ''}`);
     } else {
       toast({
         title: "Error Creating Order",
@@ -309,14 +319,16 @@ export default function NewOrderPage() {
 
     toast({ title: "Payment Processed (Mocked)", description: paymentDetailsMessage });
     setPrintType(null); 
-    setShowPrintDialog(true); // Open print options dialog
+    setShowPrintDialog(true); 
   };
 
   const handlePrintSelection = (selectedType: string) => {
     setPrintType(selectedType);
     setShowPrintDialog(false);
     if (createdOrderDetails) {
-      router.push(`/orders/${createdOrderDetails.id}?autoprint=true&printType=${selectedType}`);
+      // Include express status in query params for order details page
+      const queryParams = `?autoprint=true&printType=${selectedType}${createdOrderDetails.isExpress ? '&express=true' : ''}`;
+      router.push(`/orders/${createdOrderDetails.id}${queryParams}`);
       resetFormAndStage();
     }
   };
@@ -324,7 +336,8 @@ export default function NewOrderPage() {
 
   const handlePayLaterAndNav = () => {
     if (!createdOrderDetails) return;
-    router.push(`/orders/${createdOrderDetails.id}`);
+    const queryParams = createdOrderDetails.isExpress ? '?express=true' : '';
+    router.push(`/orders/${createdOrderDetails.id}${queryParams}`);
     resetFormAndStage();
   };
 
@@ -354,11 +367,27 @@ export default function NewOrderPage() {
   };
   
   const handleOpenAmountKeypad = React.useCallback(() => {
-    // Allow manual keypad opening for Cash or if no method is yet selected (defaults to numeric for amount)
-    if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === null) {
+    if (selectedPaymentMethod !== "On Account") {
       setIsKeypadOpen(true);
     }
   }, [selectedPaymentMethod, setIsKeypadOpen]);
+
+  const setDueDateToday = () => {
+    form.setValue('dueDate', new Date(), { shouldValidate: true });
+    setIsExpressOrder(true);
+  };
+
+  const setDueDateTomorrow = () => {
+    form.setValue('dueDate', addDays(new Date(), 1), { shouldValidate: true });
+    setIsExpressOrder(true);
+  };
+
+  const handleManualDateSelect = (date: Date | undefined) => {
+    form.setValue('dueDate', date, { shouldValidate: true });
+    setIsExpressOrder(false); // Manual selection, not express by default
+  };
+  
+  const watchedDueDate = form.watch("dueDate");
 
 
   const renderOrderFormCard = () => (
@@ -442,21 +471,33 @@ export default function NewOrderPage() {
               </div>
             )}
              {form.formState.errors.items && !form.formState.errors.items.root && !Array.isArray(form.formState.errors.items) && (<FormMessage>{form.formState.errors.items.message}</FormMessage>)}
+            
+            <FormItem className="flex flex-col">
+              <div className="flex justify-between items-center">
+                <FormLabel>Due Date (Optional)</FormLabel>
+                {isExpressOrder && <Badge variant="destructive" className="text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
+              </div>
+              <div className="flex gap-2 items-center">
+                <Popover><PopoverTrigger asChild><FormControl>
+                  <Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>
+                    {watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick a date</span>}
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                  </Button></FormControl></PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={watchedDueDate ? new Date(watchedDueDate) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/>
+                  </PopoverContent>
+                </Popover>
+                <Button type="button" variant="outline" size="sm" onClick={() => {form.setValue('dueDate', undefined); setIsExpressOrder(false);}} className="h-9 px-2 text-xs">Clear</Button>
+              </div>
+              <div className="flex gap-2 mt-1">
+                <Button type="button" variant="secondary" size="xs" className="text-xs h-7 px-2" onClick={setDueDateToday}>Today</Button>
+                <Button type="button" variant="secondary" size="xs" className="text-xs h-7 px-2" onClick={setDueDateTomorrow}>Tomorrow</Button>
+              </div>
+              <FormMessage />
+            </FormItem>
 
-            <FormField control={form.control} name="dueDate" render={({ field }) => (
-                <FormItem className="flex flex-col"><FormLabel>Due Date (Optional)</FormLabel>
-                  <Popover><PopoverTrigger asChild><FormControl>
-                        <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal h-9",!field.value && "text-muted-foreground")}>
-                          {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button></FormControl></PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date)} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/>
-                    </PopoverContent>
-                  </Popover><FormMessage />
-                </FormItem>)}
-            />
             <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>General Order Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Any special instructions" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+            
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between items-center font-semibold text-lg">
                 <span>Total:</span><span>${orderTotal.toFixed(2)}</span>
@@ -505,6 +546,7 @@ export default function NewOrderPage() {
           <CardTitle className="font-headline text-xl flex items-center">
             <CreditCard className="mr-2 h-6 w-6 text-primary" />
             Order {createdOrderDetails.id}
+            {createdOrderDetails.isExpress && <Badge variant="destructive" className="ml-2 text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
           </CardTitle>
           <CardDescription>Total Amount: <strong>${numericTotalAmount.toFixed(2)}</strong></CardDescription>
         </CardHeader>
@@ -544,9 +586,9 @@ export default function NewOrderPage() {
                   onClick={() => { 
                     setSelectedPaymentMethod("Cash"); 
                     setPaymentNote("");
-                    if (numericTotalAmount > 0) setAmountTendered(""); // Clear for cash input
+                    if (numericTotalAmount > 0) setAmountTendered(""); 
                     else setAmountTendered("0.00");
-                    setIsKeypadOpen(true); // Auto-open keypad for cash
+                    setIsKeypadOpen(true); 
                   }}
                 >
                   <Banknote className="mr-2 h-4 w-4"/> Cash
@@ -556,7 +598,7 @@ export default function NewOrderPage() {
                   onClick={() => { 
                     setSelectedPaymentMethod("Card"); 
                     setPaymentNote("");
-                    setAmountTendered(numericTotalAmount.toFixed(2)); // Card usually pays exact total
+                    setAmountTendered(numericTotalAmount.toFixed(2)); 
                   }}
                 >
                   <WalletCards className="mr-2 h-4 w-4"/> Card
@@ -612,19 +654,23 @@ export default function NewOrderPage() {
         onInputChange={setAmountTendered}
         onConfirm={handleAmountKeypadConfirm}
         title="Enter Amount Tendered"
-        numericOnly={true} // Use numeric keypad for amount tendered
+        numericOnly={true}
       />
       {createdOrderDetails && (
         <Dialog open={showPrintDialog} onOpenChange={(isOpen) => {
             setShowPrintDialog(isOpen);
             if (!isOpen && !printType && createdOrderDetails) { 
-              router.push(`/orders/${createdOrderDetails.id}`);
+              const queryParams = createdOrderDetails.isExpress ? '?express=true' : '';
+              router.push(`/orders/${createdOrderDetails.id}${queryParams}`);
               resetFormAndStage();
             }
           }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="flex items-center"><Printer className="mr-2 h-5 w-5"/>Print Options for Order {createdOrderDetails.id}</DialogTitle>
+              <DialogTitle className="flex items-center">
+                <Printer className="mr-2 h-5 w-5"/>Print Options for Order {createdOrderDetails.id}
+                {createdOrderDetails.isExpress && <Badge variant="destructive" className="ml-2 text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
+              </DialogTitle>
               <DialogDescription>
                 Select a receipt type to print. The print dialog will open after navigating to the order details.
               </DialogDescription>
@@ -638,9 +684,10 @@ export default function NewOrderPage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => {
                 setShowPrintDialog(false);
-                setPrintType(null); // Ensure printType is reset
-                if (createdOrderDetails) { // Check again before pushing
-                   router.push(`/orders/${createdOrderDetails.id}`);
+                setPrintType(null); 
+                if (createdOrderDetails) { 
+                  const queryParams = createdOrderDetails.isExpress ? '?express=true' : '';
+                  router.push(`/orders/${createdOrderDetails.id}${queryParams}`);
                 }
                 resetFormAndStage();
               }}>

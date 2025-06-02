@@ -14,6 +14,7 @@ export const CreateOrderSchema = z.object({
   items: z.array(OrderItemSchema).min(1, "Order must have at least one item"),
   dueDate: z.coerce.date().optional(),
   notes: z.string().optional(),
+  isExpress: z.boolean().optional(), // Added for express orders
 });
 
 export type CreateOrderInput = z.infer<typeof CreateOrderSchema>;

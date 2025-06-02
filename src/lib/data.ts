@@ -41,6 +41,7 @@ const initialOrders: Order[] = [
     created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
     updated_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
     dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
+    isExpress: true, // Example of an express order
   },
   {
     id: 'order2',
@@ -56,6 +57,7 @@ const initialOrders: Order[] = [
     created_at: new Date(dateOneMonthAgo.setDate(dateOneMonthAgo.getDate() - 5)).toISOString(),
     updated_at: new Date(dateOneMonthAgo.setDate(dateOneMonthAgo.getDate() - 2)).toISOString(),
     dueDate: new Date(dateOneMonthAgo.setDate(dateOneMonthAgo.getDate() + 1)).toISOString(),
+    isExpress: false,
   },
   {
     id: 'order3',
@@ -194,6 +196,10 @@ export function getOrderById(id: string): Order | undefined {
   const order = orders.find(o => o.id === id);
   if (order && !order.paymentStatus) {
     order.paymentStatus = 'Unpaid';
+  }
+  // Ensure isExpress is at least false if not set
+  if (order && typeof order.isExpress === 'undefined') {
+    order.isExpress = false;
   }
   return order;
 }

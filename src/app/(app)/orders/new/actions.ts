@@ -15,19 +15,17 @@ export async function createOrderAction(data: CreateOrderInput) {
   }
 
   // Simulate API call or database insertion
-  console.log("New order data:", validationResult.data);
+  console.log("New order data:", validationResult.data); // Includes isExpress if provided
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Use the new generateOrderNumber function for the mock order ID
-  // It needs an index, for mock purposes we can use a random number or a static one.
-  // Since it's mock, a random small number for index should suffice.
   const mockOrderIndex = Math.floor(Math.random() * 100);
   const mockOrderId = generateOrderNumber(mockOrderIndex, new Date());
 
 
   return {
     success: true,
-    message: `Order ${mockOrderId} created successfully!`,
+    message: `Order ${mockOrderId} ${validationResult.data.isExpress ? '(Express) ' : ''}created successfully!`,
     orderId: mockOrderId,
+    // In a real scenario, you'd also pass back the isExpress status or the full order object
   };
 }
