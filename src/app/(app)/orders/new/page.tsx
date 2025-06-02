@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { getCustomers, getCustomerById, getMockServices } from "@/lib/data"; 
+import { getCustomers, getCustomerById, getMockServices } from "@/lib/data";
 import type { ServiceItem, Customer } from "@/types";
 import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
@@ -45,9 +45,10 @@ export default function NewOrderPage() {
   const searchParams = useSearchParams();
   const [stage, setStage] = React.useState<OrderCreationStage>("form");
   const [createdOrderDetails, setCreatedOrderDetails] = React.useState<{ id: string; message: string; totalAmount: number } | null>(null);
-  
+
   const [allCustomers, setAllCustomers] = React.useState<Customer[]>([]);
-  const [isLoadingCustomers, setIsLoadingCustomers] = React.useState(true);
+  const [isLoadingAllCustomers, setIsLoadingAllCustomers] = React.useState(false);
+  const [isLoadingSpecificCustomer, setIsLoadingSpecificCustomer] = React.useState(false);
   const [selectedCustomerName, setSelectedCustomerName] = React.useState<string | null>(null);
 
   const [allServices, setAllServices] = React.useState<ServiceItem[]>([]);
@@ -66,83 +67,89 @@ export default function NewOrderPage() {
     },
   });
 
-  // Fetch all customers for the dropdown if no specific customer is pre-selected
+  // Effect to fetch ALL customers if no specific customerId is in query
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
-    if (!customerIdFromQuery) { 
-      setIsLoadingCustomers(true);
+    if (!customerIdFromQuery) { // Only load all if no specific customer is specified
+      setIsLoadingAllCustomers(true);
       getCustomers()
-        .then(data => {
-          setAllCustomers(data);
-        })
+        .then(data => setAllCustomers(data))
         .catch(err => {
           console.error("Failed to fetch customers:", err);
           toast({ title: "Error", description: "Could not load customer list.", variant: "destructive" });
         })
-        .finally(() => setIsLoadingCustomers(false));
+        .finally(() => setIsLoadingAllCustomers(false));
     } else {
-      setIsLoadingCustomers(false); 
+      // If a specific customer is coming from URL, clear/don't load allCustomers list.
+      setAllCustomers([]);
+      setIsLoadingAllCustomers(false); // Ensure this is false as specific customer will be loaded
     }
   }, [searchParams, toast]);
 
 
+  // Effect to fetch SPECIFIC customer if customerId is in query
   React.useEffect(() => {
     const customerIdFromQuery = searchParams.get('customerId');
     if (customerIdFromQuery) {
-      setIsLoadingCustomers(true); 
+      setIsLoadingSpecificCustomer(true);
+      // Clear previous selections while loading the new one
+      setSelectedCustomerName(null);
+      form.setValue('customerId', ''); // Important to clear the form value before new async set
+
       getCustomerById(customerIdFromQuery)
         .then(customer => {
           if (customer) {
             form.setValue('customerId', customerIdFromQuery, { shouldValidate: true });
             setSelectedCustomerName(customer.name);
           } else {
-            toast({title: "Customer Not Found", description: "The pre-selected customer was not found. Please select a customer.", variant: "destructive"});
-            form.setValue('customerId', '');
-            setSelectedCustomerName(null);
-            router.replace('/orders/new', undefined); 
+            toast({title: "Customer Not Found", description: `Customer ID ${customerIdFromQuery} was not found. Please select a customer manually or go back.`, variant: "warning"});
+            // Do not redirect; allow user to see the failed attempt. Form values remain clear.
           }
         })
         .catch(err => {
-          console.error("Failed to fetch customer by ID:", err);
-          toast({title: "Error", description: "Could not load the pre-selected customer.", variant: "destructive"});
-          form.setValue('customerId', '');
-          setSelectedCustomerName(null);
-          router.replace('/orders/new', undefined);
+          console.error("Failed to fetch pre-selected customer:", err);
+          toast({title: "Error Loading Customer", description: "Could not load the pre-selected customer details. Please try selecting manually.", variant: "destructive"});
+          // Form values remain clear.
         })
         .finally(() => {
-          setIsLoadingCustomers(false);
+          setIsLoadingSpecificCustomer(false);
         });
     } else {
-      if (form.getValues('customerId')) {
-          form.setValue('customerId', '');
-      }
-      if (selectedCustomerName) {
-          setSelectedCustomerName(null);
-      }
+      // If no customerId in URL (e.g., initial load, or URL changed by user manually)
+      // ensure the form is clear, unless a manual selection is in progress (covered by third effect).
+      // This prevents lingering state if user navigates back to /orders/new without params.
+      const currentFormCustomerId = form.getValues('customerId');
+       if (currentFormCustomerId) {
+         form.setValue('customerId', '');
+         setSelectedCustomerName(null);
+       }
     }
-  }, [searchParams, form, toast, router, selectedCustomerName]); // Added selectedCustomerName to dependencies
+  }, [searchParams, form, toast]); // router dependency removed as it's not used for navigation here.
 
   const watchedCustomerId = form.watch("customerId");
 
+  // Effect to update selectedCustomerName when watchedCustomerId changes (manual selection from dropdown)
   React.useEffect(() => {
-    if (watchedCustomerId && !searchParams.get('customerId')) { 
+    const customerIdFromQuery = searchParams.get('customerId');
+    if (!customerIdFromQuery && watchedCustomerId) { // Only for manual selection
       const customer = allCustomers.find(c => c.id === watchedCustomerId);
-      if (customer && customer.name !== selectedCustomerName) {
+      if (customer) {
         setSelectedCustomerName(customer.name);
-      } else if (!customer && watchedCustomerId) { 
-        setSelectedCustomerName(null); 
+      } else if (allCustomers.length > 0 || !isLoadingAllCustomers) {
+        // If list is loaded and customer not found (e.g. bad ID), or list is empty
+        setSelectedCustomerName(null); // Or consider setting to watchedCustomerId if it's a free text input later
       }
-    } else if (!watchedCustomerId && !searchParams.get('customerId')) { 
-        setSelectedCustomerName(null);
+    } else if (!customerIdFromQuery && !watchedCustomerId) { // No query ID, no form ID
+      setSelectedCustomerName(null);
     }
-  }, [watchedCustomerId, allCustomers, selectedCustomerName, searchParams]);
+  }, [watchedCustomerId, allCustomers, searchParams, isLoadingAllCustomers]);
 
   // Fetch services
   React.useEffect(() => {
     async function fetchServices() {
       setIsLoadingServices(true);
       try {
-        const servicesData = await getMockServices(); // Now async
+        const servicesData = await getMockServices();
         setAllServices(servicesData);
 
         const groupedServices = servicesData.reduce((acc, service) => {
@@ -196,7 +203,7 @@ export default function NewOrderPage() {
   };
 
   const watchedItems = form.watch("items");
-  
+
   const orderTotal = React.useMemo(() => {
     return watchedItems.reduce((sum, item) => {
       return sum + (item.unitPrice * item.quantity);
@@ -204,7 +211,7 @@ export default function NewOrderPage() {
   }, [watchedItems]);
 
   async function onSubmit(data: CreateOrderInput) {
-    const result = await createOrderAction(data); 
+    const result = await createOrderAction(data);
     if (result.success && result.orderId) {
       toast({
         title: "Order Created",
@@ -236,12 +243,12 @@ export default function NewOrderPage() {
     setStage("form");
     setCreatedOrderDetails(null);
     setSelectedCustomerName(null);
-    router.replace('/orders/new', undefined); 
-    if (!searchParams.get('customerId')) {
-        setIsLoadingCustomers(true);
+    router.replace('/orders/new', undefined);
+    if (!searchParams.get('customerId')) { // Re-fetch all customers if not coming from a specific customer flow
+        setIsLoadingAllCustomers(true);
         getCustomers().then(data => {
             setAllCustomers(data);
-        }).catch(() => {}).finally(() => setIsLoadingCustomers(false));
+        }).catch(() => {}).finally(() => setIsLoadingAllCustomers(false));
     }
   };
 
@@ -256,13 +263,13 @@ export default function NewOrderPage() {
       title: "Payment Processed (Mocked)",
       description: `Payment for order ${createdOrderDetails.id} of $${createdOrderDetails.totalAmount.toFixed(2)} was successful.`,
     });
-    router.push(`/orders/${createdOrderDetails.id}`); 
+    router.push(`/orders/${createdOrderDetails.id}`);
     resetFormAndStage();
   }
 
   const handlePayLater = () => {
     if (!createdOrderDetails) return;
-    router.push(`/orders/${createdOrderDetails.id}`); 
+    router.push(`/orders/${createdOrderDetails.id}`);
     resetFormAndStage();
   };
 
@@ -270,94 +277,19 @@ export default function NewOrderPage() {
     resetFormAndStage();
     router.push('/find-or-add-customer');
   };
-  
+
   const handleGoToDashboard = () => {
     router.push('/dashboard');
   };
 
-
-  if (stage === "paymentOptions" && createdOrderDetails) {
-    return (
-      <Card className="max-w-md mx-auto shadow-lg text-center">
-        <CardHeader>
-          <CheckCircle className="w-16 h-16 mx-auto text-green-500" />
-          <CardTitle className="font-headline text-2xl mt-4">Order Successfully Created!</CardTitle>
-          <CardDescription>{createdOrderDetails.message}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-muted-foreground">Order ID: {createdOrderDetails.id}</p>
-          <p className="font-semibold text-lg">Total: ${createdOrderDetails.totalAmount.toFixed(2)}</p>
-          <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 justify-center">
-            <Button onClick={handleProceedToPayment} className="w-full sm:w-auto">
-              <CreditCard className="mr-2 h-4 w-4" /> Pay Now
-            </Button>
-            <Button onClick={handlePayLater} variant="outline" className="w-full sm:w-auto">
-              <Clock className="mr-2 h-4 w-4" /> Pay Later
-            </Button>
-          </div>
-        </CardContent>
-        <CardFooter className="flex-col space-y-2 items-center">
-          <Button onClick={handleCreateAnotherOrder} variant="link">
-            Create Another Order
-          </Button>
-          <Button onClick={handleGoToDashboard} variant="link" size="sm">
-            Go to Dashboard
-          </Button>
-        </CardFooter>
-      </Card>
-    );
-  }
-
-  if (stage === "paymentProcessing" && createdOrderDetails) {
-    return (
-      <Card className="max-w-lg mx-auto shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline text-2xl flex items-center">
-            <CreditCard className="mr-2 h-6 w-6" /> Process Payment
-          </CardTitle>
-          <CardDescription>
-            Order ID: {createdOrderDetails.id} - Total: ${createdOrderDetails.totalAmount.toFixed(2)}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="cardNumberMock">Card Number</Label>
-              <Input id="cardNumberMock" type="text" placeholder="•••• •••• •••• ••••" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="expiryDateMock">Expiry Date (MM/YY)</Label>
-                <Input id="expiryDateMock" type="text" placeholder="MM/YY" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cvvMock">CVV</Label>
-                <Input id="cvvMock" type="text" placeholder="•••" />
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-3 justify-end">
-            <Button onClick={handleConfirmMockPayment} className="w-full sm:w-auto">
-              Confirm Mock Payment
-            </Button>
-            <Button onClick={handlePayLater} variant="outline" className="w-full sm:w-auto">
-              Cancel & Pay Later
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground text-center">
-            This is a simulated payment screen. No actual payment will be processed.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const customerIdFromQuery = searchParams.get('customerId');
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       <div className="lg:col-span-2 space-y-6">
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="font-headline text-2xl">Select Services for {isLoadingCustomers && searchParams.get('customerId') ? <Skeleton className="h-7 w-32 inline-block" /> : selectedCustomerName || 'Customer'}</CardTitle>
+            <CardTitle className="font-headline text-2xl">Select Services for {isLoadingSpecificCustomer ? <Skeleton className="h-7 w-32 inline-block" /> : selectedCustomerName || 'Customer'}</CardTitle>
             <CardDescription>Choose a category, then click a service to add it to the order.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -379,7 +311,7 @@ export default function NewOrderPage() {
                 {serviceCategoryNames.map((category) => (
                   <TabsContent key={category} value={category}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
-                      {servicesByCategory[category]?.map((service) => ( // Added optional chaining for servicesByCategory[category]
+                      {servicesByCategory[category]?.map((service) => (
                         <Button
                           key={service.id}
                           variant="outline"
@@ -420,17 +352,23 @@ export default function NewOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Customer</FormLabel>
-                      {isLoadingCustomers && !searchParams.get('customerId') ? (
+                      {isLoadingAllCustomers && !customerIdFromQuery ? (
                         <Skeleton className="h-10 w-full" />
                       ) : (
-                      <Select 
-                        onValueChange={field.onChange} 
+                      <Select
+                        onValueChange={(value) => {
+                           field.onChange(value);
+                           const customer = allCustomers.find(c => c.id === value);
+                           setSelectedCustomerName(customer ? customer.name : null);
+                        }}
                         value={field.value}
-                        disabled={!!searchParams.get('customerId') || isLoadingCustomers}
+                        disabled={!!customerIdFromQuery || isLoadingAllCustomers || isLoadingSpecificCustomer}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a customer" />
+                            <SelectValue placeholder={isLoadingSpecificCustomer ? "Loading customer..." : "Select a customer"}>
+                               {selectedCustomerName || (isLoadingSpecificCustomer ? "Loading customer..." : "Select a customer")}
+                            </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -443,13 +381,17 @@ export default function NewOrderPage() {
                       </Select>
                       )}
                       <FormDescription>
-                        {searchParams.get('customerId') && selectedCustomerName
-                          ? `Selected: ${selectedCustomerName}. To change, go back.`
-                          : isLoadingCustomers && !searchParams.get('customerId')
-                          ? 'Loading customer list...'
-                          : !searchParams.get('customerId') && !watchedCustomerId 
-                          ? 'Select a customer for this order.'
-                          : ''}
+                         {isLoadingSpecificCustomer
+                           ? 'Loading customer details...'
+                           : customerIdFromQuery && selectedCustomerName
+                           ? `Selected: ${selectedCustomerName}. To change, go back.`
+                           : customerIdFromQuery && !selectedCustomerName // Attempted to load, but failed
+                           ? `Failed to load customer (ID: ${customerIdFromQuery}). Select manually or go back.`
+                           : !watchedCustomerId && !isLoadingAllCustomers // No selection, not loading list
+                           ? 'Select a customer for this order.'
+                           : isLoadingAllCustomers
+                           ? 'Loading customer list...'
+                           : ''}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -457,7 +399,7 @@ export default function NewOrderPage() {
                 />
 
                 {fields.length > 0 && (
-                  <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-2">
+                  <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
                     {fields.map((field, index) => (
                       <Card key={field.id} className="p-3 space-y-3 bg-background border rounded-md shadow-sm">
                         <div>
@@ -530,7 +472,7 @@ export default function NewOrderPage() {
                               )}
                             >
                               {field.value ? (
-                                format(new Date(field.value), "PPP") 
+                                format(new Date(field.value), "PPP")
                               ) : (
                                 <span>Pick a date</span>
                               )}
@@ -572,20 +514,18 @@ export default function NewOrderPage() {
                         <span>Total:</span>
                         <span>${orderTotal.toFixed(2)}</span>
                     </div>
-                    <Button 
-                      type="submit" 
-                      disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingCustomers || isLoadingServices} 
+                     <Button
+                      type="submit"
+                      disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingSpecificCustomer || isLoadingAllCustomers || isLoadingServices}
                       className="w-full"
                     >
-                      {form.formState.isSubmitting
-                        ? "Creating Order..."
-                        : isLoadingCustomers && watchedCustomerId 
-                        ? "Loading Customer..."
-                        : isLoadingServices
-                        ? "Loading Services..."
-                        : watchedCustomerId && selectedCustomerName
-                        ? `Create Order for ${selectedCustomerName}`
-                        : "Select Customer First"}
+                      {form.formState.isSubmitting ? "Creating Order..."
+                        : isLoadingSpecificCustomer ? "Loading Customer..."
+                        : isLoadingAllCustomers ? "Loading Customer List..."
+                        : isLoadingServices ? "Loading Services..."
+                        : !watchedCustomerId ? "Select Customer First"
+                        : `Create Order for ${selectedCustomerName || 'Selected Customer'}`
+                      }
                     </Button>
                 </div>
               </form>
@@ -596,3 +536,4 @@ export default function NewOrderPage() {
     </div>
   );
 }
+

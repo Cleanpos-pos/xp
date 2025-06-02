@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -19,10 +18,11 @@ import { LoginSchema, type LoginInput } from "./(auth)/login/login.schema";
 import { loginAction, getQuickLoginStaffAction } from "./(auth)/login/actions"; // Actions now use Supabase
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { LogIn, KeyRound, UserCheck, Users } from "lucide-react";
+import { LogIn, KeyRound, UserCheck, Users, Grid } from "lucide-react"; // Import Grid and KeyRound icons
 import type { StaffCredentials } from "@/lib/mock-auth-store"; // Interface from mock-auth-store (now Supabase backed)
 import Link from 'next/link';
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-modal"; // Import the modal component
 
 
 export default function RootLoginPage() {
@@ -30,6 +30,12 @@ export default function RootLoginPage() {
   const router = useRouter();
   const [quickLoginUsers, setQuickLoginUsers] = React.useState<StaffCredentials[]>([]);
   const [isQuickLoginLoading, setIsQuickLoginLoading] = React.useState(true);
+
+  // State for Keypad Modals
+  const [isEmployeeIdModalOpen, setIsEmployeeIdModalOpen] = React.useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = React.useState(false);
+  const [currentEmployeeIdInput, setCurrentEmployeeIdInput] = React.useState("");
+  const [currentPasswordInput, setCurrentPasswordInput] = React.useState("");
 
   React.useEffect(() => {
     async function fetchQuickLoginUsers() {
@@ -54,6 +60,20 @@ export default function RootLoginPage() {
       password: "",
     },
   });
+
+  // Sync form values with local state when modals open
+  React.useEffect(() => {
+    if (isEmployeeIdModalOpen) {
+      setCurrentEmployeeIdInput(form.getValues('employeeId'));
+    }
+  }, [isEmployeeIdModalOpen, form]);
+
+   React.useEffect(() => {
+    if (isPasswordModalOpen) {
+      setCurrentPasswordInput(form.getValues('password'));
+    }
+  }, [isPasswordModalOpen, form]);
+
 
   async function handleLogin(data: LoginInput) {
     // loginAction expects data.employeeId (which is login_id) and data.password
@@ -91,6 +111,14 @@ export default function RootLoginPage() {
     }
   };
 
+  const handleEmployeeIdConfirm = (value: string) => {
+    form.setValue('employeeId', value, { shouldValidate: true });
+  };
+
+  const handlePasswordConfirm = (value: string) => {
+    form.setValue('password', value, { shouldValidate: true });
+  };
+
 
   return (
     <div className="w-full max-w-sm space-y-6">
@@ -110,8 +138,21 @@ export default function RootLoginPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Employee ID</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., STAFF001" {...field} />
+                    {/* Input field that triggers the modal */} 
+                    <FormControl> 
+                       {/* This div acts as the clickable trigger for the modal */} 
+                       <div className="flex items-center space-x-2 cursor-pointer" onClick={() => {
+                          setCurrentEmployeeIdInput(field.value);
+                          setIsEmployeeIdModalOpen(true);
+                        }}> 
+                          <Input 
+                            placeholder="Tap to enter ID" 
+                            readOnly 
+                            className="cursor-pointer flex-grow" // Use flex-grow to make input take available space
+                            value={field.value} // Display the current form value
+                           />
+                           <Grid className="h-5 w-5 text-muted-foreground flex-shrink-0" /> {/* Icon */} 
+                        </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -123,8 +164,22 @@ export default function RootLoginPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
+                    {/* Input field that triggers the modal */} 
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                       {/* This div acts as the clickable trigger for the modal */} 
+                       <div className="flex items-center space-x-2 cursor-pointer" onClick={() => {
+                          setCurrentPasswordInput(field.value);
+                          setIsPasswordModalOpen(true);
+                        }}> 
+                          <Input 
+                            type="password" 
+                            placeholder="Tap to enter password" 
+                            readOnly 
+                             className="cursor-pointer flex-grow"
+                             value={field.value} // Display the current form value
+                          />
+                           <KeyRound className="h-5 w-5 text-muted-foreground flex-shrink-0" /> {/* Icon for password */} 
+                        </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -137,6 +192,26 @@ export default function RootLoginPage() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Employee ID Keypad Modal */}
+      <AlphanumericKeypadModal
+        isOpen={isEmployeeIdModalOpen}
+        onOpenChange={setIsEmployeeIdModalOpen}
+        inputValue={currentEmployeeIdInput}
+        onInputChange={setCurrentEmployeeIdInput}
+        onConfirm={handleEmployeeIdConfirm}
+        title="Enter Employee ID"
+      />
+
+      {/* Password Keypad Modal */}
+       <AlphanumericKeypadModal
+        isOpen={isPasswordModalOpen}
+        onOpenChange={setIsPasswordModalOpen}
+        inputValue={currentPasswordInput}
+        onInputChange={setCurrentPasswordInput}
+        onConfirm={handlePasswordConfirm}
+        title="Enter Password"
+      />
 
       {isQuickLoginLoading && (
          <Card className="shadow-lg">
@@ -151,7 +226,9 @@ export default function RootLoginPage() {
             <Skeleton className="h-10 w-full" />
           </CardContent>
            <CardFooter>
-            <Skeleton className="h-4 w-full" />
+            <p className="text-xs text-muted-foreground">
+              Enable quick login for your account in <Link href="/settings" className="underline hover:text-primary">Settings</Link>.
+            </p>
           </CardFooter>
         </Card>
       )}
