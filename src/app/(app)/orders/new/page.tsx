@@ -24,10 +24,11 @@ import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards } from "lucide-react";
+import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -68,6 +69,10 @@ export default function NewOrderPage() {
   const [isKeypadOpen, setIsKeypadOpen] = React.useState(false);
   const [paymentNote, setPaymentNote] = React.useState<string>("");
 
+  // Print dialog states
+  const [showPrintDialog, setShowPrintDialog] = React.useState(false);
+  const [printType, setPrintType] = React.useState<string | null>(null);
+
 
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
@@ -88,8 +93,6 @@ export default function NewOrderPage() {
       getCustomers()
         .then(data => {
           setAllCustomers(data);
-          console.log('[NewOrderPage] Successfully fetched all customers. Count:', data.length);
-          console.log('[NewOrderPage] All customer IDs fetched:', data.map(c => `ID: '${c.id}' (length ${c.id.length}) Name: ${c.name}`));
         })
         .catch(err => {
           console.error("[NewOrderPage] Failed to fetch customers:", err);
@@ -97,7 +100,7 @@ export default function NewOrderPage() {
         })
         .finally(() => setIsLoadingAllCustomers(false));
     } else {
-      setAllCustomers([]); // Don't load all if a specific one is targetted
+      setAllCustomers([]);
       setIsLoadingAllCustomers(false);
     }
   }, [customerIdFromQuery, toast]);
@@ -105,28 +108,22 @@ export default function NewOrderPage() {
   React.useEffect(() => {
     if (customerIdFromQuery) {
       setIsLoadingSpecificCustomer(true);
-      setSelectedCustomerName(null); // Reset name while loading new one
-      form.setValue('customerId', ''); // Clear form field initially
-
-      console.log('[NewOrderPage] useEffect for specific customer. Raw customerIdFromQuery from URL:', customerIdFromQueryRaw);
-      console.log(`[NewOrderPage] Trimmed customerIdFromQuery for Supabase: '${customerIdFromQuery}' (length ${customerIdFromQuery.length})`);
+      setSelectedCustomerName(null); 
+      form.setValue('customerId', ''); 
 
       getCustomerById(customerIdFromQuery)
         .then(customer => {
-          console.log('[NewOrderPage] getCustomerById promise resolved. Customer data received:', JSON.stringify(customer));
           if (customer) {
-            console.log(`[NewOrderPage] Customer FOUND by ID from URL: Name: ${customer.name}, ID: '${customer.id}' (length ${customer.id.length})`);
             form.setValue('customerId', customer.id, { shouldValidate: true });
             setSelectedCustomerName(customer.name);
           } else {
-            console.warn(`[NewOrderPage] Customer NOT FOUND by ID from URL: '${customerIdFromQuery}'. getCustomerById returned null/undefined.`);
             toast({
               title: "Customer Not Loaded",
-              description: `Failed to load customer (ID: ${customerIdFromQuery}). Select manually or go back. Check server logs from 'getCustomerById' for details (RLS/existence).`,
+              description: `Failed to load customer (ID: ${customerIdFromQuery}). Select manually or go back.`,
               variant: "warning",
               duration: 15000
             });
-            form.setValue('customerId', ''); // Ensure form field is cleared if not found
+            form.setValue('customerId', ''); 
             setSelectedCustomerName(null);
           }
         })
@@ -134,7 +131,7 @@ export default function NewOrderPage() {
           console.error("[NewOrderPage] Error fetching pre-selected customer by ID from URL:", err);
           toast({
             title: "Error Loading Customer by ID",
-            description: `Could not load details for the pre-selected customer (ID: '${customerIdFromQuery}'). Error: ${err.message || 'Unknown error'}. Check server logs for details from 'getCustomerById'. Please try selecting manually.`,
+            description: `Could not load details for the pre-selected customer (ID: '${customerIdFromQuery}'). Error: ${err.message || 'Unknown error'}. Please try selecting manually.`,
             variant: "destructive",
             duration: 15000
           });
@@ -143,7 +140,7 @@ export default function NewOrderPage() {
         })
         .finally(() => setIsLoadingSpecificCustomer(false));
     } else {
-      setIsLoadingSpecificCustomer(false); // Ensure this is false if no ID from query
+      setIsLoadingSpecificCustomer(false); 
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerIdFromQuery, toast]);
@@ -165,7 +162,6 @@ export default function NewOrderPage() {
         const customer = allCustomers.find(c => c.id === watchedCustomerId);
         if (customer) {
           setSelectedCustomerName(customer.name);
-           console.log(`[NewOrderPage] Customer selected from dropdown: ID: '${customer.id}' (length ${customer.id.length}), Name: ${customer.name}`);
         } else if (!customerIdFromQuery) { 
           setSelectedCustomerName(null);
         }
@@ -175,7 +171,7 @@ export default function NewOrderPage() {
         setSelectedCustomerName(null);
       }
     }
-  }, [watchedCustomerId, allCustomers, customerIdFromQuery, isLoadingAllCustomers, isLoadingSpecificCustomer]);
+  }, [watchedCustomerId, allCustomers, customerIdFromQuery, isLoadingAllCustomers, isLoadingSpecificCustomer, searchParams]);
 
 
   React.useEffect(() => {
@@ -230,6 +226,8 @@ export default function NewOrderPage() {
     setSelectedPaymentMethod(null);
     setIsKeypadOpen(false);
     setPaymentNote("");
+    setShowPrintDialog(false);
+    setPrintType(null);
 
     if (!searchParams.get('customerId')) {
         setIsLoadingAllCustomers(true);
@@ -273,9 +271,9 @@ export default function NewOrderPage() {
     const result = await createOrderAction(data);
     if (result.success && result.orderId) {
       toast({ title: "Order Created (Pay Later)", description: result.message });
-      router.push(`/orders/${result.orderId}`);
+      // router.push(`/orders/${result.orderId}`); // Deferred to after print dialog handling
       resetFormAndStage();
-      router.push('/find-or-add-customer');
+      router.push('/find-or-add-customer'); // Or to order details if preferred
     } else {
       toast({
         title: "Error Creating Order",
@@ -308,11 +306,21 @@ export default function NewOrderPage() {
        if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`;
     }
 
-
     toast({ title: "Payment Processed (Mocked)", description: paymentDetailsMessage });
-    router.push(`/orders/${createdOrderDetails.id}`);
-    resetFormAndStage();
+    // Instead of navigating and resetting, show print dialog
+    setPrintType(null); // Reset print type before showing dialog
+    setShowPrintDialog(true);
   };
+
+  const handlePrintSelection = (selectedType: string) => {
+    setPrintType(selectedType);
+    setShowPrintDialog(false);
+    if (createdOrderDetails) {
+      router.push(`/orders/${createdOrderDetails.id}?autoprint=true&printType=${selectedType}`);
+      resetFormAndStage();
+    }
+  };
+
 
   const handlePayLaterAndNav = () => {
     if (!createdOrderDetails) return;
@@ -359,7 +367,8 @@ export default function NewOrderPage() {
               name="customerId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Customer</FormLabel>
+                  { /* Using div instead of FormLabel to avoid useFormContext error here */ }
+                  <div className="text-sm font-medium mb-1">Customer</div>
                   {(isLoadingAllCustomers && !customerIdFromQuery && !selectedCustomerName && !field.value) || (isLoadingSpecificCustomer && !selectedCustomerName && customerIdFromQuery) ? (
                     <Skeleton className="h-10 w-full" />
                   ) : (
@@ -503,7 +512,6 @@ export default function NewOrderPage() {
           {activePaymentStep === "enterPaymentDetails" && (
             <div className="space-y-4">
               <div>
-                {/* Using a div instead of FormLabel to avoid useFormContext error */}
                 <div className="text-sm font-medium mb-1">Amount Tendered</div>
                 <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setIsKeypadOpen(true)}>
                     <Input
@@ -543,7 +551,7 @@ export default function NewOrderPage() {
                   className="w-full"
                   disabled={!selectedPaymentMethod || (selectedPaymentMethod !== "On Account" && (!amountTendered || parseFloat(amountTendered) <=0 && numericTotalAmount > 0))}
                 >
-                  Confirm Payment
+                  Confirm Payment & Print Options
                 </Button>
                 <Button variant="ghost" onClick={() => setActivePaymentStep("selectAction")} className="w-full text-sm">
                   Back
@@ -578,6 +586,40 @@ export default function NewOrderPage() {
         onConfirm={handleAmountKeypadConfirm} 
         title="Enter Amount Tendered"
       />
+      {createdOrderDetails && (
+        <Dialog open={showPrintDialog} onOpenChange={(isOpen) => {
+            setShowPrintDialog(isOpen);
+            if (!isOpen && !printType && createdOrderDetails) { // Dialog closed without a print choice
+              router.push(`/orders/${createdOrderDetails.id}`);
+              resetFormAndStage();
+            }
+          }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center"><Printer className="mr-2 h-5 w-5"/>Print Options for Order {createdOrderDetails.id}</DialogTitle>
+              <DialogDescription>
+                Select a receipt type to print. The print dialog will open after navigating to the order details.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <Button onClick={() => handlePrintSelection('customer_copy')}>Customer Copy</Button>
+              <Button onClick={() => handlePrintSelection('shop_copy')}>Shop Copy</Button>
+              <Button onClick={() => handlePrintSelection('stubs')}>Print Stubs</Button>
+              <Button onClick={() => handlePrintSelection('all_tickets')}>All Tickets</Button>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setShowPrintDialog(false);
+                setPrintType(null);
+                router.push(`/orders/${createdOrderDetails.id}`);
+                resetFormAndStage();
+              }}>
+                Skip Printing & View Order
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
       <div className="lg:col-span-2 space-y-6">
         <Card className="shadow-lg">
           <CardHeader>
@@ -619,3 +661,5 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
+    

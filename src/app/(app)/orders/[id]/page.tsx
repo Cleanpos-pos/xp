@@ -1,5 +1,7 @@
 
-import { mockOrders, getOrderById } from '@/lib/data';
+"use client";
+
+import { getOrderById } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +10,8 @@ import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, 
 import type { OrderItem, OrderStatus, PaymentStatus } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
+import React, { useEffect } from 'react'; // Import React and useEffect
+import { useSearchParams, useRouter } from 'next/navigation'; // Import useSearchParams and useRouter
 
 function getStatusBadgeVariant(status: OrderStatus): "default" | "secondary" | "destructive" | "outline" {
    switch (status) {
@@ -33,7 +37,7 @@ const statusColors: Record<OrderStatus, string> = {
 function getPaymentStatusBadgeVariant(status?: PaymentStatus): "default" | "secondary" | "destructive" | "outline" {
   if (!status) return "outline";
   switch (status) {
-    case 'Paid': return 'default'; // success like
+    case 'Paid': return 'default'; 
     case 'Unpaid': return 'destructive';
     case 'Processing Payment': return 'secondary';
     case 'Refunded': return 'outline';
@@ -58,6 +62,27 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
 
 export default function OrderDetailsPage({ params }: { params: { id: string } }) {
   const order = getOrderById(params.id);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const autoprint = searchParams.get('autoprint');
+    const printTypeParam = searchParams.get('printType');
+
+    if (autoprint === 'true') {
+      console.log("Attempting to print for type:", printTypeParam); // For future use with different templates
+      
+      // Small delay to ensure content is rendered
+      const printTimeout = setTimeout(() => {
+        window.print();
+        // Optional: Remove query params to prevent re-print on refresh
+        // const currentPath = `/orders/${params.id}`;
+        // router.replace(currentPath, { scroll: false });
+      }, 100); 
+      return () => clearTimeout(printTimeout);
+    }
+  }, [searchParams, params.id, router]);
+
 
   if (!order) {
     return (
@@ -183,3 +208,4 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     </div>
   );
 }
+
