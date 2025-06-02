@@ -22,6 +22,7 @@ export async function addStaff(staffData: Omit<StaffCredentials, 'id' | 'created
       enable_quick_login: staffData.enable_quick_login ?? false,
       role: staffData.role ?? 'clerk',
       is_active: true, // New staff are active by default
+      updated_at: new Date().toISOString(),
     })
     .select()
     .single();
@@ -83,82 +84,91 @@ export async function getAllStaff(): Promise<StaffCredentials[]> {
   }
   return ((data || []) as StaffCredentials[]).map(s => ({
       ...s,
-      enable_quick_login: s.enable_quick_login ?? false, // Default to false if null
-      is_active: s.is_active ?? true // Default to true if null
+      enable_quick_login: s.enable_quick_login ?? false, 
+      is_active: s.is_active ?? true 
   }));
 }
 
 export async function updateStaffQuickLoginStatus(login_id_input: string, enable: boolean): Promise<boolean> {
   console.log(`[updateStaffQuickLoginStatus] Attempting to update login_id: '${login_id_input}' (type: ${typeof login_id_input}) to enable_quick_login: ${enable}`);
-
-  const { data: testSelectData, error: testSelectError } = await supabase
+  
+  const { data: selectData, error: selectError } = await supabase
     .from('staff')
     .select('id, login_id, name, enable_quick_login, is_active')
     .eq('login_id', login_id_input)
     .maybeSingle();
 
-  if (testSelectError) {
-    console.error(`[updateStaffQuickLoginStatus] PRE-UPDATE SELECT FAILED for login_id '${login_id_input}'. Error:`, testSelectError);
-  } else if (!testSelectData) {
+  if (selectError) {
+    console.error(`[updateStaffQuickLoginStatus] PRE-UPDATE SELECT FAILED for login_id '${login_id_input}'. Error:`, selectError);
+    return false;
+  }
+  if (!selectData) {
     console.warn(`[updateStaffQuickLoginStatus] PRE-UPDATE SELECT DID NOT FIND login_id '${login_id_input}'.`);
-  } else {
-    console.log(`[updateStaffQuickLoginStatus] PRE-UPDATE SELECT SUCCEEDED for login_id '${login_id_input}'. Found:`, testSelectData);
+    return false;
+  }
+  console.log(`[updateStaffQuickLoginStatus] PRE-UPDATE SELECT SUCCEEDED for login_id '${login_id_input}'. Found:`, selectData);
+
+  // If current state is same as target state, no update needed, return true (idempotent)
+  if (selectData.enable_quick_login === enable) {
+    console.log(`[updateStaffQuickLoginStatus] No update needed for '${login_id_input}', enable_quick_login is already ${enable}.`);
+    return true;
   }
 
-  // const { error, count } = await supabase
-  //   .from('staff')
-  //   .update({ enable_quick_login: enable, updated_at: new Date().toISOString() }) 
-  //   .eq('login_id', login_id_input);
-
-  // Temporarily remove updated_at for debugging if it causes issues.
-   const { error, count } = await supabase
+  const { data: updateData, error: updateError } = await supabase
     .from('staff')
-    .update({ enable_quick_login: enable })
-    .eq('login_id', login_id_input);
+    .update({ enable_quick_login: enable, updated_at: new Date().toISOString() }) 
+    .eq('login_id', login_id_input)
+    .select('id'); // Select 'id' to confirm update
 
-
-  if (error) {
-    console.error(`[updateStaffQuickLoginStatus] Error updating quick login for '${login_id_input}':`, error);
-    throw error;
+  if (updateError) {
+    console.error(`[updateStaffQuickLoginStatus] Error updating quick login for '${login_id_input}':`, updateError);
+    throw updateError;
   }
-  console.log(`[updateStaffQuickLoginStatus] Update for '${login_id_input}' affected ${count} rows.`);
-  return count !== null && count > 0;
+  
+  const success = updateData !== null && updateData.length > 0;
+  console.log(`[updateStaffQuickLoginStatus] Update for '${login_id_input}' ${success ? 'succeeded' : 'did not affect any rows (check RLS or if data was already set to target value)'}. Returned data length: ${updateData?.length}`);
+  return success;
 }
 
 export async function updateStaffActiveStatus(login_id_input: string, is_active: boolean): Promise<boolean> {
   console.log(`[updateStaffActiveStatus] Attempting to update login_id: '${login_id_input}' (type: ${typeof login_id_input}) to is_active: ${is_active}`);
   
-  const { data: testSelectData, error: testSelectError } = await supabase
+  const { data: selectData, error: selectError } = await supabase
     .from('staff')
     .select('id, login_id, name, enable_quick_login, is_active')
     .eq('login_id', login_id_input)
     .maybeSingle();
 
-  if (testSelectError) {
-    console.error(`[updateStaffActiveStatus] PRE-UPDATE SELECT FAILED for login_id '${login_id_input}'. Error:`, testSelectError);
-  } else if (!testSelectData) {
+  if (selectError) {
+    console.error(`[updateStaffActiveStatus] PRE-UPDATE SELECT FAILED for login_id '${login_id_input}'. Error:`, selectError);
+    return false;
+  }
+  if (!selectData) {
     console.warn(`[updateStaffActiveStatus] PRE-UPDATE SELECT DID NOT FIND login_id '${login_id_input}'.`);
-  } else {
-    console.log(`[updateStaffActiveStatus] PRE-UPDATE SELECT SUCCEEDED for login_id '${login_id_input}'. Found:`, testSelectData);
+    return false;
+  }
+  console.log(`[updateStaffActiveStatus] PRE-UPDATE SELECT SUCCEEDED for login_id '${login_id_input}'. Found:`, selectData);
+
+  // If current state is same as target state, no update needed, return true (idempotent)
+  if (selectData.is_active === is_active) {
+    console.log(`[updateStaffActiveStatus] No update needed for '${login_id_input}', is_active is already ${is_active}.`);
+    return true;
   }
 
-  // const { error, count } = await supabase
-  //   .from('staff')
-  //   .update({ is_active: is_active, updated_at: new Date().toISOString() })
-  //   .eq('login_id', login_id_input);
-
-  // Temporarily remove updated_at for debugging if it causes issues.
-   const { error, count } = await supabase
+  const { data: updateData, error: updateError } = await supabase
     .from('staff')
-    .update({ is_active: is_active })
-    .eq('login_id', login_id_input);
+    .update({ is_active: is_active, updated_at: new Date().toISOString() })
+    .eq('login_id', login_id_input)
+    .select('id'); // Select 'id' to confirm update
 
-  if (error) {
-    console.error(`[updateStaffActiveStatus] Error updating active status for '${login_id_input}':`, error);
-    throw error;
+  if (updateError) {
+    console.error(`[updateStaffActiveStatus] Error updating active status for '${login_id_input}':`, updateError);
+    throw updateError;
   }
-  console.log(`[updateStaffActiveStatus] Update for '${login_id_input}' affected ${count} rows.`);
-  return count !== null && count > 0;
+
+  const success = updateData !== null && updateData.length > 0;
+  console.log(`[updateStaffActiveStatus] Update for '${login_id_input}' ${success ? 'succeeded' : 'did not affect any rows (check RLS or if data was already set to target value)'}. Returned data length: ${updateData?.length}`);
+  return success;
 }
 
 
