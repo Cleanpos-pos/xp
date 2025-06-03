@@ -12,8 +12,9 @@ import {
   Tags,
   FileText,
   Archive,
-  Settings, // Imported Settings icon
+  Settings,
   Search,
+  CreditCard, // Added CreditCard icon
 } from 'lucide-react';
 import {
   SidebarMenu,
@@ -32,7 +33,8 @@ const navItems = [
   { href: '/services', label: 'Services', icon: Tags },
   { href: '/reports', label: 'Reports', icon: FileText },
   { href: '/inventory', label: 'Inventory', icon: Archive },
-  { href: '/settings', label: 'Settings', icon: Settings }, // Added Settings link
+  { href: '/subscription', label: 'Subscription', icon: CreditCard }, // Added Subscription link
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export function SidebarNav() {
