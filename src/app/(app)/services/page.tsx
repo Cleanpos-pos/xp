@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getMockServices } from '@/lib/data'; // This is now async
+import { getServices } from '@/lib/data'; // Use renamed getServices
 import type { ServiceItem } from '@/types';
 import { Tag, DollarSign, Edit, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -19,11 +19,11 @@ export default function ServicesPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchServices() {
+    async function fetchServicesData() { // Renamed to avoid conflict
       setIsLoading(true);
       setError(null);
       try {
-        const data = await getMockServices(); // getMockServices is now async
+        const data = await getServices(); // Use renamed getServices
         setServices(data);
       } catch (err: any) {
         console.error("Failed to fetch services:", err);
@@ -32,7 +32,7 @@ export default function ServicesPage() {
         setIsLoading(false);
       }
     }
-    fetchServices();
+    fetchServicesData();
   }, []);
 
   if (isLoading) {
@@ -149,3 +149,5 @@ export default function ServicesPage() {
     </Card>
   );
 }
+
+    

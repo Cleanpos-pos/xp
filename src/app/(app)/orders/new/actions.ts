@@ -2,7 +2,8 @@
 "use server";
 
 import { type CreateOrderInput, CreateOrderSchema } from "./order.schema";
-import { generateOrderNumber } from '@/lib/data'; // Import the updated generator
+import { createOrderDb } from '@/lib/data'; // Import the Supabase function
+import type { Order } from "@/types";
 
 export async function createOrderAction(data: CreateOrderInput) {
   const validationResult = CreateOrderSchema.safeParse(data);
@@ -11,20 +12,24 @@ export async function createOrderAction(data: CreateOrderInput) {
     return {
       success: false,
       errors: validationResult.error.flatten().fieldErrors,
+      message: "Validation failed. Please check the form.",
     };
   }
 
-  // Simulate API call or database insertion
-  console.log("New order data (with discounts/overrides if any):", validationResult.data);
-  await new Promise(resolve => setTimeout(resolve, 1000));
-
-  const mockOrderIndex = Math.floor(Math.random() * 100);
-  const mockOrderId = generateOrderNumber(mockOrderIndex, new Date());
-
-
-  return {
-    success: true,
-    message: `Order ${mockOrderId} ${validationResult.data.isExpress ? '(Express) ' : ''}created successfully! Discount/override data logged.`,
-    orderId: mockOrderId,
-  };
+  try {
+    const newOrder = await createOrderDb(validationResult.data);
+    return {
+      success: true,
+      message: `Order ${newOrder.orderNumber} ${newOrder.isExpress ? '(Express) ' : ''}created successfully in Supabase!`,
+      orderId: newOrder.id, // Return the actual ID from Supabase
+    };
+  } catch (error: any) {
+    console.error("Error creating order in action:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to create order in Supabase.",
+    };
+  }
 }
+
+    

@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { getCustomers, getCustomerById, getMockServices } from "@/lib/data";
+import { getCustomers, getCustomerById, getServices } from "@/lib/data"; // Updated: getServices
 import type { ServiceItem, Customer } from "@/types";
 import { CreateOrderSchema, type CreateOrderInput, type OrderItemInput } from "./order.schema";
 import { createOrderAction } from "./actions";
@@ -147,10 +147,10 @@ export default function NewOrderPage() {
   }, [watchedCustomerId, allCustomers, customerIdFromQuery, isLoadingAllCustomers, isLoadingSpecificCustomer]);
 
   React.useEffect(() => {
-    async function fetchServices() {
+    async function fetchServicesData() { // Renamed from fetchServices to avoid conflict
       setIsLoadingServices(true);
       try {
-        const servicesData = await getMockServices();
+        const servicesData = await getServices(); // Using renamed getServices
         setAllServices(servicesData);
         const groupedServices = servicesData.reduce((acc, service) => {
           const category = service.category || "Other";
@@ -167,7 +167,7 @@ export default function NewOrderPage() {
         setIsLoadingServices(false);
       }
     }
-    fetchServices();
+    fetchServicesData();
   }, [toast]);
 
   const { fields, append, remove, update } = useFieldArray({
@@ -190,6 +190,8 @@ export default function NewOrderPage() {
         notes: "",
         itemDiscountAmount: undefined,
         itemDiscountPercentage: undefined,
+        has_color_identifier: service.has_color_identifier, // Pass this from service
+        color_value: "", // Default color value
       });
     }
   };
@@ -243,7 +245,7 @@ export default function NewOrderPage() {
       setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created!", totalAmount: calculatedTotals.grandTotal, isExpress: isExpressOrder });
       setStage("paymentOptions"); setActivePaymentStep("selectAction"); setAmountTendered(calculatedTotals.grandTotal > 0 ? calculatedTotals.grandTotal.toFixed(2) : "0.00"); setSelectedPaymentMethod(null); setPaymentNote("");
     } else {
-      toast({ title: "Error Creating Order", description: result.errors ? JSON.stringify(result.errors) : "Failed to create order.", variant: "destructive" });
+      toast({ title: "Error Creating Order", description: result.errors ? JSON.stringify(result.errors) : (result.message || "Failed to create order."), variant: "destructive" });
     }
   }
 
@@ -256,7 +258,7 @@ export default function NewOrderPage() {
       setCreatedOrderDetails({ id: result.orderId, message: result.message || "Order created!", totalAmount: calculatedTotals.grandTotal, isExpress: isExpressOrder });
       setPrintType(null); setShowPrintDialog(true);
     } else {
-      toast({ title: "Error Creating Order", description: result.errors ? JSON.stringify(result.errors) : "Failed to create order.", variant: "destructive" });
+      toast({ title: "Error Creating Order", description: result.errors ? JSON.stringify(result.errors) : (result.message || "Failed to create order."), variant: "destructive" });
     }
   }
 
@@ -367,6 +369,19 @@ export default function NewOrderPage() {
                       <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => update(index, { ...item, quantity: item.quantity + 1 })}><PlusCircle className="h-4 w-4" /></Button>
                       <FormField control={form.control} name={`items.${index}.notes`} render={({ field: subField }) => (<FormItem className="flex-grow"><FormControl><Input placeholder="Item notes..." {...subField} className="h-7 text-xs" /></FormControl><FormMessage className="text-xs" /></FormItem>)} />
                     </div>
+                     {item.has_color_identifier && (
+                        <FormField
+                            control={form.control}
+                            name={`items.${index}.color_value`}
+                            render={({ field: subField }) => (
+                            <FormItem>
+                                <FormLabel className="text-xs">Color</FormLabel>
+                                <FormControl><Input placeholder="e.g., Red, Blue Pattern" {...subField} className="h-7 text-xs" /></FormControl>
+                                <FormMessage className="text-xs" />
+                            </FormItem>
+                            )}
+                        />
+                    )}
                      <div className="text-right text-sm font-medium">Item Total: ${itemTotal.toFixed(2)}</div>
                      <FormField control={form.control} name={`items.${index}.quantity`} render={() => <FormMessage className="text-xs pt-1" />} />
                   </Card>
@@ -421,9 +436,9 @@ export default function NewOrderPage() {
     </Card>
   );
 
-  const renderPaymentOptionsCard = () => { /* ... (existing payment card logic, ensure createdOrderDetails.totalAmount uses calculatedTotals.grandTotal) ... */ 
+  const renderPaymentOptionsCard = () => { 
     if (!createdOrderDetails) return null;
-    const numericTotalAmount = createdOrderDetails.totalAmount; // This should be grandTotal
+    const numericTotalAmount = createdOrderDetails.totalAmount; 
     let numericAmountTendered = parseFloat(amountTendered);
     if (isNaN(numericAmountTendered)) numericAmountTendered = 0;
 
@@ -499,3 +514,5 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
+    

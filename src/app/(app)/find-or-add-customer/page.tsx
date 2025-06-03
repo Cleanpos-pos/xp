@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { getCustomers, searchOrdersLocal, getOrdersByCustomerIdLocal } from '@/lib/data';
+import { getCustomers, searchOrdersDb, getOrdersByCustomerIdDb } from '@/lib/data'; // Use DB functions
 import type { Customer, Order } from '@/types';
 import { Search, UserPlus, ArrowRight, Users, Ticket, Eye, ShoppingCart, UserCircle, LayoutDashboard } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -82,6 +82,7 @@ export default function FindCustomerOrOrderPage() {
       setIsLoadingCustomers(true);
       setHasCustomerSearched(true);
       const lowerSearchTerm = term.toLowerCase();
+      // Client-side filtering on already fetched customers
       const results = allCustomers.filter(customer =>
         customer.name.toLowerCase().includes(lowerSearchTerm) ||
         (customer.phone && customer.phone.includes(term)) ||
@@ -96,13 +97,18 @@ export default function FindCustomerOrOrderPage() {
       setSelectedCustomerNameForOrders(null);
       setSelectedCustomerIdForOrders(null);
       
-      await new Promise(resolve => setTimeout(resolve, 300)); // Simulate API delay
-      const results = searchOrdersLocal(term);
-      setOrderSearchResults(results);
-      if (results.length === 0) {
-        toast({ title: "No Results", description: "No orders found matching your search.", variant: "default" });
+      try {
+        const results = await searchOrdersDb(term); // Use Supabase search
+        setOrderSearchResults(results);
+        if (results.length === 0) {
+          toast({ title: "No Results", description: "No orders found matching your search.", variant: "default" });
+        }
+      } catch (error) {
+        console.error("Error searching orders:", error);
+        toast({ title: "Search Error", description: "Could not perform order search.", variant: "destructive" });
+      } finally {
+        setIsLoadingOrders(false);
       }
-      setIsLoadingOrders(false);
     }
   };
 
@@ -110,20 +116,24 @@ export default function FindCustomerOrOrderPage() {
     router.push(`/orders/new?customerId=${customerId}`);
   };
 
-  const handleOrderSelect = useCallback((order: Order) => {
+  const handleOrderSelect = useCallback(async (order: Order) => {
     setIsLoadingOrders(true);
     setSelectedCustomerNameForOrders(order.customerName);
     setSelectedCustomerIdForOrders(order.customerId);
     setOrderSearchResults([]); // Clear initial search results
 
-    setTimeout(() => {
-      const customerOrders = getOrdersByCustomerIdLocal(order.customerId);
+    try {
+      const customerOrders = await getOrdersByCustomerIdDb(order.customerId); // Use Supabase fetch
       setSelectedCustomerOrders(customerOrders);
-      setIsLoadingOrders(false);
       if (customerOrders.length === 0) {
          toast({ title: "No Orders for Customer", description: `No orders found for ${order.customerName}.`, variant: "default" });
       }
-    }, 300); // Simulate API delay
+    } catch (error) {
+      console.error("Error fetching customer orders:", error);
+      toast({ title: "Error", description: "Could not fetch orders for this customer.", variant: "destructive" });
+    } finally {
+      setIsLoadingOrders(false);
+    }
   }, [toast]);
 
   const handleProceedToNewOrderForCustomer = () => {
@@ -364,3 +374,5 @@ export default function FindCustomerOrOrderPage() {
     </div>
   );
 }
+
+    

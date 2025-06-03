@@ -2,17 +2,19 @@
 "use client";
 
 import React, { useEffect, useState } from 'react'; 
-import { getOrderById } from '@/lib/data';
+import { getOrderByIdDb } from '@/lib/data'; // Fetch from Supabase
+import type { Order, OrderItem, OrderStatus, PaymentStatus } from '@/types'; // Ensure OrderItem matches your types
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert, Zap, Percent } from 'lucide-react';
-import type { OrderItem, OrderStatus, PaymentStatus } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 function getStatusBadgeVariant(status: OrderStatus): "default" | "secondary" | "destructive" | "outline" {
    switch (status) {
@@ -61,20 +63,47 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
 }
 
 
-export default function OrderDetailsPage({ params: paramsPromise }: { params: { id: string } }) {
-  const params = React.use(paramsPromise as unknown as Promise<{ id: string }>);
+export default function OrderDetailsPage({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  const order = getOrderById(params.id); 
-  const isExpressFromQuery = searchParams.get('express') === 'true';
-  const effectiveIsExpress = order?.isExpress || isExpressFromQuery;
+  const [order, setOrder] = useState<Order | null | undefined>(undefined); // undefined for loading, null for not found
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const effectiveIsExpress = order?.isExpress || searchParams.get('express') === 'true';
 
   // Placeholder for VAT settings - in a real app, this would come from context/settings
   const [isVatEnabled, setIsVatEnabled] = useState(true); // Default to true for demo
   const [vatRate, setVatRate] = useState(0.20); // 20% VAT for demo
 
   useEffect(() => {
+    async function fetchOrder() {
+      if (!params.id) {
+        setError("Order ID is missing.");
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      setError(null);
+      try {
+        const fetchedOrder = await getOrderByIdDb(params.id);
+        setOrder(fetchedOrder);
+      } catch (err: any) {
+        console.error("Failed to fetch order:", err);
+        setError("Failed to load order details. Please try again.");
+        setOrder(null);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchOrder();
+  }, [params.id]);
+
+
+  useEffect(() => {
+    if (order === undefined || order === null) return; // Don't run if loading or not found
+
     const autoprint = searchParams.get('autoprint');
     const printTypeParam = searchParams.get('printType');
 
@@ -82,21 +111,54 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
       console.log("Attempting to print for type:", printTypeParam); 
       const printTimeout = setTimeout(() => {
         window.print();
+        // Optionally, remove query params after printing attempt
+        // router.replace(`/orders/${order.id}`, { scroll: false }); 
       }, 100); 
       return () => clearTimeout(printTimeout);
     }
-  }, [searchParams, params.id, router, effectiveIsExpress]); 
+  }, [searchParams, params.id, router, order, effectiveIsExpress]); 
 
 
-  if (!order) {
+  if (isLoading) {
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between print-hidden">
+                <Skeleton className="h-9 w-32" />
+                <div className="flex gap-2">
+                    <Skeleton className="h-9 w-28" />
+                    <Skeleton className="h-9 w-40" />
+                </div>
+            </div>
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <Skeleton className="h-8 w-1/2 mb-2" />
+                    <Skeleton className="h-4 w-3/4" />
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-3 gap-6">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </CardContent>
+            </Card>
+             <Card className="shadow-lg">
+                <CardHeader><Skeleton className="h-6 w-1/4" /></CardHeader>
+                <CardContent><Skeleton className="h-24 w-full" /></CardContent>
+            </Card>
+        </div>
+    );
+  }
+
+  if (error || order === null) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
         <Card className="w-full max-w-md p-8 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-2xl font-headline">Order Not Found</CardTitle>
+            <CardTitle className="text-2xl font-headline">
+              {error ? "Error Loading Order" : "Order Not Found"}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p>The order you are looking for does not exist or could not be found.</p>
+            <p>{error || "The order you are looking for does not exist or could not be found."}</p>
           </CardContent>
           <CardFooter className="flex justify-center">
             <Link href="/orders">
@@ -117,9 +179,14 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
     router.push(`/orders/${order.id}${queryParams}`);
   };
 
-  const subTotal = order.totalAmount;
+  const subTotal = order.totalAmount; // Assuming totalAmount from DB is pre-cart-override subtotal
   const vatAmount = isVatEnabled ? subTotal * vatRate : 0;
   const grandTotal = isVatEnabled ? subTotal + vatAmount : subTotal;
+  // If totalAmount in DB is already the grand total after all discounts, adjust logic:
+  // const subTotalBeforeVAT = order.totalAmount / (1 + (isVatEnabled ? vatRate : 0));
+  // const vatAmount = order.totalAmount - subTotalBeforeVAT;
+  // const grandTotal = order.totalAmount;
+
 
   return (
     <div id="orderDetailsPrintSection" className="space-y-6">
@@ -130,7 +197,9 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
             </Button>
         </Link>
         <div className="flex gap-2">
-            <Button variant="outline" size="sm"><Edit className="mr-2 h-4 w-4" /> Edit Order</Button>
+            <Button variant="outline" size="sm" disabled> {/* Edit Order to be implemented */}
+                <Edit className="mr-2 h-4 w-4" /> Edit Order
+            </Button>
             <Button variant="outline" size="sm" onClick={() => handlePrint('customer_copy')}><Printer className="mr-2 h-4 w-4" /> Print Customer Copy</Button>
         </div>
       </div>
@@ -164,6 +233,8 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
           <div className="space-y-1">
             <h4 className="text-sm font-medium flex items-center text-muted-foreground"><User className="mr-2 h-4 w-4" /> Customer</h4>
             <p className="text-base">{order.customerName}</p>
+            {/* Consider adding a link to customer details if available */}
+            {/* <Link href={`/customers/${order.customerId}`} className="text-xs text-primary hover:underline">View Customer</Link> */}
           </div>
           <div className="space-y-1">
             <h4 className="text-sm font-medium flex items-center text-muted-foreground"><CalendarDays className="mr-2 h-4 w-4" /> Due Date</h4>
@@ -171,7 +242,7 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
           </div>
           <div className="space-y-1">
             <h4 className="text-sm font-medium flex items-center text-muted-foreground"><DollarSign className="mr-2 h-4 w-4" /> Total Amount</h4>
-            <p className="text-base font-semibold">${isVatEnabled ? grandTotal.toFixed(2) : order.totalAmount.toFixed(2)}</p>
+            <p className="text-base font-semibold">${grandTotal.toFixed(2)}</p>
           </div>
         </CardContent>
       </Card>
@@ -195,7 +266,8 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
                 <TableRow key={item.id}>
                   <TableCell>
                     <div className="font-medium">{item.serviceName}</div>
-                    {item.notes && <div className="text-xs text-muted-foreground">{item.notes}</div>}
+                    {item.color_value && item.has_color_identifier && <div className="text-xs text-muted-foreground">Color: {item.color_value}</div>}
+                    {item.notes && <div className="text-xs text-muted-foreground">Notes: {item.notes}</div>}
                   </TableCell>
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>${item.unitPrice.toFixed(2)}</TableCell>
@@ -203,10 +275,10 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
                 </TableRow>
               ))}
             </TableBody>
-             {isVatEnabled && (
+             {isVatEnabled && ( /* This VAT display assumes 'order.totalAmount' is pre-VAT subtotal. Adjust if DB stores grand total. */
               <TableBody>
                 <TableRow>
-                  <TableCell colSpan={3} className="text-right font-medium">Subtotal:</TableCell>
+                  <TableCell colSpan={3} className="text-right font-medium">Subtotal (after discounts):</TableCell>
                   <TableCell className="text-right font-semibold">${subTotal.toFixed(2)}</TableCell>
                 </TableRow>
                 <TableRow>
@@ -221,6 +293,14 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
                 </TableRow>
               </TableBody>
             )}
+             {!isVatEnabled && (
+                <TableBody>
+                    <TableRow className="border-t-2 border-foreground">
+                    <TableCell colSpan={3} className="text-right text-lg font-bold">Grand Total:</TableCell>
+                    <TableCell className="text-right text-lg font-bold">${order.totalAmount.toFixed(2)}</TableCell>
+                    </TableRow>
+                </TableBody>
+             )}
           </Table>
         </CardContent>
       </Card>
@@ -239,3 +319,4 @@ export default function OrderDetailsPage({ params: paramsPromise }: { params: { 
   );
 }
 
+    

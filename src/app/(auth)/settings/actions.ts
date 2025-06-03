@@ -7,7 +7,7 @@ import {
   updateStaffQuickLoginStatus,
   deleteStaff as deleteStaffFromDb,
   updateStaffActiveStatus, // Import new function
-} from "@/lib/mock-auth-store";
+} from "@/lib/staff"; // Updated import
 import type { StaffCredentials } from "@/types"; // Use StaffCredentials from @/types
 import { type AddStaffInput, AddStaffSchema, type ToggleQuickLoginInput, ToggleQuickLoginSchema, type ToggleStaffActiveStatusInput, ToggleStaffActiveStatusSchema } from "./settings.schema";
 
@@ -133,3 +133,5 @@ export async function removeStaffAction(loginId: string) {
     return { success: false, message: error.message || "An unexpected error occurred while trying to remove staff." };
   }
 }
+
+    

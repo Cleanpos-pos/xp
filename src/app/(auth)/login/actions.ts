@@ -1,8 +1,9 @@
 
 "use server";
 
-import { findStaff, getQuickLoginStaff, type StaffCredentials } from "@/lib/mock-auth-store"; // Now uses Supabase
+import { findStaff, getQuickLoginStaff } from "@/lib/staff"; // Updated import
 import { LoginSchema, type LoginInput } from "./login.schema";
+import type { StaffCredentials } from "@/types"; // Use StaffCredentials from types
 
 export async function loginAction(data: LoginInput) {
   const validationResult = LoginSchema.safeParse(data);
@@ -53,3 +54,5 @@ export async function getQuickLoginStaffAction(): Promise<StaffCredentials[]> {
     return []; // Return empty array on error
   }
 }
+
+    

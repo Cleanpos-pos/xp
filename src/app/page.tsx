@@ -20,7 +20,7 @@ import { loginAction, getQuickLoginStaffAction } from "./(auth)/login/actions"; 
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { LogIn, KeyRound, UserCheck, Users, Grid } from "lucide-react"; // Import Grid and KeyRound icons
-import type { StaffCredentials } from "@/lib/mock-auth-store"; // Interface from mock-auth-store (now Supabase backed)
+import type { StaffCredentials } from "@/types"; // Updated import
 import Link from 'next/link';
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-modal"; // Import the modal component
@@ -266,3 +266,5 @@ export default function RootLoginPage() {
     </div>
   );
 }
+
+    

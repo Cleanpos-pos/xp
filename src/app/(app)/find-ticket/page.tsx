@@ -7,13 +7,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, UserCircle, ShoppingCart, ArrowRight, Ticket } from "lucide-react";
-import { searchOrdersLocal, getOrdersByCustomerIdLocal } from '@/lib/data';
+import { searchOrdersDb, getOrdersByCustomerIdDb } from '@/lib/data'; // Use DB functions
 import type { Order } from '@/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
 
 export default function FindTicketPage() {
   const router = useRouter();
@@ -39,35 +40,42 @@ export default function FindTicketPage() {
     }
     setIsLoading(true);
     setHasSearched(true);
-    setSelectedCustomerOrders([]); // Clear previous customer's orders
+    setSelectedCustomerOrders([]); 
     setSelectedCustomerName(null);
     setSelectedCustomerId(null);
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const results = searchOrdersLocal(searchTerm);
-    setSearchResults(results);
-    if (results.length === 0) {
-      toast({ title: "No Results", description: "No orders found matching your search.", variant: "default" });
+    try {
+      const results = await searchOrdersDb(searchTerm); // Use Supabase search
+      setSearchResults(results);
+      if (results.length === 0) {
+        toast({ title: "No Results", description: "No orders found matching your search.", variant: "default" });
+      }
+    } catch (error) {
+      console.error("Error searching orders:", error);
+      toast({ title: "Search Error", description: "Could not perform order search.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, [searchTerm, toast]);
 
-  const handleOrderSelect = useCallback((order: Order) => {
+  const handleOrderSelect = useCallback(async (order: Order) => {
     setIsLoading(true);
     setSelectedCustomerName(order.customerName);
     setSelectedCustomerId(order.customerId);
-    setSearchResults([]); // Clear initial search results
+    setSearchResults([]); 
 
-    // Simulate API call delay
-    setTimeout(() => {
-      const customerOrders = getOrdersByCustomerIdLocal(order.customerId);
+    try {
+      const customerOrders = await getOrdersByCustomerIdDb(order.customerId); // Use Supabase fetch
       setSelectedCustomerOrders(customerOrders);
-      setIsLoading(false);
       if (customerOrders.length === 0) {
          toast({ title: "No Orders for Customer", description: `No orders found for ${order.customerName}.`, variant: "default" });
       }
-    }, 500);
+    } catch (error) {
+      console.error("Error fetching customer orders:", error);
+      toast({ title: "Error", description: "Could not fetch orders for this customer.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   }, [toast]);
   
   const handleProceedToNewOrder = () => {
@@ -166,7 +174,7 @@ export default function FindTicketPage() {
                     <CardTitle className="font-headline text-xl flex items-center">
                         <UserCircle className="mr-2 h-6 w-6 text-primary"/> Orders for {selectedCustomerName}
                     </CardTitle>
-                    <CardDescription>All orders found for this customer. You can proceed to create a new order or manage existing ones.</CardDescription>
+                    <CardDescription>All orders found for this customer. You can proceed to create a new order or view existing ones.</CardDescription>
                 </div>
                 <Button onClick={handleProceedToNewOrder} disabled={!selectedCustomerId}>
                     <ShoppingCart className="mr-2 h-4 w-4" /> Start New Order for {selectedCustomerName.split(' ')[0]}
@@ -183,6 +191,7 @@ export default function FindTicketPage() {
                   <TableHead>Total</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Payment Status</TableHead>
+                   <TableHead className="text-right">View</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -198,6 +207,11 @@ export default function FindTicketPage() {
                         {order.paymentStatus || 'N/A'}
                       </Badge>
                     </TableCell>
+                     <TableCell className="text-right">
+                        <Link href={`/orders/${order.id}`} passHref>
+                           <Button variant="ghost" size="icon"><ArrowRight className="h-4 w-4" /></Button>
+                        </Link>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -206,7 +220,6 @@ export default function FindTicketPage() {
           <CardFooter>
             <p className="text-xs text-muted-foreground">
                 Displaying {selectedCustomerOrders.length} order(s) for {selectedCustomerName}.
-                A full multi-order checkout/payment screen can be implemented in a future update.
             </p>
           </CardFooter>
         </Card>
@@ -224,3 +237,5 @@ export default function FindTicketPage() {
     </div>
   );
 }
+
+    

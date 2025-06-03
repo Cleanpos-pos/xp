@@ -1,85 +1,24 @@
 
-import type { Order, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus, CatalogEntry, CatalogHierarchyNode, CatalogEntryType } from '@/types';
+import type { Order, OrderItem as AppOrderItemType, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus, CatalogEntry, CatalogHierarchyNode, CatalogEntryType } from '@/types';
 import type { CreateCustomerInput } from '@/app/(app)/customers/new/customer.schema';
 import { supabase } from './supabase';
 import { format } from 'date-fns';
+import type { CreateOrderInput, OrderItemInput } from '@/app/(app)/orders/new/order.schema';
 
 
 // Define types for our global stores for mock data (non-customer, non-staff, non-catalog)
-declare global {
-  // eslint-disable-next-line no-var
-  var mockOrdersStore: Order[] | undefined;
-  // eslint-disable-next-line no-var
-  // var mockInventoryStore: InventoryItem[] | undefined; // To be removed
-}
+// global.mockOrdersStore has been removed as orders are now in Supabase.
 
-const generateOrderNumber = (index: number, date: Date = new Date()): string => {
-  const month = String(date.getMonth() + 1).padStart(2, '0'); // getMonth() is 0-indexed
-  const baseId = String(1000 + index).padStart(6, '0');
-  return `${month}-XP-${baseId}`;
+const generateOrderNumber = (date: Date = new Date()): string => {
+  // Generates a unique order number. For Supabase, this could be a DB sequence or a more robust generation.
+  // For now, using a timestamp-based approach for local generation before DB insert.
+  const year = date.getFullYear().toString().slice(-2);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `${year}${month}${day}-XP-${randomSuffix}`;
 };
 
-// Create dates for different months for mock data
-const dateOneMonthAgo = new Date();
-dateOneMonthAgo.setMonth(dateOneMonthAgo.getMonth() - 1);
-const dateTwoMonthsAgo = new Date();
-dateTwoMonthsAgo.setMonth(dateTwoMonthsAgo.getMonth() - 2);
-
-const initialOrders: Order[] = [
-  {
-    id: 'order1',
-    orderNumber: generateOrderNumber(1, new Date()), // Current month
-    customerId: 'cust1',
-    customerName: 'John Doe',
-    items: [
-      { id: 'item1', serviceItemId: 'serv1', serviceName: "Men's Shirt - Hanger", quantity: 5, unitPrice: 3.50, totalPrice: 17.50, has_color_identifier: false },
-      { id: 'item2', serviceItemId: 'serv2', serviceName: 'Suit 2-Piece', quantity: 1, unitPrice: 15.00, totalPrice: 15.00, has_color_identifier: false },
-    ],
-    totalAmount: 32.50,
-    status: 'Ready for Pickup' as OrderStatus,
-    paymentStatus: 'Paid' as PaymentStatus,
-    created_at: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString(),
-    updated_at: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
-    dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
-    isExpress: true, // Example of an express order
-  },
-  {
-    id: 'order2',
-    orderNumber: generateOrderNumber(2, dateOneMonthAgo), // Last month
-    customerId: 'cust2',
-    customerName: 'Jane Smith',
-    items: [
-      { id: 'item3', serviceItemId: 'serv3', serviceName: 'Dress - Silk', quantity: 1, unitPrice: 18.00, totalPrice: 18.00, has_color_identifier: true, color_value: "Red" },
-    ],
-    totalAmount: 18.00,
-    status: 'Cleaning' as OrderStatus,
-    paymentStatus: 'Unpaid' as PaymentStatus,
-    created_at: new Date(dateOneMonthAgo.setDate(dateOneMonthAgo.getDate() - 5)).toISOString(),
-    updated_at: new Date(dateOneMonthAgo.setDate(dateOneMonthAgo.getDate() - 2)).toISOString(),
-    dueDate: new Date(dateOneMonthAgo.setDate(dateOneMonthAgo.getDate() + 1)).toISOString(),
-    isExpress: false,
-  },
-  {
-    id: 'order3',
-    orderNumber: generateOrderNumber(3, dateTwoMonthsAgo), // Two months ago
-    customerId: 'cust1', // Another order for John Doe
-    customerName: 'John Doe',
-    items: [
-      { id: 'item4', serviceItemId: 'serv4', serviceName: 'Trousers - Cotton', quantity: 2, unitPrice: 7.00, totalPrice: 14.00, has_color_identifier: true, color_value: "Khaki" },
-    ],
-    totalAmount: 14.00,
-    status: 'Received' as OrderStatus,
-    paymentStatus: 'Unpaid' as PaymentStatus,
-    created_at: new Date(dateTwoMonthsAgo.setDate(dateTwoMonthsAgo.getDate() - 1)).toISOString(),
-    updated_at: new Date(dateTwoMonthsAgo.setDate(dateTwoMonthsAgo.getDate() - 0)).toISOString(),
-    dueDate: new Date(dateTwoMonthsAgo.setDate(dateTwoMonthsAgo.getDate() + 4)).toISOString(),
-  },
-];
-
-
-if (!global.mockOrdersStore) {
-  global.mockOrdersStore = [...initialOrders];
-}
 
 // Customer Data Functions (using Supabase)
 export async function getCustomers(): Promise<Customer[]> {
@@ -276,46 +215,231 @@ export async function updateFullCustomerDb(customerId: string, customerData: Cre
   } as Customer;
 }
 
-
-// Mock Order Data Functions (to be migrated later)
-
-export const getMockOrders = (): Order[] => {
-  return global.mockOrdersStore!.map(order => ({
-      ...order,
-      created_at: typeof order.created_at === 'string' ? order.created_at : new Date(order.created_at).toISOString(),
-      updated_at: typeof order.updated_at === 'string' ? order.updated_at : new Date(order.updated_at).toISOString(),
-      dueDate: order.dueDate ? (typeof order.dueDate === 'string' ? order.dueDate : new Date(order.dueDate).toISOString()) : undefined,
-  }));
-};
-
-export function getOrderById(id: string): Order | undefined {
-  const orders = getMockOrders();
-  const order = orders.find(o => o.id === id);
-  if (order && !order.paymentStatus) {
-    order.paymentStatus = 'Unpaid';
+// Order Data Functions (Now using Supabase)
+export async function createOrderDb(orderInput: CreateOrderInput): Promise<Order> {
+  const customer = await getCustomerById(orderInput.customerId);
+  if (!customer) {
+    throw new Error(`Customer with ID ${orderInput.customerId} not found.`);
   }
-  if (order && typeof order.isExpress === 'undefined') {
-    order.isExpress = false;
+
+  // Calculate totals (this logic should mirror the frontend for consistency but ultimately be server-authoritative)
+  let subtotal = 0;
+  orderInput.items.forEach(item => {
+    let itemPrice = item.unitPrice * item.quantity;
+    if (item.itemDiscountPercentage && item.itemDiscountPercentage > 0) {
+      itemPrice -= itemPrice * (item.itemDiscountPercentage / 100);
+    }
+    if (item.itemDiscountAmount && item.itemDiscountAmount > 0) {
+      itemPrice -= item.itemDiscountAmount;
+    }
+    subtotal += Math.max(0, itemPrice);
+  });
+
+  let totalAfterCartDiscounts = subtotal;
+  if (orderInput.cartDiscountPercentage && orderInput.cartDiscountPercentage > 0) {
+    totalAfterCartDiscounts -= totalAfterCartDiscounts * (orderInput.cartDiscountPercentage / 100);
   }
-  return order;
+  if (orderInput.cartDiscountAmount && orderInput.cartDiscountAmount > 0) {
+    totalAfterCartDiscounts -= orderInput.cartDiscountAmount;
+  }
+  totalAfterCartDiscounts = Math.max(0, totalAfterCartDiscounts);
+
+  const grandTotal = (orderInput.cartPriceOverride !== undefined && orderInput.cartPriceOverride >= 0)
+    ? orderInput.cartPriceOverride
+    : totalAfterCartDiscounts;
+
+  const orderToInsert = {
+    order_number: generateOrderNumber(), // Generate a new order number
+    customer_id: orderInput.customerId,
+    customer_name: customer.name, // Denormalized
+    subtotal_amount: subtotal,
+    cart_discount_amount: orderInput.cartDiscountAmount,
+    cart_discount_percentage: orderInput.cartDiscountPercentage,
+    cart_price_override: orderInput.cartPriceOverride,
+    total_amount: grandTotal,
+    status: 'Received' as OrderStatus, // Default status
+    payment_status: 'Unpaid' as PaymentStatus, // Default payment status
+    notes: orderInput.notes,
+    is_express: orderInput.isExpress || false,
+    due_date: orderInput.dueDate ? new Date(orderInput.dueDate).toISOString() : null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: newOrderData, error: orderError } = await supabase
+    .from('orders')
+    .insert(orderToInsert)
+    .select()
+    .single();
+
+  if (orderError) {
+    console.error('Error creating order in Supabase:', orderError);
+    throw orderError;
+  }
+  if (!newOrderData) {
+    throw new Error('Failed to create order: No data returned from Supabase.');
+  }
+
+  const orderItemsToInsert = orderInput.items.map(item => {
+    let itemEffectiveTotal = item.unitPrice * item.quantity;
+    if (item.itemDiscountPercentage && item.itemDiscountPercentage > 0) {
+      itemEffectiveTotal -= itemEffectiveTotal * (item.itemDiscountPercentage / 100);
+    }
+    if (item.itemDiscountAmount && item.itemDiscountAmount > 0) {
+      itemEffectiveTotal -= item.itemDiscountAmount;
+    }
+    itemEffectiveTotal = Math.max(0, itemEffectiveTotal);
+
+    return {
+      order_id: newOrderData.id,
+      service_item_id: item.serviceItemId,
+      service_name: item.serviceName, // Denormalized
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+      original_unit_price: item.originalUnitPrice,
+      item_discount_amount: item.itemDiscountAmount,
+      item_discount_percentage: item.itemDiscountPercentage,
+      total_price: itemEffectiveTotal,
+      notes: item.notes,
+      has_color_identifier: item.has_color_identifier,
+      color_value: item.color_value,
+    };
+  });
+
+  const { error: itemsError } = await supabase
+    .from('order_items')
+    .insert(orderItemsToInsert);
+
+  if (itemsError) {
+    console.error('Error creating order items in Supabase:', itemsError);
+    // Potentially delete the created order if items fail to insert (transactional behavior needed for production)
+    await supabase.from('orders').delete().eq('id', newOrderData.id);
+    throw itemsError;
+  }
+
+  // Fetch the full order with items to return
+  return getOrderByIdDb(newOrderData.id).then(order => {
+    if (!order) throw new Error("Failed to retrieve newly created order.");
+    return order;
+  });
 }
 
-export function getOrdersByCustomerIdLocal(customerId: string): Order[] {
+export async function getAllOrdersDb(): Promise<Order[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      order_items (
+        *
+      )
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching all orders from Supabase:', error);
+    throw error;
+  }
+  return (data || []).map(mapSupabaseOrderToAppOrder);
+}
+
+export async function getOrderByIdDb(id: string): Promise<Order | undefined> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      order_items (
+        *
+      )
+    `)
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    if (error.code === 'PGRST116') return undefined; // Not found
+    console.error(`Error fetching order by ID ${id} from Supabase:`, error);
+    throw error;
+  }
+  return data ? mapSupabaseOrderToAppOrder(data) : undefined;
+}
+
+export async function getOrdersByCustomerIdDb(customerId: string): Promise<Order[]> {
   if (!customerId) return [];
-  return getMockOrders().filter(order => order.customerId === customerId);
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      order_items (
+        *
+      )
+    `)
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error(`Error fetching orders for customer ID ${customerId} from Supabase:`, error);
+    throw error;
+  }
+  return (data || []).map(mapSupabaseOrderToAppOrder);
 }
 
-export function searchOrdersLocal(searchTerm: string): Order[] {
+export async function searchOrdersDb(searchTerm: string): Promise<Order[]> {
   const term = searchTerm.toLowerCase().trim();
   if (!term) return [];
 
-  return getMockOrders().filter(order => {
-    return (
-      order.orderNumber.toLowerCase().includes(term) ||
-      order.customerName.toLowerCase().includes(term) ||
-      order.customerId.toLowerCase().includes(term)
-    );
-  });
+  // Basic search: order_number or customer_name.
+  // For more advanced search, consider Supabase full-text search or more specific queries.
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      order_items (
+        *
+      )
+    `)
+    .or(`order_number.ilike.%${term}%,customer_name.ilike.%${term}%`)
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error(`Error searching orders with term "${term}" from Supabase:`, error);
+    throw error;
+  }
+  return (data || []).map(mapSupabaseOrderToAppOrder);
+}
+
+// Helper to map Supabase order structure to application's Order type
+function mapSupabaseOrderToAppOrder(dbOrder: any): Order {
+  return {
+    id: dbOrder.id,
+    orderNumber: dbOrder.order_number,
+    customerId: dbOrder.customer_id,
+    customerName: dbOrder.customer_name,
+    items: (dbOrder.order_items || []).map((item: any): AppOrderItemType => ({
+      id: item.id,
+      serviceItemId: item.service_item_id,
+      serviceName: item.service_name,
+      quantity: item.quantity,
+      unitPrice: parseFloat(item.unit_price),
+      originalUnitPrice: item.original_unit_price ? parseFloat(item.original_unit_price) : undefined,
+      itemDiscountAmount: item.item_discount_amount ? parseFloat(item.item_discount_amount) : undefined,
+      itemDiscountPercentage: item.item_discount_percentage ? parseFloat(item.item_discount_percentage) : undefined,
+      totalPrice: parseFloat(item.total_price),
+      notes: item.notes,
+      has_color_identifier: item.has_color_identifier,
+      color_value: item.color_value,
+    })),
+    subtotalAmount: dbOrder.subtotal_amount ? parseFloat(dbOrder.subtotal_amount) : undefined,
+    cartDiscountAmount: dbOrder.cart_discount_amount ? parseFloat(dbOrder.cart_discount_amount) : undefined,
+    cartDiscountPercentage: dbOrder.cart_discount_percentage ? parseFloat(dbOrder.cart_discount_percentage) : undefined,
+    cartPriceOverride: dbOrder.cart_price_override ? parseFloat(dbOrder.cart_price_override) : undefined,
+    totalAmount: parseFloat(dbOrder.total_amount),
+    status: dbOrder.status as OrderStatus,
+    paymentStatus: dbOrder.payment_status as PaymentStatus,
+    created_at: new Date(dbOrder.created_at).toISOString(),
+    updated_at: new Date(dbOrder.updated_at).toISOString(),
+    dueDate: dbOrder.due_date ? new Date(dbOrder.due_date).toISOString() : undefined,
+    notes: dbOrder.notes,
+    isExpress: dbOrder.is_express,
+  };
 }
 
 
@@ -439,14 +563,11 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
   };
 
   if (entry.type === 'item') {
-    // Ensure has_color_identifier is explicitly boolean (true/false), defaulting to false.
     entryToInsert.has_color_identifier = (typeof entry.has_color_identifier === 'boolean')
       ? entry.has_color_identifier
-      : false;
+      : false; 
     entryToInsert.price = entry.price ?? 0;
   }
-  // For categories, has_color_identifier is omitted, relying on DB default (which should be FALSE).
-
   console.log("[addCatalogEntry] Object being inserted into Supabase:", JSON.stringify(entryToInsert, null, 2));
 
   const { data, error } = await supabase
@@ -499,13 +620,10 @@ export async function updateCatalogEntry(
     } else {
       updatePayload.price = dataToUpdate.price;
     }
-    // For items, ensure has_color_identifier is explicitly true or false.
-    // If it's undefined in dataToUpdate, it means the form didn't send it (e.g. no switch),
-    // so we want to ensure it's at least false.
     updatePayload.has_color_identifier = dataToUpdate.has_color_identifier ?? false;
-  } else { // Category
-     updatePayload.price = null; // Categories should not have a price.
-     delete updatePayload.has_color_identifier; // Categories don't have this.
+  } else { 
+     updatePayload.price = null; 
+     delete updatePayload.has_color_identifier; 
   }
 
 
@@ -606,14 +724,17 @@ async function getServiceItemsFromCatalog(): Promise<ServiceItem[]> {
     }));
 }
 
-export async function getMockServices(): Promise<ServiceItem[]> {
+export async function getServices(): Promise<ServiceItem[]> { // Renamed from getMockServices
   return getServiceItemsFromCatalog();
 }
 
 
 export function getServiceById(id:string): ServiceItem | undefined {
   console.warn("getServiceById is using a non-performant mock lookup. Refactor if used broadly.");
+  // This would need to fetch from catalog_entries and map to ServiceItem
   return undefined; 
 }
 
 export { generateOrderNumber };
+
+    
