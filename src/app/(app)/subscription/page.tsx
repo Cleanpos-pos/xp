@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Star, ArrowRight, RefreshCw, Info } from "lucide-react"; // Added Info icon
+import { CheckCircle, XCircle, Star, ArrowRight, RefreshCw, Info } from "lucide-react";
 
 // Mock data - in a real app, this would come from your backend/Stripe
 type SubscriptionPlan = "Standard" | "Pro" | "Enterprise";
@@ -25,7 +25,7 @@ const getTrialEndDate = (days: number): string => {
 
 export default function SubscriptionPage() {
   const [isLoading, setIsLoading] = useState(false);
-  // Mock current subscription - now showing a user in a trial
+  // Mock current subscription - now showing a user in a trial for Standard Plan
   const [subscription, setSubscription] = useState<UserSubscription>({
     plan: "Standard",
     status: "trialing",
@@ -41,7 +41,7 @@ export default function SubscriptionPage() {
       price: "£45/month",
       features: ["Full access to core features", "Standard usage limits", "Email support", "Basic analytics"],
       isCurrent: subscription.plan === "Standard",
-      trialInfo: "Includes a 60-day free trial for new users.", // Added trial info here
+      trialInfo: "Includes a 60-day free trial for new users.",
     },
     {
       id: "pro_plan",
@@ -99,11 +99,11 @@ export default function SubscriptionPage() {
                 Free trial ends on: {subscription.trialEndsAt}
               </p>
             )}
-            {subscription.nextBillingDate && subscription.status !== "trialing" && ( // Only show next billing if not in trial or if trial is over
+            {subscription.nextBillingDate && subscription.status !== "trialing" && (
               <p className="text-sm text-muted-foreground">Next billing date: {subscription.nextBillingDate}</p>
             )}
              {subscription.status === "trialing" && subscription.nextBillingDate && (
-              <p className="text-sm text-muted-foreground">Your first bill will be on: {subscription.nextBillingDate}</p>
+              <p className="text-sm text-muted-foreground">Your first bill will be on: {subscription.nextBillingDate} (after trial ends)</p>
             )}
           </div>
           <Button onClick={handleManageSubscription} disabled={isLoading} className="w-full sm:w-auto">
@@ -119,11 +119,12 @@ export default function SubscriptionPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {availablePlans.map((plan) => (
-          <Card key={plan.id} className={`shadow-md flex flex-col ${plan.isCurrent ? 'border-primary border-2' : ''}`}>
+          <Card key={plan.id} className={`shadow-md flex flex-col ${plan.isCurrent && subscription.status !== "trialing" ? 'border-primary border-2' : (plan.name === "Standard" && subscription.status === "trialing" ? 'border-primary border-2' : '')}`}>
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle className="font-headline text-xl">{plan.name}</CardTitle>
-                {plan.isCurrent && <Badge variant="secondary"><Star className="mr-1 h-3 w-3" /> Current</Badge>}
+                {plan.isCurrent && subscription.status !== "trialing" && <Badge variant="secondary"><Star className="mr-1 h-3 w-3" /> Current</Badge>}
+                {plan.name === "Standard" && subscription.status === "trialing" && <Badge variant="secondary"><Star className="mr-1 h-3 w-3" /> Trialing</Badge>}
               </div>
               <CardDescription className="text-2xl font-semibold text-primary">{plan.price}</CardDescription>
             </CardHeader>
@@ -136,7 +137,7 @@ export default function SubscriptionPage() {
                   </li>
                 ))}
               </ul>
-              {plan.trialInfo && (
+              {plan.trialInfo && plan.name === "Standard" && (
                 <div className="mt-3 p-2.5 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-xs flex items-start">
                   <Info className="h-4 w-4 mr-2 mt-px flex-shrink-0" />
                   <span>{plan.trialInfo}</span>
@@ -144,13 +145,13 @@ export default function SubscriptionPage() {
               )}
             </CardContent>
             <CardFooter>
-              {plan.isCurrent ? (
+              {plan.isCurrent && subscription.status !== "trialing" ? (
                 <Button variant="outline" className="w-full" onClick={handleManageSubscription} disabled={isLoading}>
                   Manage Current Plan
                 </Button>
               ) : (
-                <Button className="w-full" onClick={handleManageSubscription} disabled={isLoading || plan.id === "enterprise_plan"}>
-                  {plan.id === "enterprise_plan" ? "Contact Sales" : "Choose Plan"}
+                <Button className="w-full" onClick={handleManageSubscription} disabled={isLoading || plan.id === "enterprise_plan" || (subscription.status === "trialing" && plan.name === "Standard")}>
+                   {subscription.status === "trialing" && plan.name === "Standard" ? "Currently in Trial" : plan.id === "enterprise_plan" ? "Contact Sales" : "Choose Plan"}
                 </Button>
               )}
             </CardFooter>
