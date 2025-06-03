@@ -5,27 +5,35 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Star, ArrowRight, RefreshCw } from "lucide-react";
+import { CheckCircle, XCircle, Star, ArrowRight, RefreshCw, Info } from "lucide-react"; // Added Info icon
 
 // Mock data - in a real app, this would come from your backend/Stripe
-type SubscriptionPlan = "Standard" | "Pro" | "Enterprise"; // Updated plan names
+type SubscriptionPlan = "Standard" | "Pro" | "Enterprise";
 interface UserSubscription {
   plan: SubscriptionPlan;
-  status: "active" | "inactive" | "past_due" | "canceled";
+  status: "active" | "inactive" | "past_due" | "canceled" | "trialing"; // Added trialing
   nextBillingDate?: string;
-  trialEndsAt?: string;
+  trialEndsAt?: string; // Added for trial period
 }
+
+// Helper to calculate trial end date
+const getTrialEndDate = (days: number): string => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+};
 
 export default function SubscriptionPage() {
   const [isLoading, setIsLoading] = useState(false);
-  // Mock current subscription. Replace with actual data fetching.
+  // Mock current subscription - now showing a user in a trial
   const [subscription, setSubscription] = useState<UserSubscription>({
-    plan: "Standard", // Updated to Standard
-    status: "active",
-    nextBillingDate: "July 3rd, 2025", // Example date
+    plan: "Standard",
+    status: "trialing",
+    trialEndsAt: getTrialEndDate(60), // Example: 60-day trial
+    nextBillingDate: getTrialEndDate(60), // Billing starts after trial
   });
 
-  // Mock available plans. Replace with actual data from your backend/Stripe.
+  // Mock available plans.
   const availablePlans = [
     {
       id: "standard_plan",
@@ -33,6 +41,7 @@ export default function SubscriptionPage() {
       price: "£45/month",
       features: ["Full access to core features", "Standard usage limits", "Email support", "Basic analytics"],
       isCurrent: subscription.plan === "Standard",
+      trialInfo: "Includes a 60-day free trial for new users.", // Added trial info here
     },
     {
       id: "pro_plan",
@@ -81,15 +90,20 @@ export default function SubscriptionPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="p-4 border rounded-lg bg-muted/30">
-            <h3 className="text-lg font-semibold mb-2">Current Plan: <Badge variant={subscription.status === "active" ? "default" : "destructive"}>{subscription.plan}</Badge></h3>
+            <h3 className="text-lg font-semibold mb-2">Current Plan: <Badge variant={subscription.status === "active" || subscription.status === "trialing" ? "default" : "destructive"}>{subscription.plan}</Badge></h3>
             <p className="text-sm text-muted-foreground">
-              Status: <span className={subscription.status === "active" ? "text-green-600" : "text-red-600"}>{subscription.status}</span>
+              Status: <span className={subscription.status === "active" || subscription.status === "trialing" ? "text-green-600" : "text-red-600"}>{subscription.status}</span>
             </p>
-            {subscription.nextBillingDate && (
+            {subscription.status === "trialing" && subscription.trialEndsAt && (
+              <p className="text-sm text-muted-foreground">
+                Free trial ends on: {subscription.trialEndsAt}
+              </p>
+            )}
+            {subscription.nextBillingDate && subscription.status !== "trialing" && ( // Only show next billing if not in trial or if trial is over
               <p className="text-sm text-muted-foreground">Next billing date: {subscription.nextBillingDate}</p>
             )}
-            {subscription.trialEndsAt && (
-              <p className="text-sm text-muted-foreground">Trial ends on: {subscription.trialEndsAt}</p>
+             {subscription.status === "trialing" && subscription.nextBillingDate && (
+              <p className="text-sm text-muted-foreground">Your first bill will be on: {subscription.nextBillingDate}</p>
             )}
           </div>
           <Button onClick={handleManageSubscription} disabled={isLoading} className="w-full sm:w-auto">
@@ -122,6 +136,12 @@ export default function SubscriptionPage() {
                   </li>
                 ))}
               </ul>
+              {plan.trialInfo && (
+                <div className="mt-3 p-2.5 bg-blue-50 border border-blue-200 rounded-md text-blue-700 text-xs flex items-start">
+                  <Info className="h-4 w-4 mr-2 mt-px flex-shrink-0" />
+                  <span>{plan.trialInfo}</span>
+                </div>
+              )}
             </CardContent>
             <CardFooter>
               {plan.isCurrent ? (
