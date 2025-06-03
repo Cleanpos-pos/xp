@@ -30,14 +30,14 @@ export default function SubscriptionPage() {
     {
       id: "free_plan",
       name: "Free Plan",
-      price: "$0/month",
+      price: "£0/month",
       features: ["Basic access to core features", "Limited usage", "Community support"],
       isCurrent: subscription.plan === "Free",
     },
     {
       id: "pro_plan",
       name: "Pro Plan",
-      price: "$29/month",
+      price: "£45/month",
       features: ["Full access to all features", "Increased usage limits", "Priority email support", "Advanced analytics"],
       isCurrent: subscription.plan === "Pro",
     },
