@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Star, ArrowRight, RefreshCw } from "lucide-react";
 
 // Mock data - in a real app, this would come from your backend/Stripe
-type SubscriptionPlan = "Free" | "Pro" | "Enterprise";
+type SubscriptionPlan = "Standard" | "Pro" | "Enterprise"; // Updated plan names
 interface UserSubscription {
   plan: SubscriptionPlan;
   status: "active" | "inactive" | "past_due" | "canceled";
@@ -20,32 +20,32 @@ export default function SubscriptionPage() {
   const [isLoading, setIsLoading] = useState(false);
   // Mock current subscription. Replace with actual data fetching.
   const [subscription, setSubscription] = useState<UserSubscription>({
-    plan: "Free",
+    plan: "Standard", // Updated to Standard
     status: "active",
-    nextBillingDate: "N/A",
+    nextBillingDate: "July 3rd, 2025", // Example date
   });
 
   // Mock available plans. Replace with actual data from your backend/Stripe.
   const availablePlans = [
     {
-      id: "free_plan",
-      name: "Free Plan",
-      price: "£0/month",
-      features: ["Basic access to core features", "Limited usage", "Community support"],
-      isCurrent: subscription.plan === "Free",
+      id: "standard_plan",
+      name: "Standard Plan",
+      price: "£45/month",
+      features: ["Full access to core features", "Standard usage limits", "Email support", "Basic analytics"],
+      isCurrent: subscription.plan === "Standard",
     },
     {
       id: "pro_plan",
       name: "Pro Plan",
-      price: "£45/month",
-      features: ["Full access to all features", "Increased usage limits", "Priority email support", "Advanced analytics"],
+      price: "£65/month",
+      features: ["All Standard features", "Increased usage limits", "Priority email support", "Advanced analytics & Reporting", "AI Insights (Basic Tier)"],
       isCurrent: subscription.plan === "Pro",
     },
     {
       id: "enterprise_plan",
       name: "Enterprise Plan",
       price: "Contact Us",
-      features: ["Custom features & integrations", "Dedicated account manager", "Premium SLA", "Volume discounts"],
+      features: ["All Pro features", "Custom integrations", "Dedicated account manager", "Premium SLA & Support", "Volume discounts", "Custom AI Models"],
       isCurrent: subscription.plan === "Enterprise",
     },
   ];
@@ -85,7 +85,7 @@ export default function SubscriptionPage() {
             <p className="text-sm text-muted-foreground">
               Status: <span className={subscription.status === "active" ? "text-green-600" : "text-red-600"}>{subscription.status}</span>
             </p>
-            {subscription.plan !== "Free" && subscription.nextBillingDate && (
+            {subscription.nextBillingDate && (
               <p className="text-sm text-muted-foreground">Next billing date: {subscription.nextBillingDate}</p>
             )}
             {subscription.trialEndsAt && (
@@ -94,7 +94,7 @@ export default function SubscriptionPage() {
           </div>
           <Button onClick={handleManageSubscription} disabled={isLoading} className="w-full sm:w-auto">
             {isLoading ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {subscription.plan === "Free" ? "Upgrade Plan" : "Manage Subscription"}
+            Manage Subscription
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
           <p className="text-xs text-muted-foreground">
