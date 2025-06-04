@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-modal";
 import type { CashUpSession, Payout } from "@/types";
 import { format } from "date-fns";
-import { TrendingUp, TrendingDown, CheckCircle, Edit3, CheckSquare, LogOut, List } from "lucide-react";
+import { TrendingUp, TrendingDown, CheckCircle, Edit3, CheckSquare, LogOut, List, Printer } from "lucide-react"; // Added Printer icon
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
@@ -239,6 +239,10 @@ export function CashUpManagementTab() {
 
   const isViewingHistory = !!selectedCashUpId;
 
+  const handlePrintCashUp = () => {
+    window.print();
+  };
+
   return (
     <div className="space-y-6">
       {/* Modals */}
@@ -248,7 +252,7 @@ export function CashUpManagementTab() {
       <AlphanumericKeypadModal isOpen={isPayoutAmountModalOpen} onOpenChange={setIsPayoutAmountModalOpen} inputValue={payoutAmount} onInputChange={setPayoutAmount} onConfirm={handlePayoutAmountConfirm} title="Enter Payout Amount" numericOnly={true} />
 
       {/* Float Management */}
-      <Card>
+      <Card className="print-no-break">
         <CardHeader>
           <CardTitle>Till Float Management</CardTitle>
           <CardDescription>Set or adjust the starting cash float in your till.</CardDescription>
@@ -256,7 +260,7 @@ export function CashUpManagementTab() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <Label htmlFor="current-float" className="text-lg">Current Float: <span className="font-bold text-primary">${floatAmount.toFixed(2)}</span></Label>
-            <Button onClick={() => { setFloatInputValue(floatAmount.toFixed(2)); setIsFloatModalOpen(true); }} variant="outline" size="sm" disabled={isViewingHistory}>
+            <Button onClick={() => { setFloatInputValue(floatAmount.toFixed(2)); setIsFloatModalOpen(true); }} variant="outline" size="sm" disabled={isViewingHistory} className="print-hidden">
               <Edit3 className="mr-2 h-4 w-4"/> Set / Adjust Float
             </Button>
           </div>
@@ -265,7 +269,7 @@ export function CashUpManagementTab() {
 
       {/* Payout Recording - only for active session */}
       {!isViewingHistory && (
-        <Card>
+        <Card className="print-no-break">
           <CardHeader>
             <CardTitle>Record Payout</CardTitle>
             <CardDescription>Log any cash taken out from the till for expenses.</CardDescription>
@@ -282,7 +286,7 @@ export function CashUpManagementTab() {
               <Label htmlFor="payoutReason">Reason</Label>
               <Textarea id="payoutReason" value={payoutReason} onChange={(e) => setPayoutReason(e.target.value)} placeholder="e.g., Office supplies, Petty cash for delivery" className="mt-1" />
             </div>
-            <Button onClick={handleSavePayout} className="w-full sm:w-auto" disabled={!payoutAmount || !payoutReason.trim()}>
+            <Button onClick={handleSavePayout} className="w-full sm:w-auto print-hidden" disabled={!payoutAmount || !payoutReason.trim()}>
               <LogOut className="mr-2 h-4 w-4" /> Save Payout
             </Button>
           </CardContent>
@@ -310,7 +314,7 @@ export function CashUpManagementTab() {
 
       {/* Cash & Card Reconciliation */}
       <div className="grid md:grid-cols-2 gap-6">
-        <Card>
+        <Card className="print-no-break">
           <CardHeader><CardTitle>Cash Reconciliation</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center"><Label>System Cash Takings:</Label><span className="font-mono">${systemCashTakings.toFixed(2)}</span></div>
@@ -321,7 +325,7 @@ export function CashUpManagementTab() {
             <Separator />
             <div className="flex justify-between items-center"><Label>Actual Cash Counted:</Label><span className="font-mono text-lg font-semibold text-blue-600">${actualCashCounted.toFixed(2)}</span></div>
             {!isViewingHistory && (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 print-hidden">
                 <Button onClick={() => {setCashEntryInputValue(actualCashCounted > 0 ? actualCashCounted.toFixed(2) : ""); setIsCashEntryModalOpen(true);}} className="w-full" disabled={isViewingHistory}><Edit3 className="mr-2 h-4 w-4" /> Enter Cash</Button>
                 <Button onClick={handleEnterExactCash} variant="outline" className="w-full" disabled={isViewingHistory}><CheckSquare className="mr-2 h-4 w-4" /> Enter Exact</Button>
               </div>
@@ -330,14 +334,14 @@ export function CashUpManagementTab() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="print-no-break">
           <CardHeader><CardTitle>Card Payment Reconciliation</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center"><Label>System Expected Card Payments:</Label><span className="font-mono">${systemCardTakings.toFixed(2)}</span></div>
              <Separator />
             <div className="flex justify-between items-center"><Label>Actual Card Payments (Terminal):</Label><span className="font-mono text-lg font-semibold text-blue-600">${actualCardTotal.toFixed(2)}</span></div>
             {!isViewingHistory && (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 print-hidden">
                 <Button onClick={() => {setCardEntryInputValue(actualCardTotal > 0 ? actualCardTotal.toFixed(2) : ""); setIsCardEntryModalOpen(true);}} className="w-full" disabled={isViewingHistory}><Edit3 className="mr-2 h-4 w-4" /> Enter Card</Button>
                 <Button onClick={handleEnterExactCard} variant="outline" className="w-full" disabled={isViewingHistory}><CheckSquare className="mr-2 h-4 w-4" /> Enter Exact</Button>
               </div>
@@ -347,12 +351,25 @@ export function CashUpManagementTab() {
         </Card>
       </div>
 
-      {/* Finalize / Start New Session Button */}
-      {!isViewingHistory && (<Button onClick={handleFinalizeCashUp} size="lg" className="w-full">Finalize & Store Current Cash Up</Button>)}
-      {isViewingHistory && (<Button onClick={() => loadSessionDetails(null)} size="lg" className="w-full" variant="outline">Start New Cash Up Session</Button>)}
+      {/* Finalize / Start New Session Button & Print Button */}
+      <div className="flex flex-col sm:flex-row gap-2 mt-4">
+        {!isViewingHistory && (
+            <Button onClick={handleFinalizeCashUp} size="lg" className="flex-1 print-hidden">
+                Finalize & Store Current Cash Up
+            </Button>
+        )}
+        {isViewingHistory && (
+            <Button onClick={() => loadSessionDetails(null)} size="lg" className="flex-1 print-hidden" variant="outline">
+                Start New Cash Up Session
+            </Button>
+        )}
+        <Button onClick={handlePrintCashUp} size="lg" variant="outline" className="flex-1 print-hidden">
+            <Printer className="mr-2 h-5 w-5"/> Print Cash Up Summary
+        </Button>
+      </div>
 
       {/* Cash Up History */}
-      <Card>
+      <Card className="print-no-break">
         <CardHeader>
           <CardTitle>Cash Up History</CardTitle>
           <CardDescription>Review past cash up sessions. (Stored in browser local storage)</CardDescription>
@@ -364,8 +381,9 @@ export function CashUpManagementTab() {
             <Select 
                 onValueChange={(value) => loadSessionDetails(value === NEW_SESSION_VALUE ? null : value)} 
                 value={selectedCashUpId || NEW_SESSION_VALUE}
+                // className="print-hidden" // Hide select dropdown when printing
             >
-              <SelectTrigger className="w-full mb-4">
+              <SelectTrigger className="w-full mb-4 print-hidden">
                 <SelectValue placeholder="Select a past cash up session to view, or start new" />
               </SelectTrigger>
               <SelectContent>
