@@ -399,13 +399,13 @@ export default function NewOrderPage() {
             <div className="space-y-3 pt-2">
                 <h3 className="text-md font-medium text-muted-foreground">Discounts & Overrides</h3>
                 <FormField control={form.control} name="cartDiscountPercentage" render={({ field }) => (
-                    <FormItem><FormLabel>Cart Discount (%)</FormLabel><FormControl><Input type="number" step="0.1" min="0" max="100" placeholder="e.g., 10" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Cart Discount (%)</FormLabel><FormControl><Input type="number" step="0.1" min="0" max="100" placeholder="e.g., 10" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="cartDiscountAmount" render={({ field }) => (
-                    <FormItem><FormLabel>Cart Discount ($)</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 5.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Cart Discount ($)</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 5.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="cartPriceOverride" render={({ field }) => (
-                    <FormItem><FormLabel>Cart Total Price Override ($)</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 50.00 (leave blank if no override)" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormDescription className="text-xs">If set, this becomes the final price regardless of other calculations.</FormDescription><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Cart Total Price Override ($)</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 50.00 (leave blank if no override)" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormDescription className="text-xs">If set, this becomes the final price regardless of other calculations.</FormDescription><FormMessage /></FormItem>
                 )} />
             </div>
             <Separator />
@@ -515,4 +515,3 @@ export default function NewOrderPage() {
   );
 }
 
-    
