@@ -302,7 +302,7 @@ export default function SettingsPage() {
 
   return (
     <div className="w-full max-w-4xl space-y-8">
-      <div className="flex items-center justify-between print-hidden">
+      <div className="flex items-center justify-between print-hidden settings-page-title-print-hidden">
         <div className="flex items-center gap-2">
           <SettingsIcon className="h-8 w-8" />
           <h1 className="text-3xl font-bold font-headline">Settings</h1>
@@ -314,7 +314,7 @@ export default function SettingsPage() {
         </Link>
       </div>
 
-      <Tabs defaultValue="staffManagement" className="w-full print-hidden">
+      <Tabs defaultValue="staffManagement" className="w-full print-hidden settings-tabs-print-hidden">
         <div className="flex flex-col gap-2 print-hidden">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2">
             <TabsTrigger

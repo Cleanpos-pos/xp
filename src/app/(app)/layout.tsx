@@ -38,7 +38,7 @@ export default function AppLayout({
       </Sidebar>
       <SidebarInset>
         <div className="flex flex-col min-h-screen">
-          <AppHeader className="print-hidden" />
+          <AppHeader className="print-hidden app-header-print-hidden" />
           <main className="flex-1 p-4 sm:p-6 bg-background">
             {children}
           </main>

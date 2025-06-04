@@ -103,24 +103,60 @@ body {
 }
 
 @media print {
-  /* General print hiding */
-  .print-hidden {
+  /* Hide elements not meant for printing */
+  .print-hidden,
+  body > header, /* Hides header if it's a direct child of body */
+  nav, /* Hides nav elements */
+  aside, /* Hides aside elements like sidebars */
+  footer:not(.thermal-receipt-print-area footer), /* Hides general footers */
+  [data-sidebar="sidebar"], /* Specifically target ShadCN sidebar */
+  [data-sidebar="trigger"],
+  .app-header-print-hidden, /* Class added to AppHeader in layout */
+  .settings-page-title-print-hidden, /* Class for Settings page title */
+  .settings-tabs-print-hidden /* Class for Tabs component on Settings page */
+  {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Reset body and prepare for focused printing */
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background-color: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Strategy: Hide all direct children of body initially, then unhide path to print area */
+  /* This is aggressive; if .thermal-receipt-print-area is deeply nested, its parents need unhiding. */
+  /* Assuming .thermal-receipt-print-area is within a main content area that is a direct child of body > div */
+  body > div > * { /* Hide children of the main div wrapper from RootAuthLayout */
     display: none !important;
   }
-
-  /* Aggressively hide everything by default, then show the print area */
-  body * {
-    visibility: hidden !important;
-    background-color: transparent !important; /* Prevent unexpected backgrounds */
-  }
-  .thermal-receipt-print-area, .thermal-receipt-print-area * {
+  body > div > main, /* Unhide main if it's a direct child of the layout div */
+  body > div > main > *, /* Unhide children of main if .thermal-receipt-print-area is inside another wrapper */
+  body > div > main .thermal-receipt-print-area,
+  body > div > main .thermal-receipt-print-area *
+  {
+    display: block !important; /* Or appropriate display type */
     visibility: visible !important;
-    color: black !important;
-    background-color: white !important; /* Ensure printable area has white background */
   }
+
+  /* Ensure table elements display correctly within the print area */
+  .thermal-receipt-print-area table,
+  .thermal-receipt-print-area thead,
+  .thermal-receipt-print-area tbody,
+  .thermal-receipt-print-area tr,
+  .thermal-receipt-print-area th,
+  .thermal-receipt-print-area td {
+    display: revert !important; /* Use browser default table display properties */
+    visibility: visible !important;
+  }
+
 
   .thermal-receipt-print-area {
-    position: absolute !important;
+    position: absolute !important; /* Take it out of normal flow */
     left: 0 !important;
     top: 0 !important;
     width: 72mm !important; /* Max content width for 80mm paper */
@@ -129,47 +165,54 @@ body {
     font-family: 'Courier New', Courier, monospace !important;
     font-size: 9pt !important;
     line-height: 1.2 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+    background-color: white !important;
+    color: black !important;
   }
 
   /* Styling for elements within the thermal receipt area */
   .thermal-receipt-print-area .card {
     border: none !important;
     box-shadow: none !important;
-    background: white !important;
+    background: transparent !important; /* Transparent background for cards inside */
     padding: 0 !important;
-    margin-bottom: 1.5mm !important;
+    margin-bottom: 1mm !important;
   }
   .thermal-receipt-print-area .card > div { /* CardHeader, CardContent, CardFooter */
-    padding: 0.5mm 0 !important; /* Minimal vertical padding */
-    color: black !important;
+    padding: 0.5mm 0 !important;
+    background: transparent !important;
   }
 
   .thermal-receipt-print-area .card-title,
-  .thermal-receipt-print-area h2, /* For shop info */
+  .thermal-receipt-print-area h1,
+  .thermal-receipt-print-area h2,
   .thermal-receipt-print-area h3,
-  .thermal-receipt-print-area h4 {
+  .thermal-receipt-print-area h4,
+  .thermal-receipt-print-area h5,
+  .thermal-receipt-print-area h6 {
     font-size: 10pt !important;
     font-weight: bold !important;
     margin-bottom: 0.5mm !important;
     color: black !important;
   }
+
   .thermal-receipt-print-area .card-description,
   .thermal-receipt-print-area .label,
   .thermal-receipt-print-area p,
   .thermal-receipt-print-area span,
-  .thermal-receipt-print-area div:not(.card):not(.card > div) /* Target general divs not part of card structure */
+  .thermal-receipt-print-area div:not(.card):not(.card > div),
+  .thermal-receipt-print-area li,
+  .thermal-receipt-print-area th, /* Ensure table headers are visible */
+  .thermal-receipt-print-area td  /* Ensure table cells are visible */
   {
     font-size: 9pt !important;
     color: black !important;
     line-height: 1.2 !important;
-  }
-   .thermal-receipt-print-area .text-xs { /* For things like VAT No. in shop info */
-    font-size: 8pt !important;
-    color: black !important;
+    background-color: transparent !important; /* Ensure no inherited background hides text */
   }
 
+   .thermal-receipt-print-area .text-xs {
+    font-size: 8pt !important;
+  }
 
   .thermal-receipt-print-area .font-semibold {
     font-weight: bold !important;
@@ -186,23 +229,22 @@ body {
     background-color: transparent !important;
   }
 
-  /* Ensure print-visible-only elements are indeed visible */
   .print-visible-only {
-    display: block !important; /* Or appropriate display type like 'flex' if needed */
+    display: block !important;
     visibility: visible !important;
   }
-  .print-visible-only * {
+  .print-visible-only * { /* Ensure children of print-visible-only are also visible */
+    display: revert !important;
     visibility: visible !important;
+    color: black !important;
   }
 
   .print-no-break {
     page-break-inside: avoid !important;
   }
 
-  /* Hide sections based on toggle switch */
   .section-hidden-on-print {
     display: none !important;
-    visibility: hidden !important; /* Double ensure */
+    visibility: hidden !important;
   }
 }
-    
