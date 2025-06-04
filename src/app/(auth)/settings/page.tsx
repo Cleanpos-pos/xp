@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription }
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffAction, toggleStaffActiveStatusAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon } from "lucide-react";
 import Link from 'next/link';
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
@@ -344,6 +344,12 @@ export default function SettingsPage() {
           </TabsList>
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2">
             <TabsTrigger
+              value="orderStatus"
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
+            >
+              Order Status
+            </TabsTrigger>
+            <TabsTrigger
               value="specialOffers"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
             >
@@ -606,6 +612,26 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="orderStatus" className="mt-6">
+          {/* Placeholder for OrderStatusUpdateTab - To be implemented by App Prototyper */}
+          <Card className="shadow-xl">
+             <CardHeader>
+                <CardTitle className="font-headline text-2xl flex items-center">
+                <ListPlus className="mr-2 h-6 w-6" /> Quick Order Status Updates
+                </CardTitle>
+                <CardDescription>
+                Quickly update order statuses, especially for marking items as "Ready for Pickup".
+                This section will use the &lt;OrderStatusUpdateTab /&gt; component once it is created.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground">Order status update interface will be displayed here.</p>
+                {/* <OrderStatusUpdateTab /> */}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+
         <TabsContent value="specialOffers" className="mt-6 space-y-6">
           <Card className="shadow-xl">
             <CardHeader>
@@ -814,6 +840,21 @@ export default function SettingsPage() {
               <CardDescription>Configure default printers and receipt templates. (UI Placeholders)</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="p-4 border rounded-lg bg-blue-50 border-blue-200 text-blue-700">
+                <div className="flex items-start">
+                  <InfoIcon className="mr-3 h-5 w-5 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold">Important Notes on Printing:</h4>
+                    <ul className="list-disc list-inside text-sm mt-1 space-y-0.5">
+                      <li>This application uses your browser's print functionality.</li>
+                      <li>Ensure your printers (e.g., receipt printer, tag printer) are correctly installed and configured in your computer's Operating System (Windows, macOS, etc.).</li>
+                      <li>When the print dialog appears, you must select the correct printer and appropriate paper size (e.g., 80mm roll for thermal receipts).</li>
+                      <li>The application styles content for printing, but direct printer control is managed by your browser and OS.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                 <div>
                   <Label htmlFor="receipt-printer" className="flex items-center"><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground" /> Default Receipt Printer</Label>
@@ -1008,3 +1049,6 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+
+    
