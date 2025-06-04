@@ -242,8 +242,11 @@ export function CashUpManagementTab() {
   const handlePrintCashUp = () => {
     console.log("handlePrintCashUp called"); // Diagnostic log
     try {
-      window.print();
-      console.log("window.print() executed");
+      // Adding a small delay
+      setTimeout(() => {
+        window.print();
+        console.log("window.print() executed after timeout");
+      }, 100); // 100ms delay
     } catch (e) {
       console.error("Error calling window.print():", e);
     }
