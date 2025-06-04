@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { TrendingUp, TrendingDown, CheckCircle, Edit3, CheckSquare, LogOut, List, Printer } from "lucide-react"; // Added Printer icon
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 const MOCK_SYSTEM_CASH_TAKEN = 1250.75; // Placeholder for cash taken via orders
 const MOCK_SYSTEM_CARD_TAKEN = 850.25;  // Placeholder for card taken via orders
@@ -241,17 +242,13 @@ export function CashUpManagementTab() {
 
   const handlePrintCashUp = () => {
     console.log("[Print Debug] handlePrintCashUp function entered.");
-    try {
-      console.log("[Print Debug] About to call window.print() directly.");
-      window.print();
-      console.log("[Print Debug] window.print() call has been executed.");
-    } catch (e) {
-      console.error("[Print Debug] Error occurred during window.print():", e);
-    }
+    // Simple direct call to window.print()
+    window.print();
+    console.log("[Print Debug] window.print() call has been executed.");
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 thermal-receipt-print-area">
       {/* Modals */}
       <AlphanumericKeypadModal isOpen={isFloatModalOpen} onOpenChange={setIsFloatModalOpen} inputValue={floatInputValue} onInputChange={setFloatInputValue} onConfirm={handleSetOrAdjustFloat} title="Set / Adjust Till Float" numericOnly={true} />
       <AlphanumericKeypadModal isOpen={isCashEntryModalOpen} onOpenChange={setIsCashEntryModalOpen} inputValue={cashEntryInputValue} onInputChange={setCashEntryInputValue} onConfirm={handleEnterActualCash} title="Enter Actual Cash Counted" numericOnly={true} />
@@ -284,10 +281,11 @@ export function CashUpManagementTab() {
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="payoutAmount">Payout Amount</Label>
-              <div className="flex items-center space-x-2 cursor-pointer mt-1" onClick={() => setIsPayoutAmountModalOpen(true)}>
+              <div className="flex items-center space-x-2 cursor-pointer mt-1 print-hidden" onClick={() => setIsPayoutAmountModalOpen(true)}>
                 <Input id="payoutAmount" type="text" value={payoutAmount} readOnly placeholder="Tap to enter amount" className="cursor-pointer flex-grow" />
                 <Edit3 className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               </div>
+              <p className="sm:hidden print-visible-only">Payout Amount: ${payoutAmount || "0.00"}</p> {/* Show for print if input is hidden */}
             </div>
             <div>
               <Label htmlFor="payoutReason">Reason</Label>
@@ -300,7 +298,7 @@ export function CashUpManagementTab() {
            {currentSessionPayouts.length > 0 && (
             <CardFooter className="flex-col items-start pt-4 border-t">
               <h4 className="text-sm font-medium mb-2">Payouts This Session:</h4>
-              <ScrollArea className="h-24 w-full pr-3">
+              <ScrollArea className="h-24 w-full pr-3 print-hidden">
                 <ul className="space-y-1 text-xs">
                   {currentSessionPayouts.map(p => (
                     <li key={p.id} className="flex justify-between">
@@ -310,6 +308,14 @@ export function CashUpManagementTab() {
                   ))}
                 </ul>
               </ScrollArea>
+               <div className="print-visible-only mt-2 space-y-1 text-xs"> {/* For Print: List payouts */}
+                  {currentSessionPayouts.map(p => (
+                    <div key={`print-${p.id}`} className="flex justify-between">
+                      <span>{p.reason}:</span>
+                      <span className="font-mono">-${p.amount.toFixed(2)}</span>
+                    </div>
+                  ))}
+               </div>
                <div className="flex justify-between w-full font-semibold text-sm mt-2 border-t pt-2">
                   <span>Total Payouts:</span>
                   <span className="font-mono">-${totalPayoutsAmount.toFixed(2)}</span>
@@ -359,18 +365,18 @@ export function CashUpManagementTab() {
       </div>
 
       {/* Finalize / Start New Session Button & Print Button */}
-      <div className="flex flex-col sm:flex-row gap-2 mt-4">
+      <div className="flex flex-col sm:flex-row gap-2 mt-4 print-hidden">
         {!isViewingHistory && (
-            <Button onClick={handleFinalizeCashUp} size="lg" className="flex-1 print-hidden">
+            <Button onClick={handleFinalizeCashUp} size="lg" className="flex-1">
                 Finalize & Store Current Cash Up
             </Button>
         )}
         {isViewingHistory && (
-            <Button onClick={() => loadSessionDetails(null)} size="lg" className="flex-1 print-hidden" variant="outline">
+            <Button onClick={() => loadSessionDetails(null)} size="lg" className="flex-1" variant="outline">
                 Start New Cash Up Session
             </Button>
         )}
-        <Button onClick={handlePrintCashUp} size="lg" variant="outline" className="flex-1 print-hidden">
+        <Button onClick={handlePrintCashUp} size="lg" variant="outline" className="flex-1">
             <Printer className="mr-2 h-5 w-5"/> Print Cash Up Summary
         </Button>
       </div>
@@ -389,10 +395,10 @@ export function CashUpManagementTab() {
                 onValueChange={(value) => loadSessionDetails(value === NEW_SESSION_VALUE ? null : value)} 
                 value={selectedCashUpId || NEW_SESSION_VALUE}
             >
-              <SelectTrigger className="w-full mb-4 print-hidden">
+              <SelectTrigger className={cn("w-full mb-4", "cashup-history-select-trigger", "print-hidden")}>
                 <SelectValue placeholder="Select a past cash up session to view, or start new" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className={cn("cashup-history-select-content", "print-hidden")}>
                 <SelectItem value={NEW_SESSION_VALUE}>-- Start New / View Current Session --</SelectItem>
                 {cashUpHistory.map(session => (
                   <SelectItem key={session.id} value={session.id}>
@@ -419,7 +425,7 @@ export function CashUpManagementTab() {
                       <>
                         <Separator className="my-2"/>
                         <div className="font-medium">Payouts During Session:</div>
-                        <ScrollArea className="h-20 w-full pr-2">
+                        <ScrollArea className="h-20 w-full pr-2 print-hidden"> {/* Hide scroll area on print */}
                           <ul className="space-y-0.5 text-xs">
                             {session.payouts.map(p => (
                               <li key={p.id} className="flex justify-between">
@@ -429,7 +435,15 @@ export function CashUpManagementTab() {
                             ))}
                           </ul>
                         </ScrollArea>
-                         <div className="flex justify-between font-semibold text-xs border-t pt-1">
+                        <div className="print-visible-only mt-1 space-y-0.5 text-xs"> {/* For Print: List payouts */}
+                          {session.payouts.map(p => (
+                            <div key={`print-hist-${p.id}`} className="flex justify-between">
+                              <span>{p.reason}:</span>
+                              <span className="font-mono">-${p.amount.toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                         <div className="flex justify-between font-semibold text-xs border-t pt-1 mt-1">
                            <span>Total Payouts:</span><span className="font-mono">-${sessionTotalPayouts.toFixed(2)}</span>
                          </div>
                       </>
@@ -452,9 +466,10 @@ export function CashUpManagementTab() {
            })()}
         </CardContent>
          <CardFooter>
-            <p className="text-xs text-muted-foreground">Note: System expected values are currently placeholders. In a real app, these would be dynamically fetched from order data for the reconciliation period.</p>
+            <p className="text-xs text-muted-foreground print-hidden">Note: System expected values are currently placeholders. In a real app, these would be dynamically fetched from order data for the reconciliation period.</p>
         </CardFooter>
       </Card>
     </div>
   );
 }
+

@@ -116,8 +116,8 @@ body {
     font-size: 10pt !important;
     margin: 0;
     padding: 0;
-    -webkit-print-color-adjust: exact !important; /* Ensures background colors print in Chrome/Safari */
-    print-color-adjust: exact !important; /* Standard */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Remove shadows and ensure borders are simple for printing */
@@ -126,15 +126,13 @@ body {
     border: 1px solid #ccc !important;
   }
 
-  /* Ensure main content takes up the page */
-  main, #orderDetailsPrintSection, #orderListPagePrintSection { /* Added ID for order list page if needed */
-    padding: 1cm !important; /* Add some margin for A4 printing */
+  main, #orderDetailsPrintSection, #orderListPagePrintSection {
+    padding: 1cm !important;
     margin: 0 !important;
     width: auto !important;
     overflow: visible !important;
   }
 
-  /* Basic table styling for print */
   table {
     width: 100% !important;
     border-collapse: collapse !important;
@@ -145,39 +143,96 @@ body {
     text-align: left !important;
   }
   th {
-    background-color: #f2f2f2 !important; /* Light gray for table headers */
+    background-color: #f2f2f2 !important;
   }
 
-  /* Attempt to make badge backgrounds print if browser allows */
   .badge {
     border: 1px solid #ccc !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  /* Specific color overrides for badges for better B&W printing if needed */
-  /* Example: .bg-green-100 { background-color: #e6ffe6 !important; color: black !important; } */
 
-  /* Ensure all parent containers of the print section are visible and flow naturally */
   html, body, div[data-theme], div#__next, div.min-h-screen, div.flex-col, div.flex-1 {
-    display: block !important; /* Override flex behaviors for printing */
+    display: block !important;
     height: auto !important;
     overflow: visible !important;
-    background: white !important; /* Ensure parents also have white background */
+    background: white !important;
   }
 
-  /* Hide popovers, dialogs specifically for print unless part of print content */
   .radix-popover-content, .radix-dialog-content {
     display: none !important;
   }
-}
 
-/* Placeholder for POS receipt specific styles - this is highly complex for actual POS */
-/*
-@media print and (width: 80mm) {
-  body { font-size: 8pt; }
-  #orderDetailsPrintSection { padding: 2mm !important; }
-  .print-pos-only { display: block !important; }
-  .print-a4-only { display: none !important; }
-}
-*/
+  /* Styles specific for 80mm thermal receipt printing */
+  .thermal-receipt-print-area {
+    width: 72mm !important; /* Max content width for 80mm paper */
+    margin: 0 !important; /* No margin for roll paper */
+    padding: 2mm !important; /* Small padding around content */
+    font-family: 'Courier New', Courier, monospace !important; /* Monospaced font */
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+    background: white !important; /* Ensure background is white */
+    color: black !important; /* Ensure text is black */
+  }
 
+  .thermal-receipt-print-area .card {
+    border: 1px solid #000 !important;
+    padding: 1mm !important;
+    margin-bottom: 3mm !important;
+  }
+
+  .thermal-receipt-print-area .card-header,
+  .thermal-receipt-print-area .card-content,
+  .thermal-receipt-print-area .card-footer {
+    padding: 0.5mm !important;
+  }
+
+  .thermal-receipt-print-area .card-title {
+    font-size: 10pt !important;
+    font-weight: bold !important;
+    margin-bottom: 1.5mm !important;
+  }
+  .thermal-receipt-print-area .card-description {
+    font-size: 8pt !important;
+    margin-bottom: 1.5mm !important;
+  }
+
+  .thermal-receipt-print-area .flex.justify-between {
+    display: flex !important;
+    justify-content: space-between !important;
+  }
+  .thermal-receipt-print-area .font-mono {
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+  .thermal-receipt-print-area .separator { /* Targeting Separator component */
+    border-top: 1px dashed #000 !important;
+    margin: 1.5mm 0 !important;
+    height: 1px !important;
+    background-color: transparent !important;
+  }
+  .thermal-receipt-print-area hr { /* Basic hr for completeness */
+      border: none !important;
+      border-top: 1px dashed #000 !important;
+      height: 1px !important;
+      margin: 1.5mm 0 !important;
+  }
+
+  /* Ensure text colors are black for monochrome printers */
+  .thermal-receipt-print-area .text-red-500,
+  .thermal-receipt-print-area .text-red-600,
+  .thermal-receipt-print-area .text-green-600,
+  .thermal-receipt-print-area .text-blue-600,
+  .thermal-receipt-print-area .text-primary,
+  .thermal-receipt-print-area .text-muted-foreground {
+    color: #000 !important;
+  }
+
+  /* Hide elements not relevant for receipt explicitly within this area */
+  .thermal-receipt-print-area .print-hidden {
+    display: none !important;
+  }
+  .thermal-receipt-print-area .cashup-history-select-trigger,
+  .thermal-receipt-print-area .cashup-history-select-content {
+    display: none !important;
+  }
+}
