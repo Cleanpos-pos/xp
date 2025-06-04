@@ -201,52 +201,89 @@ export async function updateFullCustomerDb(customerId: string, customerData: Cre
   } as Customer;
 }
 
-// Order Data Functions (Now using Supabase Edge Function for creation)
+// Order Data Functions
 export async function createOrderDb(orderInput: CreateOrderInput): Promise<Order> {
+  console.log('[createOrderDb] Attempting to create order. Input:', JSON.stringify(orderInput, null, 2));
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
   let token: string | undefined = undefined;
-  let headers: { [key: string]: string } = {};
+  const headers: { [key: string]: string } = {};
 
   if (sessionError) {
-    console.warn('Error trying to get Supabase session for createOrderDb. Proceeding without user token.', sessionError);
-    // Don't throw error yet, allow function call with anon key
+    console.warn('[createOrderDb] Error trying to get Supabase session. Proceeding without user token for Edge Function call.', sessionError);
   }
 
   if (sessionData && sessionData.session) {
-    console.log('Supabase session found for createOrderDb. Using user token.');
+    console.log('[createOrderDb] Supabase session found. Using user token for Edge Function call.');
     token = sessionData.session.access_token;
     headers['Authorization'] = `Bearer ${token}`;
   } else {
-    console.log('No active Supabase user session found for createOrderDb. Proceeding with anon key to invoke Edge Function.');
-    // The supabase client will use its anon key by default for the functions.invoke call
-    // if no explicit Authorization header is provided or if the one from session is missing.
-    // The Edge Function itself is now configured to use SERVICE_ROLE_KEY for its internal operations.
+    console.log('[createOrderDb] No active Supabase user session. Proceeding with anon key for Edge Function call.');
   }
 
-  const { data, error: invokeError } = await supabase.functions.invoke('create-order-transactional', {
+  const { data: functionResponseData, error: invokeError } = await supabase.functions.invoke('create-order-transactional', {
     body: orderInput,
-    headers: headers, // Will be empty if no session, or contain Auth header if session exists
+    headers: headers,
   });
 
   if (invokeError) {
-    console.error('Error invoking Supabase function create-order-transactional:', invokeError);
-    if (data && data.error) {
-        let errorMessage = data.error;
-        if (data.details) {
-            errorMessage += ` Details: ${data.details}`;
+    console.error('[createOrderDb] Error invoking Supabase Edge Function create-order-transactional:', invokeError);
+    let detailedErrorMessage = 'Edge Function call failed.';
+    if (invokeError.message.includes("Function returned an error status") || invokeError.message.includes("non-2xx status code")) {
+        detailedErrorMessage = "Edge Function returned an error.";
+        // Attempt to parse the actual error from the Edge Function's response
+        // The actual response might be in invokeError.context for newer supabase-js versions
+        // or might need to be inferred from the error message string for older ones.
+        // For this example, we'll try a common pattern.
+        // In newer versions, invokeError might have a `context` property with more details.
+        // For example: invokeError.context.json() or invokeError.context.text()
+        // If invokeError.context exists and has a json method:
+        if ((invokeError as any).context && typeof (invokeError as any).context.json === 'function') {
+            try {
+                const errorJsonResponse = await (invokeError as any).context.json();
+                detailedErrorMessage = errorJsonResponse.error || errorJsonResponse.message || detailedErrorMessage;
+                if (errorJsonResponse.details) detailedErrorMessage += ` Details: ${errorJsonResponse.details}`;
+            } catch (e) {
+                console.warn('[createOrderDb] Could not parse JSON error from Edge Function response context.', e);
+                // Fallback to trying to get text if JSON parsing failed or not available
+                if ((invokeError as any).context && typeof (invokeError as any).context.text === 'function') {
+                    try {
+                        const errorTextResponse = await (invokeError as any).context.text();
+                        if (errorTextResponse) detailedErrorMessage = errorTextResponse;
+                    } catch (textError) {
+                        console.warn('[createOrderDb] Could not parse text error from Edge Function response context.', textError);
+                    }
+                }
+            }
+        } else {
+             // Fallback for older supabase-js or if context is not as expected
+            const match = invokeError.message.match(/{"error":.*}/);
+            if (match && match[0]) {
+                try {
+                    const parsed = JSON.parse(match[0]);
+                    detailedErrorMessage = parsed.error || parsed.details || parsed.message || detailedErrorMessage;
+                } catch (e) {
+                    // Keep generic detailedErrorMessage if parsing fails
+                }
+            } else if (!invokeError.message.includes("Authentication required")) {
+                 detailedErrorMessage = invokeError.message; // Use the original message if not auth related and no JSON
+            }
         }
-        throw new Error(errorMessage);
+    } else if (invokeError.message.includes("Authentication required")) {
+        detailedErrorMessage = "Authentication required to call the Edge Function.";
     }
-    throw invokeError;
+    throw new Error(detailedErrorMessage);
   }
 
-  if (!data) {
+  if (!functionResponseData) {
+    console.error('[createOrderDb] Edge Function call succeeded but returned no data.');
     throw new Error('Failed to create order: No data returned from Edge Function.');
   }
 
-  return mapSupabaseOrderToAppOrder(data);
+  console.log('[createOrderDb] Order created successfully via Edge Function. Response data:', JSON.stringify(functionResponseData, null, 2));
+  return mapSupabaseOrderToAppOrder(functionResponseData);
 }
+
 
 export async function getAllOrdersDb(): Promise<Order[]> {
   const { data, error } = await supabase
@@ -329,14 +366,9 @@ export async function searchOrdersDb(searchTerm: string): Promise<Order[]> {
 }
 
 // Helper to map Supabase order structure to application's Order type
-// Ensure this matches the structure returned by direct DB queries AND the Edge Function
 function mapSupabaseOrderToAppOrder(dbOrder: any): Order {
-  // Guard against null or undefined dbOrder
   if (!dbOrder || typeof dbOrder !== 'object') {
     console.warn('mapSupabaseOrderToAppOrder received invalid dbOrder:', dbOrder);
-    // Consider throwing an error or returning a default/empty Order structure
-    // For now, let's assume this case should ideally not happen if data is fetched correctly.
-    // This is a placeholder to prevent runtime errors if dbOrder is unexpectedly null.
     throw new Error('Invalid order data received for mapping.');
   }
 
@@ -356,10 +388,10 @@ function mapSupabaseOrderToAppOrder(dbOrder: any): Order {
       itemDiscountPercentage: item.item_discount_percentage ? parseFloat(item.item_discount_percentage) : undefined,
       totalPrice: parseFloat(item.total_price),
       notes: item.notes,
-      has_color_identifier: item.has_color_identifier ?? false, // Default to false if null/undefined
+      has_color_identifier: item.has_color_identifier ?? false,
       color_value: item.color_value,
     })),
-    subtotalAmount: dbOrder.subtotal_amount ? parseFloat(dbOrder.subtotal_amount) : 0, // Default to 0 if null/undefined
+    subtotalAmount: dbOrder.subtotal_amount ? parseFloat(dbOrder.subtotal_amount) : 0,
     cartDiscountAmount: dbOrder.cart_discount_amount ? parseFloat(dbOrder.cart_discount_amount) : undefined,
     cartDiscountPercentage: dbOrder.cart_discount_percentage ? parseFloat(dbOrder.cart_discount_percentage) : undefined,
     cartPriceOverride: dbOrder.cart_price_override ? parseFloat(dbOrder.cart_price_override) : undefined,
@@ -370,7 +402,7 @@ function mapSupabaseOrderToAppOrder(dbOrder: any): Order {
     updated_at: new Date(dbOrder.updated_at).toISOString(),
     dueDate: dbOrder.due_date ? new Date(dbOrder.due_date).toISOString() : undefined,
     notes: dbOrder.notes,
-    isExpress: dbOrder.is_express ?? false, // Default to false if null/undefined
+    isExpress: dbOrder.is_express ?? false,
   };
 }
 
@@ -662,6 +694,3 @@ export function getServiceById(id:string): ServiceItem | undefined {
   console.warn("getServiceById is using a non-performant mock lookup. Refactor if used broadly.");
   return undefined;
 }
-
-// generateOrderNumber is removed as it's now handled by the PostgreSQL function create_order_with_items_tx
-    
