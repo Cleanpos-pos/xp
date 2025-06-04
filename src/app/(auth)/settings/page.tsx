@@ -817,15 +817,9 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="cashUp" className="mt-6 print-this-specific-area">
+        <TabsContent value="cashUp" className="mt-6">
           <Card className="shadow-xl print-no-break">
-            <CardHeader className="print-hidden">
-              <CardTitle className="font-headline text-2xl flex items-center">
-                <DollarSign className="mr-2 h-6 w-6" /> Cash Up Management
-              </CardTitle>
-              <CardDescription>Perform end-of-day cash reconciliation and view history.</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-0 sm:p-6"> {/* Remove padding on small screens for CardContent */}
               <CashUpManagementTab />
             </CardContent>
           </Card>
