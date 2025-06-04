@@ -12,10 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-modal";
 import type { CashUpSession, Payout } from "@/types";
 import { format } from "date-fns";
-import { TrendingUp, TrendingDown, CheckCircle, Edit3, CheckSquare, LogOut, List, Printer } from "lucide-react"; // Added Printer icon
+import { TrendingUp, TrendingDown, CheckCircle, Edit3, CheckSquare, LogOut, List, Printer, Image as ImageIcon } from "lucide-react"; // Added ImageIcon for placeholder
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import Image from 'next/image'; // For placeholder logo
 
 const MOCK_SYSTEM_CASH_TAKEN = 1250.75; // Placeholder for cash taken via orders
 const MOCK_SYSTEM_CARD_TAKEN = 850.25;  // Placeholder for card taken via orders
@@ -55,6 +56,15 @@ export function CashUpManagementTab() {
   const [floatInputValue, setFloatInputValue] = useState(floatAmount.toFixed(2));
   const [isCardEntryModalOpen, setIsCardEntryModalOpen] = useState(false);
   const [cardEntryInputValue, setCardEntryInputValue] = useState("");
+
+  // Placeholder shop info - in a real app, this would come from context/settings
+  const shopInfo = {
+    name: "XP Clean Ltd.",
+    address: "123 Clean Street, Suite 100, YourTown, YT 54321",
+    phone: "(555) 123-4567",
+    vatNumber: "GB123456789",
+    logoUrl: "https://placehold.co/150x50.png?text=XP+Clean"
+  };
 
   // Load initial data from localStorage
   useEffect(() => {
@@ -242,7 +252,7 @@ export function CashUpManagementTab() {
 
   const handlePrintCashUp = () => {
     console.log("[Print Debug] handlePrintCashUp function entered.");
-    // Simple direct call to window.print()
+    console.log("[Print Debug] About to call window.print() directly.");
     window.print();
     console.log("[Print Debug] window.print() call has been executed.");
   };
@@ -255,11 +265,39 @@ export function CashUpManagementTab() {
       <AlphanumericKeypadModal isOpen={isCardEntryModalOpen} onOpenChange={setIsCardEntryModalOpen} inputValue={cardEntryInputValue} onInputChange={setCardEntryInputValue} onConfirm={handleEnterActualCard} title="Enter Actual Card Total" numericOnly={true} />
       <AlphanumericKeypadModal isOpen={isPayoutAmountModalOpen} onOpenChange={setIsPayoutAmountModalOpen} inputValue={payoutAmount} onInputChange={setPayoutAmount} onConfirm={handlePayoutAmountConfirm} title="Enter Payout Amount" numericOnly={true} />
 
+      {/* Print-only Shop Info Header */}
+      <div className="print-visible-only text-center mb-4">
+        {shopInfo.logoUrl && (
+          <Image 
+            src={shopInfo.logoUrl} 
+            alt={`${shopInfo.name} Logo`}
+            width={150} 
+            height={50}
+            className="mx-auto mb-2 object-contain"
+            data-ai-hint="company logo"
+          />
+        )}
+        <h2 className="text-lg font-bold">{shopInfo.name}</h2>
+        <p className="text-xs">{shopInfo.address}</p>
+        <p className="text-xs">Phone: {shopInfo.phone}</p>
+        {shopInfo.vatNumber && <p className="text-xs">VAT No: {shopInfo.vatNumber}</p>}
+        <Separator className="my-2" />
+        <h3 className="text-md font-semibold mt-1">Cash Up Summary</h3>
+         <p className="text-xs mb-2">
+          Date: {format(new Date(selectedCashUpId && cashUpHistory.find(s => s.id === selectedCashUpId) ? cashUpHistory.find(s => s.id === selectedCashUpId)!.timestamp : new Date().toISOString()), "PPP p")}
+        </p>
+        <Separator className="my-2" />
+      </div>
+
+
       {/* Float Management */}
       <Card className="print-no-break">
-        <CardHeader>
+        <CardHeader className="print-hidden"> {/* Hide full header on print */}
           <CardTitle>Till Float Management</CardTitle>
           <CardDescription>Set or adjust the starting cash float in your till.</CardDescription>
+        </CardHeader>
+        <CardHeader className="print-visible-only pt-2 pb-1"> {/* Simplified header for print */}
+          <CardTitle className="text-sm">Till Float</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
@@ -274,20 +312,22 @@ export function CashUpManagementTab() {
       {/* Payout Recording - only for active session */}
       {!isViewingHistory && (
         <Card className="print-no-break">
-          <CardHeader>
+          <CardHeader className="print-hidden"> {/* Hide full header on print */}
             <CardTitle>Record Payout</CardTitle>
             <CardDescription>Log any cash taken out from the till for expenses.</CardDescription>
           </CardHeader>
+           <CardHeader className="print-visible-only pt-2 pb-1"> {/* Simplified header for print */}
+             <CardTitle className="text-sm">Payouts This Session</CardTitle>
+           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
+            <div className="print-hidden"> {/* Hide input fields on print */}
               <Label htmlFor="payoutAmount">Payout Amount</Label>
-              <div className="flex items-center space-x-2 cursor-pointer mt-1 print-hidden" onClick={() => setIsPayoutAmountModalOpen(true)}>
+              <div className="flex items-center space-x-2 cursor-pointer mt-1" onClick={() => setIsPayoutAmountModalOpen(true)}>
                 <Input id="payoutAmount" type="text" value={payoutAmount} readOnly placeholder="Tap to enter amount" className="cursor-pointer flex-grow" />
                 <Edit3 className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               </div>
-              <p className="sm:hidden print-visible-only">Payout Amount: ${payoutAmount || "0.00"}</p> {/* Show for print if input is hidden */}
             </div>
-            <div>
+            <div className="print-hidden"> {/* Hide input fields on print */}
               <Label htmlFor="payoutReason">Reason</Label>
               <Textarea id="payoutReason" value={payoutReason} onChange={(e) => setPayoutReason(e.target.value)} placeholder="e.g., Office supplies, Petty cash for delivery" className="mt-1" />
             </div>
@@ -297,7 +337,7 @@ export function CashUpManagementTab() {
           </CardContent>
            {currentSessionPayouts.length > 0 && (
             <CardFooter className="flex-col items-start pt-4 border-t">
-              <h4 className="text-sm font-medium mb-2">Payouts This Session:</h4>
+              <h4 className="text-sm font-medium mb-2 print-hidden">Payouts This Session:</h4>
               <ScrollArea className="h-24 w-full pr-3 print-hidden">
                 <ul className="space-y-1 text-xs">
                   {currentSessionPayouts.map(p => (
@@ -308,7 +348,7 @@ export function CashUpManagementTab() {
                   ))}
                 </ul>
               </ScrollArea>
-               <div className="print-visible-only mt-2 space-y-1 text-xs"> {/* For Print: List payouts */}
+               <div className="print-visible-only mt-2 space-y-1 text-xs w-full"> {/* For Print: List payouts */}
                   {currentSessionPayouts.map(p => (
                     <div key={`print-${p.id}`} className="flex justify-between">
                       <span>{p.reason}:</span>
@@ -383,38 +423,40 @@ export function CashUpManagementTab() {
 
       {/* Cash Up History */}
       <Card className="print-no-break">
-        <CardHeader>
+        <CardHeader className="print-hidden"> {/* Hide this header on print */}
           <CardTitle>Cash Up History</CardTitle>
           <CardDescription>Review past cash up sessions. (Stored in browser local storage)</CardDescription>
         </CardHeader>
         <CardContent>
-          {cashUpHistory.length === 0 ? (
-            <p className="text-muted-foreground">No cash up history found.</p>
-          ) : (
-            <Select 
-                onValueChange={(value) => loadSessionDetails(value === NEW_SESSION_VALUE ? null : value)} 
-                value={selectedCashUpId || NEW_SESSION_VALUE}
-            >
-              <SelectTrigger className={cn("w-full mb-4", "cashup-history-select-trigger", "print-hidden")}>
-                <SelectValue placeholder="Select a past cash up session to view, or start new" />
-              </SelectTrigger>
-              <SelectContent className={cn("cashup-history-select-content", "print-hidden")}>
-                <SelectItem value={NEW_SESSION_VALUE}>-- Start New / View Current Session --</SelectItem>
-                {cashUpHistory.map(session => (
-                  <SelectItem key={session.id} value={session.id}>
-                    {format(new Date(session.timestamp), "PPP p")} (Float: ${session.floatAmount.toFixed(2)})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+          <div className="print-hidden"> {/* Hide select dropdown on print */}
+            {cashUpHistory.length === 0 ? (
+              <p className="text-muted-foreground">No cash up history found.</p>
+            ) : (
+              <Select 
+                  onValueChange={(value) => loadSessionDetails(value === NEW_SESSION_VALUE ? null : value)} 
+                  value={selectedCashUpId || NEW_SESSION_VALUE}
+              >
+                <SelectTrigger className={cn("w-full mb-4", "cashup-history-select-trigger")}>
+                  <SelectValue placeholder="Select a past cash up session to view, or start new" />
+                </SelectTrigger>
+                <SelectContent className={cn("cashup-history-select-content")}>
+                  <SelectItem value={NEW_SESSION_VALUE}>-- Start New / View Current Session --</SelectItem>
+                  {cashUpHistory.map(session => (
+                    <SelectItem key={session.id} value={session.id}>
+                      {format(new Date(session.timestamp), "PPP p")} (Float: ${session.floatAmount.toFixed(2)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
            {isViewingHistory && cashUpHistory.find(s => s.id === selectedCashUpId) && (() => {
             const session = cashUpHistory.find(s => s.id === selectedCashUpId)!;
             const sessionTotalPayouts = (session.payouts || []).reduce((sum, p) => sum + p.amount, 0);
             const sessionExpectedCashInTill = session.systemCash + session.floatAmount - sessionTotalPayouts;
 
             return (
-                <div className="mt-4 p-4 border rounded-md bg-muted/50 space-y-1 text-sm">
+                <div className="mt-4 p-4 border rounded-md bg-muted/50 space-y-1 text-sm print-visible-only"> {/* This section only visible on print IF a historical session is selected */}
                     <h4 className="font-semibold mb-2 text-md">Details for session: {format(new Date(session.timestamp), "PPP p")}</h4>
                     <div className="flex justify-between"><span>Finalized By:</span> <span>{session.finalizedBy}</span></div>
                     <Separator className="my-2"/>
@@ -425,16 +467,6 @@ export function CashUpManagementTab() {
                       <>
                         <Separator className="my-2"/>
                         <div className="font-medium">Payouts During Session:</div>
-                        <ScrollArea className="h-20 w-full pr-2 print-hidden"> {/* Hide scroll area on print */}
-                          <ul className="space-y-0.5 text-xs">
-                            {session.payouts.map(p => (
-                              <li key={p.id} className="flex justify-between">
-                                <span>{p.reason}:</span>
-                                <span className="font-mono">-${p.amount.toFixed(2)}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </ScrollArea>
                         <div className="print-visible-only mt-1 space-y-0.5 text-xs"> {/* For Print: List payouts */}
                           {session.payouts.map(p => (
                             <div key={`print-hist-${p.id}`} className="flex justify-between">
@@ -467,6 +499,7 @@ export function CashUpManagementTab() {
         </CardContent>
          <CardFooter>
             <p className="text-xs text-muted-foreground print-hidden">Note: System expected values are currently placeholders. In a real app, these would be dynamically fetched from order data for the reconciliation period.</p>
+            <p className="text-xs text-muted-foreground print-visible-only text-center w-full mt-2">--- End of Report ---</p>
         </CardFooter>
       </Card>
     </div>

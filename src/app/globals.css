@@ -109,6 +109,9 @@ body {
   .print-visible-only {
     display: block !important; /* Or 'table-header-group' for table headers etc. */
   }
+   .print-no-break {
+    page-break-inside: avoid !important;
+  }
 
   body {
     background-color: white !important;
@@ -166,7 +169,7 @@ body {
   /* Styles specific for 80mm thermal receipt printing */
   .thermal-receipt-print-area {
     width: 72mm !important; /* Max content width for 80mm paper */
-    margin: 0 !important; /* No margin for roll paper */
+    margin: 0 auto !important; /* Center receipt content on page if printing to A4/Letter by mistake */
     padding: 2mm !important; /* Small padding around content */
     font-family: 'Courier New', Courier, monospace !important; /* Monospaced font */
     font-size: 9pt !important;
@@ -180,21 +183,19 @@ body {
     padding: 1mm !important;
     margin-bottom: 3mm !important;
   }
-
-  .thermal-receipt-print-area .card-header,
-  .thermal-receipt-print-area .card-content,
-  .thermal-receipt-print-area .card-footer {
+  
+  .thermal-receipt-print-area .card > div { /* Targeting CardHeader, CardContent, CardFooter directly */
     padding: 0.5mm !important;
   }
 
   .thermal-receipt-print-area .card-title {
     font-size: 10pt !important;
     font-weight: bold !important;
-    margin-bottom: 1.5mm !important;
+    margin-bottom: 1mm !important;
   }
   .thermal-receipt-print-area .card-description {
     font-size: 8pt !important;
-    margin-bottom: 1.5mm !important;
+    margin-bottom: 1mm !important;
   }
 
   .thermal-receipt-print-area .flex.justify-between {
@@ -235,4 +236,15 @@ body {
   .thermal-receipt-print-area .cashup-history-select-content {
     display: none !important;
   }
+
+  /* Simplify print header and content for Cash Up */
+  .thermal-receipt-print-area .card-header.print-visible-only {
+    padding-top: 2px !important;
+    padding-bottom: 1px !important;
+  }
+  .thermal-receipt-print-area .card-header.print-visible-only .card-title {
+    font-size: 0.9rem !important; /* Slightly smaller for print */
+    margin-bottom: 0.5mm !important;
+  }
 }
+
