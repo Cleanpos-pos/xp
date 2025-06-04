@@ -37,7 +37,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
     console.error(`[getCustomerById] Received non-string ID: ${id} (type: ${typeof id}). Aborting fetch.`);
     return undefined;
   }
-  const trimmedId = id.trim(); 
+  const trimmedId = id.trim();
   console.log(`[getCustomerById] Attempting to fetch customer by ID from Supabase. Trimmed ID: '${trimmedId}' (length ${trimmedId.length})`);
 
   const { data: { session } } = await supabase.auth.getSession();
@@ -46,11 +46,11 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
   const { data, error } = await supabase
     .from('customers')
     .select('*')
-    .eq('id', trimmedId) 
+    .eq('id', trimmedId)
     .single();
 
   if (error) {
-    if (error.code === 'PGRST116') { 
+    if (error.code === 'PGRST116') {
       console.warn(`[getCustomerById] Customer with ID '${trimmedId}' not found in Supabase (PGRST116).`);
       return undefined;
     }
@@ -130,7 +130,7 @@ export async function updateCustomerAccountDetailsDb(
     if (!currentCustomer) throw new Error("Customer not found for update and no details provided.");
     return currentCustomer;
   }
-  
+
   updateData.updated_at = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -171,7 +171,7 @@ export async function updateFullCustomerDb(customerId: string, customerData: Cre
     email_opt_in: customerData.emailOptIn || false,
     has_preferred_pricing: customerData.hasPreferredPricing || false,
     is_account_client: customerData.isAccountClient || false,
-    account_id: customerData.isAccountClient ? (customerData.accountId || null) : null, 
+    account_id: customerData.isAccountClient ? (customerData.accountId || null) : null,
     updated_at: new Date().toISOString(),
   };
 
@@ -204,22 +204,33 @@ export async function updateFullCustomerDb(customerId: string, customerData: Cre
 // Order Data Functions (Now using Supabase Edge Function for creation)
 export async function createOrderDb(orderInput: CreateOrderInput): Promise<Order> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-  if (sessionError || !sessionData.session) {
-    console.error('Error getting session or no active session:', sessionError);
-    throw new Error('Authentication required to create order.');
-  }
-  const token = sessionData.session.access_token;
 
-  const { data, error } = await supabase.functions.invoke('create-order-transactional', {
+  let token: string | undefined = undefined;
+  let headers: { [key: string]: string } = {};
+
+  if (sessionError) {
+    console.warn('Error trying to get Supabase session for createOrderDb. Proceeding without user token.', sessionError);
+    // Don't throw error yet, allow function call with anon key
+  }
+
+  if (sessionData && sessionData.session) {
+    console.log('Supabase session found for createOrderDb. Using user token.');
+    token = sessionData.session.access_token;
+    headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    console.log('No active Supabase user session found for createOrderDb. Proceeding with anon key to invoke Edge Function.');
+    // The supabase client will use its anon key by default for the functions.invoke call
+    // if no explicit Authorization header is provided or if the one from session is missing.
+    // The Edge Function itself is now configured to use SERVICE_ROLE_KEY for its internal operations.
+  }
+
+  const { data, error: invokeError } = await supabase.functions.invoke('create-order-transactional', {
     body: orderInput,
-    headers: {
-      Authorization: `Bearer ${token}`,
-    }
+    headers: headers, // Will be empty if no session, or contain Auth header if session exists
   });
 
-  if (error) {
-    console.error('Error invoking Supabase function create-order-transactional:', error);
-    // Attempt to parse nested error if available from Edge function response
+  if (invokeError) {
+    console.error('Error invoking Supabase function create-order-transactional:', invokeError);
     if (data && data.error) {
         let errorMessage = data.error;
         if (data.details) {
@@ -227,15 +238,13 @@ export async function createOrderDb(orderInput: CreateOrderInput): Promise<Order
         }
         throw new Error(errorMessage);
     }
-    throw error;
+    throw invokeError;
   }
 
   if (!data) {
     throw new Error('Failed to create order: No data returned from Edge Function.');
   }
-  
-  // The Edge Function now returns the full order including items
-  // So, mapSupabaseOrderToAppOrder can be used directly.
+
   return mapSupabaseOrderToAppOrder(data);
 }
 
@@ -311,7 +320,7 @@ export async function searchOrdersDb(searchTerm: string): Promise<Order[]> {
     `)
     .or(`order_number.ilike.%${term}%,customer_name.ilike.%${term}%`)
     .order('created_at', { ascending: false });
-  
+
   if (error) {
     console.error(`Error searching orders with term "${term}" from Supabase:`, error);
     throw error;
@@ -328,7 +337,7 @@ function mapSupabaseOrderToAppOrder(dbOrder: any): Order {
     // Consider throwing an error or returning a default/empty Order structure
     // For now, let's assume this case should ideally not happen if data is fetched correctly.
     // This is a placeholder to prevent runtime errors if dbOrder is unexpectedly null.
-    throw new Error('Invalid order data received for mapping.'); 
+    throw new Error('Invalid order data received for mapping.');
   }
 
   return {
@@ -388,7 +397,7 @@ export async function getInventoryItems(): Promise<InventoryItem[]> {
 export async function createInventoryItemDb(itemData: Omit<InventoryItem, 'id' | 'created_at' | 'updated_at'>): Promise<InventoryItem> {
   const itemToInsert = {
     ...itemData,
-    low_stock_threshold: itemData.low_stock_threshold ?? 0, 
+    low_stock_threshold: itemData.low_stock_threshold ?? 0,
   };
 
   const { data, error } = await supabase
@@ -486,15 +495,15 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
   if (entry.type === 'item') {
     entryToInsert.has_color_identifier = (typeof entry.has_color_identifier === 'boolean')
       ? entry.has_color_identifier
-      : false; 
+      : false;
     entryToInsert.price = entry.price ?? 0;
   }
   console.log("[addCatalogEntry] Object being inserted into Supabase:", JSON.stringify(entryToInsert, null, 2));
 
   const { data, error } = await supabase
     .from('catalog_entries')
-    .insert(entryToInsert) 
-    .select('*') 
+    .insert(entryToInsert)
+    .select('*')
     .single();
 
   if (error) {
@@ -507,7 +516,7 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
     console.error(errorMessage, 'Entry data attempted:', JSON.stringify(entryToInsert, null, 2));
     throw new Error(errorMessage);
   }
-  
+
   console.log("[addCatalogEntry] Successfully inserted catalog entry, Supabase returned:", JSON.stringify(data, null, 2));
   return {
     ...data,
@@ -542,9 +551,9 @@ export async function updateCatalogEntry(
       updatePayload.price = dataToUpdate.price;
     }
     updatePayload.has_color_identifier = dataToUpdate.has_color_identifier ?? false;
-  } else { 
-     updatePayload.price = null; 
-     delete updatePayload.has_color_identifier; 
+  } else {
+     updatePayload.price = null;
+     delete updatePayload.has_color_identifier;
   }
 
 
@@ -624,7 +633,7 @@ export async function getFullCatalogHierarchy(): Promise<CatalogHierarchyNode[]>
 
 async function getServiceItemsFromCatalog(): Promise<ServiceItem[]> {
   const allEntries = await getCatalogEntries();
-  
+
   const categoryMap = new Map<string, string>();
   allEntries.forEach(entry => {
     if (entry.type === 'category') {
@@ -637,7 +646,7 @@ async function getServiceItemsFromCatalog(): Promise<ServiceItem[]> {
     .map(item => ({
       id: item.id,
       name: item.name,
-      price: item.price!, 
+      price: item.price!,
       description: item.description || undefined,
       category: item.parent_id ? (categoryMap.get(item.parent_id) || 'General Services') : 'General Services',
       has_color_identifier: item.has_color_identifier ?? false,
@@ -651,7 +660,7 @@ export async function getServices(): Promise<ServiceItem[]> {
 
 export function getServiceById(id:string): ServiceItem | undefined {
   console.warn("getServiceById is using a non-performant mock lookup. Refactor if used broadly.");
-  return undefined; 
+  return undefined;
 }
 
 // generateOrderNumber is removed as it's now handled by the PostgreSQL function create_order_with_items_tx
