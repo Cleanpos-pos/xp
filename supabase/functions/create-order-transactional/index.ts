@@ -1,7 +1,7 @@
 
 // supabase/functions/create-order-transactional/index.ts
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts'; // Updated Deno std version
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.43.4'; // Pinned supabase-js version
 import { corsHeaders } from '../_shared/cors.ts';
 
 interface OrderItemInputForFunction {
@@ -55,19 +55,11 @@ serve(async (req: Request) => {
   try {
     const orderInput: CreateOrderInputForFunction = await req.json();
 
-    // Initialize Supabase client using the SERVICE_ROLE_KEY.
-    // This allows the function to perform database operations with admin privileges,
-    // bypassing RLS for the operations it performs.
-    // The function invocation itself is still protected by Supabase's default policies
-    // (e.g., requiring at least an anon key or a user JWT sent by the client).
     const supabaseClient: SupabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // USE SERVICE ROLE KEY HERE
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', // USE SERVICE ROLE KEY HERE
+      { global: { headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}` } } } // Auth with service role for internal calls
     );
-
-    // The explicit check for authHeader is removed.
-    // The client-side `createOrderDb` function already checks if a session exists.
-    // Supabase's function invocation layer will also enforce that a valid (anon or user) token is present.
 
     // 1. Fetch customer details (especially name)
     const { data: customer, error: customerError } = await supabaseClient
@@ -201,3 +193,4 @@ serve(async (req: Request) => {
     });
   }
 });
+
