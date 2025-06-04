@@ -229,15 +229,9 @@ export async function createOrderDb(orderInput: CreateOrderInput): Promise<Order
   if (invokeError) {
     console.error('[createOrderDb] Error invoking Supabase Edge Function create-order-transactional:', invokeError);
     let detailedErrorMessage = 'Edge Function call failed.';
-    if (invokeError.message.includes("Function returned an error status") || invokeError.message.includes("non-2xx status code")) {
-        detailedErrorMessage = "Edge Function returned an error.";
-        // Attempt to parse the actual error from the Edge Function's response
-        // The actual response might be in invokeError.context for newer supabase-js versions
-        // or might need to be inferred from the error message string for older ones.
-        // For this example, we'll try a common pattern.
-        // In newer versions, invokeError might have a `context` property with more details.
-        // For example: invokeError.context.json() or invokeError.context.text()
-        // If invokeError.context exists and has a json method:
+    if (invokeError.message.includes("Function returned an error status") || invokeError.message.includes("non-2xx status code") || invokeError.message.includes("function_not_found")) {
+        detailedErrorMessage = "Edge Function returned an error or was not found.";
+        
         if ((invokeError as any).context && typeof (invokeError as any).context.json === 'function') {
             try {
                 const errorJsonResponse = await (invokeError as any).context.json();
@@ -245,7 +239,6 @@ export async function createOrderDb(orderInput: CreateOrderInput): Promise<Order
                 if (errorJsonResponse.details) detailedErrorMessage += ` Details: ${errorJsonResponse.details}`;
             } catch (e) {
                 console.warn('[createOrderDb] Could not parse JSON error from Edge Function response context.', e);
-                // Fallback to trying to get text if JSON parsing failed or not available
                 if ((invokeError as any).context && typeof (invokeError as any).context.text === 'function') {
                     try {
                         const errorTextResponse = await (invokeError as any).context.text();
@@ -256,17 +249,14 @@ export async function createOrderDb(orderInput: CreateOrderInput): Promise<Order
                 }
             }
         } else {
-             // Fallback for older supabase-js or if context is not as expected
             const match = invokeError.message.match(/{"error":.*}/);
             if (match && match[0]) {
                 try {
                     const parsed = JSON.parse(match[0]);
                     detailedErrorMessage = parsed.error || parsed.details || parsed.message || detailedErrorMessage;
-                } catch (e) {
-                    // Keep generic detailedErrorMessage if parsing fails
-                }
+                } catch (e) { /* Keep generic */ }
             } else if (!invokeError.message.includes("Authentication required")) {
-                 detailedErrorMessage = invokeError.message; // Use the original message if not auth related and no JSON
+                 detailedErrorMessage = invokeError.message; 
             }
         }
     } else if (invokeError.message.includes("Authentication required")) {
@@ -364,6 +354,30 @@ export async function searchOrdersDb(searchTerm: string): Promise<Order[]> {
   }
   return (data || []).map(mapSupabaseOrderToAppOrder);
 }
+
+export async function updateOrderStatusDb(orderId: string, newStatus: OrderStatus): Promise<Order> {
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
+    .eq('id', orderId)
+    .select(`
+      *,
+      order_items (
+        *
+      )
+    `)
+    .single();
+
+  if (error) {
+    console.error(`Error updating order status for ID ${orderId} to ${newStatus} in Supabase:`, error);
+    throw error;
+  }
+  if (!data) {
+    throw new Error(`Order with ID ${orderId} not found or update failed.`);
+  }
+  return mapSupabaseOrderToAppOrder(data);
+}
+
 
 // Helper to map Supabase order structure to application's Order type
 function mapSupabaseOrderToAppOrder(dbOrder: any): Order {

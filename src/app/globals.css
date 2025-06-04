@@ -106,6 +106,10 @@ body {
   .print-hidden {
     display: none !important;
   }
+  .print-visible-only {
+    display: block !important; /* Or 'table-header-group' for table headers etc. */
+  }
+
   body {
     background-color: white !important;
     color: black !important;
@@ -123,7 +127,7 @@ body {
   }
 
   /* Ensure main content takes up the page */
-  main, #orderDetailsPrintSection {
+  main, #orderDetailsPrintSection, #orderListPagePrintSection { /* Added ID for order list page if needed */
     padding: 1cm !important; /* Add some margin for A4 printing */
     margin: 0 !important;
     width: auto !important;
@@ -176,3 +180,4 @@ body {
   .print-a4-only { display: none !important; }
 }
 */
+
