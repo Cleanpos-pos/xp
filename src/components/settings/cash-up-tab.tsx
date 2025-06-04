@@ -240,7 +240,13 @@ export function CashUpManagementTab() {
   const isViewingHistory = !!selectedCashUpId;
 
   const handlePrintCashUp = () => {
-    window.print();
+    console.log("handlePrintCashUp called"); // Diagnostic log
+    try {
+      window.print();
+      console.log("window.print() executed");
+    } catch (e) {
+      console.error("Error calling window.print():", e);
+    }
   };
 
   return (
@@ -381,7 +387,6 @@ export function CashUpManagementTab() {
             <Select 
                 onValueChange={(value) => loadSessionDetails(value === NEW_SESSION_VALUE ? null : value)} 
                 value={selectedCashUpId || NEW_SESSION_VALUE}
-                // className="print-hidden" // Hide select dropdown when printing
             >
               <SelectTrigger className="w-full mb-4 print-hidden">
                 <SelectValue placeholder="Select a past cash up session to view, or start new" />
