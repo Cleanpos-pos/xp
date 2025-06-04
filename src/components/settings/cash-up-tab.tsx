@@ -252,6 +252,7 @@ export function CashUpManagementTab() {
 
   const handlePrintCashUp = () => {
     console.log("[Print Debug] handlePrintCashUp function entered.");
+    // No setTimeout here, direct call.
     console.log("[Print Debug] About to call window.print() directly.");
     window.print();
     console.log("[Print Debug] window.print() call has been executed.");
@@ -323,13 +324,13 @@ export function CashUpManagementTab() {
             <div className="print-hidden"> {/* Hide input fields on print */}
               <Label htmlFor="payoutAmount">Payout Amount</Label>
               <div className="flex items-center space-x-2 cursor-pointer mt-1" onClick={() => setIsPayoutAmountModalOpen(true)}>
-                <Input id="payoutAmount" type="text" value={payoutAmount} readOnly placeholder="Tap to enter amount" className="cursor-pointer flex-grow" />
-                <Edit3 className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                <Input id="payoutAmount" type="text" value={payoutAmount} readOnly placeholder="Tap to enter amount" className="cursor-pointer flex-grow print-hidden" />
+                <Edit3 className="h-5 w-5 text-muted-foreground flex-shrink-0 print-hidden" />
               </div>
             </div>
             <div className="print-hidden"> {/* Hide input fields on print */}
               <Label htmlFor="payoutReason">Reason</Label>
-              <Textarea id="payoutReason" value={payoutReason} onChange={(e) => setPayoutReason(e.target.value)} placeholder="e.g., Office supplies, Petty cash for delivery" className="mt-1" />
+              <Textarea id="payoutReason" value={payoutReason} onChange={(e) => setPayoutReason(e.target.value)} placeholder="e.g., Office supplies, Petty cash for delivery" className="mt-1 print-hidden" />
             </div>
             <Button onClick={handleSavePayout} className="w-full sm:w-auto print-hidden" disabled={!payoutAmount || !payoutReason.trim()}>
               <LogOut className="mr-2 h-4 w-4" /> Save Payout
@@ -506,3 +507,4 @@ export function CashUpManagementTab() {
   );
 }
 
+    

@@ -302,7 +302,7 @@ export default function SettingsPage() {
 
   return (
     <div className="w-full max-w-4xl space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print-hidden">
         <div className="flex items-center gap-2">
           <SettingsIcon className="h-8 w-8" />
           <h1 className="text-3xl font-bold font-headline">Settings</h1>
@@ -314,8 +314,8 @@ export default function SettingsPage() {
         </Link>
       </div>
 
-      <Tabs defaultValue="staffManagement" className="w-full">
-        <div className="flex flex-col gap-2">
+      <Tabs defaultValue="staffManagement" className="w-full print-hidden">
+        <div className="flex flex-col gap-2 print-hidden">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2">
             <TabsTrigger
               value="staffManagement"
@@ -817,9 +817,9 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="cashUp" className="mt-6">
-          <Card className="shadow-xl">
-            <CardHeader>
+        <TabsContent value="cashUp" className="mt-6 print-this-specific-area">
+          <Card className="shadow-xl print-no-break">
+            <CardHeader className="print-hidden">
               <CardTitle className="font-headline text-2xl flex items-center">
                 <DollarSign className="mr-2 h-6 w-6" /> Cash Up Management
               </CardTitle>
@@ -1049,6 +1049,5 @@ export default function SettingsPage() {
     </div>
   );
 }
-
 
     

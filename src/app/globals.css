@@ -117,20 +117,30 @@ body {
     background-color: white !important;
     color: black !important;
     font-size: 10pt !important;
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Remove shadows and ensure borders are simple for printing */
+  /* General hide for app layout elements */
+  /* Apply print-hidden directly in components for more control */
+
+  /* General card styling for print (non-thermal receipt areas) */
   .card, .shadow-lg, .shadow-xl, .shadow-md {
     box-shadow: none !important;
     border: 1px solid #ccc !important;
   }
 
+  /* Ensure only the specific print area is visible for thermal */
+  body > div:not(:has(.thermal-receipt-print-area.print-this-specific-area)),
+  body > header:not(:has(.thermal-receipt-print-area.print-this-specific-area)) {
+    /* This selector is a bit broad; ideally, we'd have a single root for the printable area */
+    /* display: none !important; */ /* Re-evaluate this if it hides too much */
+  }
+
   main, #orderDetailsPrintSection, #orderListPagePrintSection {
-    padding: 1cm !important;
+    padding: 1cm !important; /* Default padding for general prints */
     margin: 0 !important;
     width: auto !important;
     overflow: visible !important;
@@ -156,7 +166,7 @@ body {
   }
 
   html, body, div[data-theme], div#__next, div.min-h-screen, div.flex-col, div.flex-1 {
-    display: block !important;
+    display: block !important; /* Allow content to flow */
     height: auto !important;
     overflow: visible !important;
     background: white !important;
@@ -178,14 +188,28 @@ body {
     color: black !important; /* Ensure text is black */
   }
 
+  /* Remove card styling within thermal receipt area */
   .thermal-receipt-print-area .card {
-    border: 1px solid #000 !important;
-    padding: 1mm !important;
-    margin-bottom: 3mm !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    padding: 0 !important;
+    margin-bottom: 2mm !important;
   }
   
   .thermal-receipt-print-area .card > div { /* Targeting CardHeader, CardContent, CardFooter directly */
-    padding: 0.5mm !important;
+    padding: 0 !important; /* Remove padding from card sections */
+  }
+   .thermal-receipt-print-area .card-header {
+    padding: 0 !important;
+    margin-bottom: 1mm;
+  }
+   .thermal-receipt-print-area .card-content {
+    padding: 0 !important;
+  }
+   .thermal-receipt-print-area .card-footer {
+    padding: 0 !important;
+    margin-top: 1mm;
   }
 
   .thermal-receipt-print-area .card-title {
@@ -248,3 +272,4 @@ body {
   }
 }
 
+    
