@@ -1,4 +1,3 @@
-
 // supabase/functions/create-order-transactional/index.ts
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 
@@ -22,7 +21,7 @@ serve(async (req: Request) => {
   try {
     // Ensure secrets are set in the Supabase Dashboard for this function
     const supabaseURL = Deno.env.get('SUPABASE_URL');
-    const serviceKeyIsSet = !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const serviceKeyIsSet = !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'); // Just check if it's set
 
     console.log(`[create-order-transactional] SUPABASE_URL from env: ${supabaseURL}`);
     console.log(`[create-order-transactional] SUPABASE_SERVICE_ROLE_KEY is set (check): ${serviceKeyIsSet}`);
@@ -35,6 +34,7 @@ serve(async (req: Request) => {
       });
     }
 
+    // If we reach here, secrets are likely present (or at least the env vars were found by Deno.env.get)
     const data = {
       message: "Hello from simplified create-order-transactional!",
       timestamp: new Date().toISOString(),
