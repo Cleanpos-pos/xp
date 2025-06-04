@@ -18,6 +18,7 @@ import { Separator } from "@/components/ui/separator";
 
 const MOCK_SYSTEM_CASH_TAKEN = 1250.75; // Placeholder for cash taken via orders
 const MOCK_SYSTEM_CARD_TAKEN = 850.25;  // Placeholder for card taken via orders
+const NEW_SESSION_VALUE = "__NEW_SESSION__"; // Special value for the "new session" item
 
 export function CashUpManagementTab() {
   const { toast } = useToast();
@@ -186,10 +187,15 @@ export function CashUpManagementTab() {
     setSelectedCashUpId(newSession.id); // Select the newly finalized session
   };
   
-  const loadSessionDetails = (sessionId: string | null) => {
-    setSelectedCashUpId(sessionId);
-    if (sessionId) {
-      const session = cashUpHistory.find(s => s.id === sessionId);
+  const loadSessionDetails = (sessionIdOrSpecialValue: string | null) => {
+    if (sessionIdOrSpecialValue === NEW_SESSION_VALUE) {
+      setSelectedCashUpId(null);
+    } else {
+      setSelectedCashUpId(sessionIdOrSpecialValue);
+    }
+
+    if (sessionIdOrSpecialValue && sessionIdOrSpecialValue !== NEW_SESSION_VALUE) {
+      const session = cashUpHistory.find(s => s.id === sessionIdOrSpecialValue);
       if (session) {
         setFloatAmount(session.floatAmount);
         setSystemCashTakings(session.systemCash);
@@ -355,12 +361,15 @@ export function CashUpManagementTab() {
           {cashUpHistory.length === 0 ? (
             <p className="text-muted-foreground">No cash up history found.</p>
           ) : (
-            <Select onValueChange={(value) => loadSessionDetails(value)} value={selectedCashUpId || ""}>
+            <Select 
+                onValueChange={(value) => loadSessionDetails(value === NEW_SESSION_VALUE ? null : value)} 
+                value={selectedCashUpId || NEW_SESSION_VALUE}
+            >
               <SelectTrigger className="w-full mb-4">
                 <SelectValue placeholder="Select a past cash up session to view, or start new" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">-- Start New / View Current Session --</SelectItem>
+                <SelectItem value={NEW_SESSION_VALUE}>-- Start New / View Current Session --</SelectItem>
                 {cashUpHistory.map(session => (
                   <SelectItem key={session.id} value={session.id}>
                     {format(new Date(session.timestamp), "PPP p")} (Float: ${session.floatAmount.toFixed(2)})
@@ -425,3 +434,4 @@ export function CashUpManagementTab() {
     </div>
   );
 }
+
