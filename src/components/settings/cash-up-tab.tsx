@@ -240,15 +240,13 @@ export function CashUpManagementTab() {
   const isViewingHistory = !!selectedCashUpId;
 
   const handlePrintCashUp = () => {
-    console.log("handlePrintCashUp called"); // Diagnostic log
+    console.log("[Print Debug] handlePrintCashUp function entered.");
     try {
-      // Adding a small delay
-      setTimeout(() => {
-        window.print();
-        console.log("window.print() executed after timeout");
-      }, 100); // 100ms delay
+      console.log("[Print Debug] About to call window.print() directly.");
+      window.print();
+      console.log("[Print Debug] window.print() call has been executed.");
     } catch (e) {
-      console.error("Error calling window.print():", e);
+      console.error("[Print Debug] Error occurred during window.print():", e);
     }
   };
 
@@ -460,4 +458,3 @@ export function CashUpManagementTab() {
     </div>
   );
 }
-
