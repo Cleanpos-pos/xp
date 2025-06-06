@@ -178,3 +178,25 @@ export interface PrinterSettings {
   created_at?: string;
   updated_at?: string;
 }
+
+export type SpecialOfferTypeIdentifier = 'BUY_X_GET_Y' | 'BUNDLE_DEAL' | 'SPEND_GET_FREE_ITEM';
+
+export interface SpecialOffer {
+  id?: string; // UUID from Supabase, primary key. Optional for upsert.
+  offer_type_identifier: SpecialOfferTypeIdentifier; // Unique key for matching UI to DB record
+  is_active?: boolean;
+  valid_from?: string | null; // ISO date string
+  valid_to?: string | null; // ISO date string
+  notes?: string | null;
+  // Fields for "Buy X Get Y"
+  buy_x_items?: number | null;
+  pay_for_y_items?: number | null;
+  // Fields for "Bundle Deal"
+  bundle_item_count?: number | null;
+  bundle_price?: number | null;
+  // Fields for "Spend & Get"
+  spend_threshold?: number | null;
+  free_item_description?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
