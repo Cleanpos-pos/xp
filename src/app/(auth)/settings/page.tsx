@@ -18,6 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffAction, toggleStaffActiveStatusAction } from "./actions";
+import { getCompanySettingsAction, updateCompanySettingsAction } from "./company-settings-actions"; // Import company settings actions
+import type { CompanySettings } from "@/types"; // Import CompanySettings type
 import { useToast } from "@/hooks/use-toast";
 import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon } from "lucide-react";
 import Link from 'next/link';
@@ -116,12 +118,17 @@ export default function SettingsPage() {
 
 
   // Company & Regional Settings State
-  const [companyName, setCompanyName] = React.useState<string>("XP Clean Ltd.");
-  const [companyAddress, setCompanyAddress] = React.useState<string>("123 Clean Street, Suite 100, YourTown, YT 54321");
-  const [companyPhone, setCompanyPhone] = React.useState<string>("(555) 123-4567");
-  const [companyLogoUrl, setCompanyLogoUrl] = React.useState<string | null>("https://placehold.co/150x50.png?text=Your+Logo");
-  const [vatTaxId, setVatTaxId] = React.useState<string>("GB123456789");
-  const [vatSalesTaxRate, setVatSalesTaxRate] = React.useState<string>("20");
+  const [companySettings, setCompanySettings] = React.useState<Partial<CompanySettings>>({});
+  const [isLoadingCompanySettings, setIsLoadingCompanySettings] = React.useState(true);
+  const [isSavingCompanySettings, setIsSavingCompanySettings] = React.useState(false);
+  
+  // Individual state for form fields to manage controlled components
+  const [companyName, setCompanyName] = React.useState<string>("");
+  const [companyAddress, setCompanyAddress] = React.useState<string>("");
+  const [companyPhone, setCompanyPhone] = React.useState<string>("");
+  const [companyLogoUrl, setCompanyLogoUrl] = React.useState<string | null>(null);
+  const [vatTaxId, setVatTaxId] = React.useState<string>("");
+  const [vatSalesTaxRate, setVatSalesTaxRate] = React.useState<string>("0");
   const [includeVatInPrices, setIncludeVatInPrices] = React.useState<boolean>(true);
   const [selectedCurrency, setSelectedCurrency] = React.useState<string>("GBP");
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("en");
@@ -174,9 +181,44 @@ export default function SettingsPage() {
     }
   }, [toast]);
 
+  const fetchCompanySettings = React.useCallback(async () => {
+    setIsLoadingCompanySettings(true);
+    try {
+      const settings = await getCompanySettingsAction();
+      if (settings) {
+        setCompanySettings(settings);
+        setCompanyName(settings.company_name || "XP Clean Ltd.");
+        setCompanyAddress(settings.company_address || "123 Clean Street, Suite 100, YourTown, YT 54321");
+        setCompanyPhone(settings.company_phone || "(555) 123-4567");
+        setCompanyLogoUrl(settings.company_logo_url || "https://placehold.co/150x50.png?text=Your+Logo");
+        setVatTaxId(settings.vat_tax_id || "GB123456789");
+        setVatSalesTaxRate(settings.vat_sales_tax_rate?.toString() || "20");
+        setIncludeVatInPrices(settings.include_vat_in_prices !== undefined ? settings.include_vat_in_prices : true);
+        setSelectedCurrency(settings.selected_currency || "GBP");
+        setSelectedLanguage(settings.selected_language || "en");
+      } else {
+        // Set default values if no settings found
+        setCompanyName("XP Clean Ltd.");
+        setCompanyAddress("123 Clean Street, Suite 100, YourTown, YT 54321");
+        setCompanyPhone("(555) 123-4567");
+        setCompanyLogoUrl("https://placehold.co/150x50.png?text=Your+Logo");
+        setVatTaxId("GB123456789");
+        setVatSalesTaxRate("20");
+        setIncludeVatInPrices(true);
+        setSelectedCurrency("GBP");
+        setSelectedLanguage("en");
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to load company settings.", variant: "destructive" });
+    } finally {
+      setIsLoadingCompanySettings(false);
+    }
+  }, [toast]);
+
   React.useEffect(() => {
     fetchStaff();
-  }, [fetchStaff]);
+    fetchCompanySettings();
+  }, [fetchStaff, fetchCompanySettings]);
 
   const form = useForm<AddStaffInput>({
     resolver: zodResolver(AddStaffSchema),
@@ -257,12 +299,35 @@ export default function SettingsPage() {
     setStaffToRemove(null);
   };
 
-
-  const handleSaveCompanyRegionalSettings = () => {
-    toast({
-      title: "Company & Regional Settings (Mock) Saved",
-      description: `Company: ${companyName}, Address: ${companyAddress}, Phone: ${companyPhone}, Logo URL (mock): ${companyLogoUrl}, Currency: ${selectedCurrency}, Language: ${selectedLanguage}, VAT ID: ${vatTaxId}, VAT Rate: ${vatSalesTaxRate}%, VAT Included: ${includeVatInPrices}. Full implementation requires backend.`,
-    });
+  const handleSaveCompanyRegionalSettings = async () => {
+    setIsSavingCompanySettings(true);
+    const settingsToSave: CompanySettings = {
+      id: companySettings.id || 'global_settings', // Ensure 'global_settings' if new
+      company_name: companyName,
+      company_address: companyAddress,
+      company_phone: companyPhone,
+      company_logo_url: companyLogoUrl,
+      vat_tax_id: vatTaxId,
+      vat_sales_tax_rate: parseFloat(vatSalesTaxRate) || 0,
+      include_vat_in_prices: includeVatInPrices,
+      selected_currency: selectedCurrency,
+      selected_language: selectedLanguage,
+    };
+    const result = await updateCompanySettingsAction(settingsToSave);
+    if (result.success) {
+      toast({
+        title: "Settings Saved",
+        description: result.message || "Company & Regional settings updated successfully.",
+      });
+      fetchCompanySettings(); // Re-fetch to confirm and get updated timestamps
+    } else {
+      toast({
+        title: "Error Saving Settings",
+        description: result.message || "Failed to update company settings.",
+        variant: "destructive",
+      });
+    }
+    setIsSavingCompanySettings(false);
   };
 
   const handleSavePrinterSettings = () => {
@@ -819,7 +884,7 @@ export default function SettingsPage() {
 
         <TabsContent value="cashUp" className="mt-6">
           <Card className="shadow-xl print-no-break">
-            <CardContent className="p-0 sm:p-6"> {/* Remove padding on small screens for CardContent */}
+            <CardContent className="p-0 sm:p-6 thermal-receipt-print-area"> {/* Remove padding on small screens for CardContent */}
               <CashUpManagementTab />
             </CardContent>
           </Card>
@@ -905,7 +970,7 @@ export default function SettingsPage() {
                 <Textarea id="receipt-footer" value={receiptFooter} onChange={(e) => setReceiptFooter(e.target.value)} placeholder="e.g., Thank you! Visit us again at www.example.com" className="mt-1" rows={2}/>
               </div>
 
-              <Button onClick={handleSavePrinterSettings}>Save Printer Settings</Button>
+              <Button onClick={handleSavePrinterSettings} disabled={isLoadingCompanySettings}>Save Printer Settings</Button>
                <p className="text-xs text-muted-foreground pt-4">
                 Note: These are UI placeholders. Actual printer selection and control requires system-level integration.
               </p>
@@ -919,102 +984,115 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <Building className="mr-2 h-6 w-6" /> Company &amp; Regional Settings
               </CardTitle>
-              <CardDescription>Manage company details, system currency, language, and tax settings. (UI Placeholders)</CardDescription>
+              <CardDescription>Manage company details, system currency, language, and tax settings.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-               <div className="space-y-2">
-                <Label>Company Logo</Label>
-                <div className="flex items-center gap-4">
-                  {companyLogoUrl ? (
-                    <Image
-                      src={companyLogoUrl}
-                      alt="Company Logo Placeholder"
-                      width={150}
-                      height={50}
-                      className="rounded-md border object-contain"
-                      data-ai-hint="company logo"
-                    />
-                  ) : (
-                    <div className="w-[150px] h-[50px] flex items-center justify-center rounded-md border border-dashed text-muted-foreground">
-                      No Logo
+              {isLoadingCompanySettings ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-10 w-2/3" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Company Logo</Label>
+                    <div className="flex items-center gap-4">
+                      {companyLogoUrl ? (
+                        <Image
+                          src={companyLogoUrl}
+                          alt="Company Logo Placeholder"
+                          width={150}
+                          height={50}
+                          className="rounded-md border object-contain"
+                          data-ai-hint="company logo"
+                        />
+                      ) : (
+                        <div className="w-[150px] h-[50px] flex items-center justify-center rounded-md border border-dashed text-muted-foreground">
+                          No Logo
+                        </div>
+                      )}
+                      <Button variant="outline" onClick={handleLogoUploadPlaceholder}>
+                        <ImageUp className="mr-2 h-4 w-4" /> Upload / Change Logo
+                      </Button>
                     </div>
-                  )}
-                  <Button variant="outline" onClick={handleLogoUploadPlaceholder}>
-                    <ImageUp className="mr-2 h-4 w-4" /> Upload / Change Logo
+                    <p className={cn("text-muted-foreground", "text-xs")}>
+                      Placeholder for logo upload. Actual file upload requires backend integration.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <Label htmlFor="company-name">Company Name</Label>
+                        <Input id="company-name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your Company Ltd." className="mt-1" />
+                    </div>
+                    <div>
+                        <Label htmlFor="company-phone">Company Phone</Label>
+                        <Input id="company-phone" value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} placeholder="(555) 123-4567" className="mt-1" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="company-address">Company Address</Label>
+                    <Textarea id="company-address" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} placeholder="123 Main St, City, Country" className="mt-1" rows={3}/>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="vat-tax-id">VAT / Tax ID Number</Label>
+                      <Input id="vat-tax-id" value={vatTaxId} onChange={(e) => setVatTaxId(e.target.value)} placeholder="e.g., GB123456789" className="mt-1" />
+                    </div>
+                    <div>
+                      <Label htmlFor="vat-sales-tax-rate">VAT / Sales Tax Rate (%)</Label>
+                      <Input id="vat-sales-tax-rate" type="number" value={vatSalesTaxRate} onChange={(e) => setVatSalesTaxRate(e.target.value)} placeholder="e.g., 20" className="mt-1" />
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Switch id="include-vat" checked={includeVatInPrices} onCheckedChange={setIncludeVatInPrices} />
+                    <Label htmlFor="include-vat">Include VAT / Sales Tax in Displayed Service Prices</Label>
+                  </div>
+
+                  <div className="border-t pt-6 space-y-2">
+                    <h3 className="text-md font-medium text-muted-foreground">Regional Preferences</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <Label htmlFor="system-currency" className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-muted-foreground" /> System Currency</Label>
+                      <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+                        <SelectTrigger id="system-currency" className="mt-1">
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USD">USD - US Dollar</SelectItem>
+                          <SelectItem value="EUR">EUR - Euro</SelectItem>
+                          <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                          <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                          <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="system-language" className="flex items-center"><Globe className="mr-2 h-4 w-4 text-muted-foreground" /> Language</Label>
+                      <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                        <SelectTrigger id="system-language" className="mt-1">
+                          <SelectValue placeholder="Select language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="en">English</SelectItem>
+                          <SelectItem value="es">Español (Spanish)</SelectItem>
+                          <SelectItem value="fr">Français (French)</SelectItem>
+                          <SelectItem value="de">Deutsch (German)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button onClick={handleSaveCompanyRegionalSettings} disabled={isSavingCompanySettings}>
+                    {isSavingCompanySettings ? "Saving..." : "Save Company & Regional Settings"}
                   </Button>
-                </div>
-                <p className={cn("text-muted-foreground", "text-xs")}>
-                  Placeholder for logo upload. Actual file upload requires backend integration.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div>
-                    <Label htmlFor="company-name">Company Name</Label>
-                    <Input id="company-name" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your Company Ltd." className="mt-1" />
-                </div>
-                <div>
-                    <Label htmlFor="company-phone">Company Phone</Label>
-                    <Input id="company-phone" value={companyPhone} onChange={(e) => setCompanyPhone(e.target.value)} placeholder="(555) 123-4567" className="mt-1" />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="company-address">Company Address</Label>
-                <Textarea id="company-address" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} placeholder="123 Main St, City, Country" className="mt-1" rows={3}/>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="vat-tax-id">VAT / Tax ID Number</Label>
-                  <Input id="vat-tax-id" value={vatTaxId} onChange={(e) => setVatTaxId(e.target.value)} placeholder="e.g., GB123456789" className="mt-1" />
-                </div>
-                 <div>
-                  <Label htmlFor="vat-sales-tax-rate">VAT / Sales Tax Rate (%)</Label>
-                  <Input id="vat-sales-tax-rate" type="number" value={vatSalesTaxRate} onChange={(e) => setVatSalesTaxRate(e.target.value)} placeholder="e.g., 20" className="mt-1" />
-                </div>
-              </div>
-               <div className="flex items-center space-x-2">
-                <Switch id="include-vat" checked={includeVatInPrices} onCheckedChange={setIncludeVatInPrices} />
-                <Label htmlFor="include-vat">Include VAT / Sales Tax in Displayed Service Prices</Label>
-              </div>
-
-              <div className="border-t pt-6 space-y-2">
-                <h3 className="text-md font-medium text-muted-foreground">Regional Preferences</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="system-currency" className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-muted-foreground" /> System Currency</Label>
-                  <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
-                    <SelectTrigger id="system-currency" className="mt-1">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD - US Dollar</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                      <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
-                      <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="system-language" className="flex items-center"><Globe className="mr-2 h-4 w-4 text-muted-foreground" /> Language</Label>
-                  <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
-                    <SelectTrigger id="system-language" className="mt-1">
-                      <SelectValue placeholder="Select language" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="es">Español (Spanish)</SelectItem>
-                      <SelectItem value="fr">Français (French)</SelectItem>
-                      <SelectItem value="de">Deutsch (German)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button onClick={handleSaveCompanyRegionalSettings}>Save Company &amp; Regional Settings</Button>
-               <p className="text-xs text-muted-foreground pt-4">
-                Note: These settings are currently UI placeholders. Full integration requires backend support.
-              </p>
+                  <p className="text-xs text-muted-foreground pt-4">
+                    These settings are now saved to and loaded from your Supabase database.
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1043,5 +1121,4 @@ export default function SettingsPage() {
     </div>
   );
 }
-
     
