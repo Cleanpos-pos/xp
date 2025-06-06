@@ -1,7 +1,7 @@
 
 "use client";
 
-import *RHFFormItemeact from "react";
+import React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -199,6 +199,7 @@ export default function SettingsPage() {
         setSelectedCurrency(settings.selected_currency || "GBP");
         setSelectedLanguage(settings.selected_language || "en");
       } else {
+        // Default values if no settings found in DB
         setCompanyName("XP Clean Ltd.");
         setCompanyAddress("123 Clean Street, Suite 100, YourTown, YT 54321");
         setCompanyPhone("(555) 123-4567");
@@ -330,7 +331,7 @@ export default function SettingsPage() {
   const handleSaveCompanyRegionalSettings = async () => {
     setIsSavingCompanySettings(true);
     const settingsToSave: CompanySettings = {
-      id: 'global_settings',
+      id: 'global_settings', // The fixed ID
       company_name: companyName,
       company_address: companyAddress,
       company_phone: companyPhone,
@@ -340,6 +341,7 @@ export default function SettingsPage() {
       include_vat_in_prices: includeVatInPrices,
       selected_currency: selectedCurrency,
       selected_language: selectedLanguage,
+      // created_at and updated_at are handled by DB or action
     };
     const result = await updateCompanySettingsAction(settingsToSave);
     if (result.success) {
@@ -347,7 +349,7 @@ export default function SettingsPage() {
         title: "Settings Saved",
         description: result.message || "Company & Regional settings updated successfully.",
       });
-      fetchCompanySettings(); 
+      fetchCompanySettings(); // Re-fetch to ensure UI is consistent with DB
     } else {
       toast({
         title: "Error Saving Settings",
@@ -361,12 +363,13 @@ export default function SettingsPage() {
   const handleSavePrinterSettings = async () => {
     setIsSavingPrinterSettings(true);
     const settingsToSave: PrinterSettings = {
-      id: 'global_printer_settings',
+      id: 'global_printer_settings', // The fixed ID
       receipt_printer: receiptPrinter,
       customer_receipt_copies: customerReceiptCopies,
       stub_printer: stubPrinter,
       receipt_header: receiptHeader,
       receipt_footer: receiptFooter,
+      // created_at and updated_at are handled by DB or action
     };
     const result = await updatePrinterSettingsAction(settingsToSave);
     if (result.success) {
@@ -374,7 +377,7 @@ export default function SettingsPage() {
         title: "Printer Settings Saved",
         description: result.message || "Printer settings updated successfully.",
       });
-      fetchPrinterSettings();
+      fetchPrinterSettings(); // Re-fetch to ensure UI is consistent with DB
     } else {
       toast({
         title: "Error Saving Printer Settings",
@@ -928,9 +931,9 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="cashUp" className="mt-6">
+        <TabsContent value="cashUp" className="mt-6 print-this-specific-area">
           <Card className="shadow-xl print-no-break">
-            <CardContent className="p-0 sm:p-6 thermal-receipt-print-area">
+            <CardContent className="p-0 sm:p-6">
               <CashUpManagementTab />
             </CardContent>
           </Card>
