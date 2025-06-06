@@ -152,3 +152,29 @@ export interface StaffCredentials {
   created_at?: string;
   updated_at?: string;
 }
+
+export interface CompanySettings {
+  id: string; // e.g., 'global_settings'
+  company_name?: string;
+  company_address?: string;
+  company_phone?: string;
+  company_logo_url?: string | null;
+  vat_tax_id?: string;
+  vat_sales_tax_rate?: number;
+  include_vat_in_prices?: boolean;
+  selected_currency?: string;
+  selected_language?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PrinterSettings {
+  id: string; // e.g., 'global_printer_settings'
+  receipt_printer?: string;
+  customer_receipt_copies?: string;
+  stub_printer?: string;
+  receipt_header?: string;
+  receipt_footer?: string;
+  created_at?: string;
+  updated_at?: string;
+}

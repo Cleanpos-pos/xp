@@ -1,7 +1,7 @@
 
 "use client";
 
-import * as React from "react";
+import *RHFFormItemeact from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -18,8 +18,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
 import { type AddStaffInput, AddStaffSchema } from "./settings.schema";
 import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffAction, toggleStaffActiveStatusAction } from "./actions";
-import { getCompanySettingsAction, updateCompanySettingsAction } from "./company-settings-actions"; // Import company settings actions
-import type { CompanySettings } from "@/types"; // Import CompanySettings type
+import { getCompanySettingsAction, updateCompanySettingsAction } from "./company-settings-actions";
+import { getPrinterSettingsAction, updatePrinterSettingsAction } from "./printer-settings-actions"; // Import printer settings actions
+import type { CompanySettings, PrinterSettings } from "@/types"; // Import CompanySettings & PrinterSettings type
 import { useToast } from "@/hooks/use-toast";
 import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon } from "lucide-react";
 import Link from 'next/link';
@@ -122,7 +123,6 @@ export default function SettingsPage() {
   const [isLoadingCompanySettings, setIsLoadingCompanySettings] = React.useState(true);
   const [isSavingCompanySettings, setIsSavingCompanySettings] = React.useState(false);
   
-  // Individual state for form fields to manage controlled components
   const [companyName, setCompanyName] = React.useState<string>("");
   const [companyAddress, setCompanyAddress] = React.useState<string>("");
   const [companyPhone, setCompanyPhone] = React.useState<string>("");
@@ -135,6 +135,8 @@ export default function SettingsPage() {
 
 
   // Printer Settings State
+  const [isLoadingPrinterSettings, setIsLoadingPrinterSettings] = React.useState(true);
+  const [isSavingPrinterSettings, setIsSavingPrinterSettings] = React.useState(false);
   const [receiptPrinter, setReceiptPrinter] = React.useState<string>("thermal_80mm");
   const [customerReceiptCopies, setCustomerReceiptCopies] = React.useState<string>("1");
   const [stubPrinter, setStubPrinter] = React.useState<string>("dotmatrix_76mm");
@@ -197,7 +199,6 @@ export default function SettingsPage() {
         setSelectedCurrency(settings.selected_currency || "GBP");
         setSelectedLanguage(settings.selected_language || "en");
       } else {
-        // Set default values if no settings found
         setCompanyName("XP Clean Ltd.");
         setCompanyAddress("123 Clean Street, Suite 100, YourTown, YT 54321");
         setCompanyPhone("(555) 123-4567");
@@ -215,10 +216,37 @@ export default function SettingsPage() {
     }
   }, [toast]);
 
+  const fetchPrinterSettings = React.useCallback(async () => {
+    setIsLoadingPrinterSettings(true);
+    try {
+      const settings = await getPrinterSettingsAction();
+      if (settings) {
+        setReceiptPrinter(settings.receipt_printer || "thermal_80mm");
+        setCustomerReceiptCopies(settings.customer_receipt_copies || "1");
+        setStubPrinter(settings.stub_printer || "dotmatrix_76mm");
+        setReceiptHeader(settings.receipt_header || "XP Clean - Your Town Branch");
+        setReceiptFooter(settings.receipt_footer || "Thank you for your business!");
+      } else {
+        // Set default values if no settings found
+        setReceiptPrinter("thermal_80mm");
+        setCustomerReceiptCopies("1");
+        setStubPrinter("dotmatrix_76mm");
+        setReceiptHeader("XP Clean - Your Town Branch");
+        setReceiptFooter("Thank you for your business!");
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to load printer settings.", variant: "destructive" });
+    } finally {
+      setIsLoadingPrinterSettings(false);
+    }
+  }, [toast]);
+
+
   React.useEffect(() => {
     fetchStaff();
     fetchCompanySettings();
-  }, [fetchStaff, fetchCompanySettings]);
+    fetchPrinterSettings();
+  }, [fetchStaff, fetchCompanySettings, fetchPrinterSettings]);
 
   const form = useForm<AddStaffInput>({
     resolver: zodResolver(AddStaffSchema),
@@ -291,7 +319,7 @@ export default function SettingsPage() {
     const result = await removeStaffAction(staffToRemove.login_id);
     if (result.success) {
       toast({ title: "Staff Removed", description: result.message });
-      fetchStaff(); // Refresh the staff list
+      fetchStaff(); 
     } else {
       toast({ title: "Error", description: result.message || "Failed to remove staff.", variant: "destructive" });
     }
@@ -302,7 +330,7 @@ export default function SettingsPage() {
   const handleSaveCompanyRegionalSettings = async () => {
     setIsSavingCompanySettings(true);
     const settingsToSave: CompanySettings = {
-      id: companySettings.id || 'global_settings', // Ensure 'global_settings' if new
+      id: 'global_settings',
       company_name: companyName,
       company_address: companyAddress,
       company_phone: companyPhone,
@@ -319,7 +347,7 @@ export default function SettingsPage() {
         title: "Settings Saved",
         description: result.message || "Company & Regional settings updated successfully.",
       });
-      fetchCompanySettings(); // Re-fetch to confirm and get updated timestamps
+      fetchCompanySettings(); 
     } else {
       toast({
         title: "Error Saving Settings",
@@ -330,11 +358,31 @@ export default function SettingsPage() {
     setIsSavingCompanySettings(false);
   };
 
-  const handleSavePrinterSettings = () => {
-    toast({
-      title: "Printer Settings (Mock) Saved",
-      description: `Receipt Printer: ${receiptPrinter}, Customer Copies: ${customerReceiptCopies}, Stub Printer: ${stubPrinter}. Header/Footer updated. These are UI placeholders.`,
-    });
+  const handleSavePrinterSettings = async () => {
+    setIsSavingPrinterSettings(true);
+    const settingsToSave: PrinterSettings = {
+      id: 'global_printer_settings',
+      receipt_printer: receiptPrinter,
+      customer_receipt_copies: customerReceiptCopies,
+      stub_printer: stubPrinter,
+      receipt_header: receiptHeader,
+      receipt_footer: receiptFooter,
+    };
+    const result = await updatePrinterSettingsAction(settingsToSave);
+    if (result.success) {
+      toast({
+        title: "Printer Settings Saved",
+        description: result.message || "Printer settings updated successfully.",
+      });
+      fetchPrinterSettings();
+    } else {
+      toast({
+        title: "Error Saving Printer Settings",
+        description: result.message || "Failed to update printer settings.",
+        variant: "destructive",
+      });
+    }
+    setIsSavingPrinterSettings(false);
   };
 
   const handleSaveSpecialOffer = (offerType: string, validFrom?: Date, validTo?: Date) => {
@@ -678,7 +726,6 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="orderStatus" className="mt-6">
-          {/* Placeholder for OrderStatusUpdateTab - To be implemented by App Prototyper */}
           <Card className="shadow-xl">
              <CardHeader>
                 <CardTitle className="font-headline text-2xl flex items-center">
@@ -691,7 +738,6 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
                 <p className="text-muted-foreground">Order status update interface will be displayed here.</p>
-                {/* <OrderStatusUpdateTab /> */}
             </CardContent>
           </Card>
         </TabsContent>
@@ -884,7 +930,7 @@ export default function SettingsPage() {
 
         <TabsContent value="cashUp" className="mt-6">
           <Card className="shadow-xl print-no-break">
-            <CardContent className="p-0 sm:p-6 thermal-receipt-print-area"> {/* Remove padding on small screens for CardContent */}
+            <CardContent className="p-0 sm:p-6 thermal-receipt-print-area">
               <CashUpManagementTab />
             </CardContent>
           </Card>
@@ -896,84 +942,94 @@ export default function SettingsPage() {
               <CardTitle className="font-headline text-2xl flex items-center">
                 <PrinterIcon className="mr-2 h-6 w-6" /> Printer Setup
               </CardTitle>
-              <CardDescription>Configure default printers and receipt templates. (UI Placeholders)</CardDescription>
+              <CardDescription>Configure default printers and receipt templates. Settings are saved to Supabase.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="p-4 border rounded-lg bg-blue-50 border-blue-200 text-blue-700">
-                <div className="flex items-start">
-                  <InfoIcon className="mr-3 h-5 w-5 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-semibold">Important Notes on Printing:</h4>
-                    <ul className="list-disc list-inside text-sm mt-1 space-y-0.5">
-                      <li>This application uses your browser's print functionality.</li>
-                      <li>Ensure your printers (e.g., receipt printer, tag printer) are correctly installed and configured in your computer's Operating System (Windows, macOS, etc.).</li>
-                      <li>When the print dialog appears, you must select the correct printer and appropriate paper size (e.g., 80mm roll for thermal receipts).</li>
-                      <li>The application styles content for printing, but direct printer control is managed by your browser and OS.</li>
-                    </ul>
+              {isLoadingPrinterSettings ? (
+                 <div className="space-y-4">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-2/3" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : (
+                <>
+                  <div className="p-4 border rounded-lg bg-blue-50 border-blue-200 text-blue-700">
+                    <div className="flex items-start">
+                      <InfoIcon className="mr-3 h-5 w-5 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold">Important Notes on Printing:</h4>
+                        <ul className="list-disc list-inside text-sm mt-1 space-y-0.5">
+                          <li>This application uses your browser's print functionality.</li>
+                          <li>Ensure your printers (e.g., receipt printer, tag printer) are correctly installed and configured in your computer's Operating System (Windows, macOS, etc.).</li>
+                          <li>When the print dialog appears, you must select the correct printer and appropriate paper size (e.g., 80mm roll for thermal receipts).</li>
+                          <li>The application styles content for printing, but direct printer control is managed by your browser and OS.</li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                <div>
-                  <Label htmlFor="receipt-printer" className="flex items-center"><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground" /> Default Receipt Printer</Label>
-                  <Select value={receiptPrinter} onValueChange={setReceiptPrinter}>
-                    <SelectTrigger id="receipt-printer" className="mt-1">
-                      <SelectValue placeholder="Select receipt printer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="thermal_80mm">Thermal Printer (80mm)</SelectItem>
-                      <SelectItem value="dotmatrix_76mm">Dot Matrix (76mm)</SelectItem>
-                      <SelectItem value="a4_letter">Standard A4/Letter Printer</SelectItem>
-                      <SelectItem value="none">None (Manual/No Print)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="customer-receipt-copies">Customer Receipt Copies</Label>
-                  <Select value={customerReceiptCopies} onValueChange={setCustomerReceiptCopies}>
-                    <SelectTrigger id="customer-receipt-copies" className="mt-1">
-                      <SelectValue placeholder="Select no. of copies" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 Copy</SelectItem>
-                      <SelectItem value="2">2 Copies</SelectItem>
-                      <SelectItem value="3">3 Copies</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="stub-printer" className="flex items-center"><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground" /> Default Stub/Tag Printer</Label>
-                  <Select value={stubPrinter} onValueChange={setStubPrinter}>
-                    <SelectTrigger id="stub-printer" className="mt-1">
-                      <SelectValue placeholder="Select stub/tag printer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dotmatrix_76mm">Dot Matrix (76mm)</SelectItem>
-                      <SelectItem value="thermal_80mm">Thermal Printer (80mm - for labels)</SelectItem>
-                       <SelectItem value="a4_letter_sticker">A4/Letter (Sticker Sheet)</SelectItem>
-                      <SelectItem value="none">None (Manual/No Print)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                    <div>
+                      <Label htmlFor="receipt-printer" className="flex items-center"><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground" /> Default Receipt Printer</Label>
+                      <Select value={receiptPrinter} onValueChange={setReceiptPrinter}>
+                        <SelectTrigger id="receipt-printer" className="mt-1">
+                          <SelectValue placeholder="Select receipt printer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="thermal_80mm">Thermal Printer (80mm)</SelectItem>
+                          <SelectItem value="dotmatrix_76mm">Dot Matrix (76mm)</SelectItem>
+                          <SelectItem value="a4_letter">Standard A4/Letter Printer</SelectItem>
+                          <SelectItem value="none">None (Manual/No Print)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="customer-receipt-copies">Customer Receipt Copies</Label>
+                      <Select value={customerReceiptCopies} onValueChange={setCustomerReceiptCopies}>
+                        <SelectTrigger id="customer-receipt-copies" className="mt-1">
+                          <SelectValue placeholder="Select no. of copies" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 Copy</SelectItem>
+                          <SelectItem value="2">2 Copies</SelectItem>
+                          <SelectItem value="3">3 Copies</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="stub-printer" className="flex items-center"><MonitorSmartphone className="mr-2 h-4 w-4 text-muted-foreground" /> Default Stub/Tag Printer</Label>
+                      <Select value={stubPrinter} onValueChange={setStubPrinter}>
+                        <SelectTrigger id="stub-printer" className="mt-1">
+                          <SelectValue placeholder="Select stub/tag printer" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="dotmatrix_76mm">Dot Matrix (76mm)</SelectItem>
+                          <SelectItem value="thermal_80mm">Thermal Printer (80mm - for labels)</SelectItem>
+                          <SelectItem value="a4_letter_sticker">A4/Letter (Sticker Sheet)</SelectItem>
+                          <SelectItem value="none">None (Manual/No Print)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-              <div>
-                <Label htmlFor="receipt-header">Receipt Header Text</Label>
-                <Textarea id="receipt-header" value={receiptHeader} onChange={(e) => setReceiptHeader(e.target.value)} placeholder="e.g., Your Company Name - Address - Phone" className="mt-1" rows={2}/>
-                <p className="text-xs text-muted-foreground mt-1">
-                    Can be auto-generated from Company Settings (future implementation) or customized here.
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="receipt-footer">Receipt Footer Text</Label>
-                <Textarea id="receipt-footer" value={receiptFooter} onChange={(e) => setReceiptFooter(e.target.value)} placeholder="e.g., Thank you! Visit us again at www.example.com" className="mt-1" rows={2}/>
-              </div>
+                  <div>
+                    <Label htmlFor="receipt-header">Receipt Header Text</Label>
+                    <Textarea id="receipt-header" value={receiptHeader} onChange={(e) => setReceiptHeader(e.target.value)} placeholder="e.g., Your Company Name - Address - Phone" className="mt-1" rows={2}/>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        This will be displayed at the top of printed receipts.
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="receipt-footer">Receipt Footer Text</Label>
+                    <Textarea id="receipt-footer" value={receiptFooter} onChange={(e) => setReceiptFooter(e.target.value)} placeholder="e.g., Thank you! Visit us again at www.example.com" className="mt-1" rows={2}/>
+                  </div>
 
-              <Button onClick={handleSavePrinterSettings} disabled={isLoadingCompanySettings}>Save Printer Settings</Button>
-               <p className="text-xs text-muted-foreground pt-4">
-                Note: These are UI placeholders. Actual printer selection and control requires system-level integration.
-              </p>
+                  <Button onClick={handleSavePrinterSettings} disabled={isSavingPrinterSettings}>
+                    {isSavingPrinterSettings ? "Saving..." : "Save Printer Settings"}
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1121,4 +1177,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-    
