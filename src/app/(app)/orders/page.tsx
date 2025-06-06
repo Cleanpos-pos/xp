@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { updateOrderStatusAction } from './actions'; 
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Label } from "@/components/ui/label";
+import { Label } from "@/components/ui/label"; // <<<<------ THE CRITICAL IMPORT
 
 function getStatusBadgeVariant(status: OrderStatus): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
@@ -328,3 +328,5 @@ export default function OrderTrackingPage() {
     </div>
   );
 }
+
+    
