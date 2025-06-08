@@ -524,7 +524,7 @@ export default function SettingsPage() {
               value="staffManagement"
               className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
             >
-              Staff
+              <Users className="mr-1.5 h-4 w-4" /> Staff Admin
             </TabsTrigger>
             <TabsTrigger
               value="rolesPermissions"
