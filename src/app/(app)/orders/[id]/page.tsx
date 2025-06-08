@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react'; 
+import React, { use, useEffect, useState } from 'react';
 import { getOrderByIdDb } from '@/lib/data'; // Fetch from Supabase
 import type { Order, OrderItem, OrderStatus, PaymentStatus } from '@/types'; // Ensure OrderItem matches your types
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -40,7 +40,7 @@ const statusColors: Record<OrderStatus, string> = {
 function getPaymentStatusBadgeVariant(status?: PaymentStatus): "default" | "secondary" | "destructive" | "outline" {
   if (!status) return "outline";
   switch (status) {
-    case 'Paid': return 'default'; 
+    case 'Paid': return 'default';
     case 'Unpaid': return 'destructive';
     case 'Processing Payment': return 'secondary';
     case 'Refunded': return 'outline';
@@ -59,18 +59,19 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
   Paid: ShieldCheck,
   Unpaid: ShieldAlert,
   "Processing Payment": CreditCard,
-  Refunded: DollarSign, 
+  Refunded: DollarSign,
 }
 
 
 export default function OrderDetailsPage({ params }: { params: { id: string } }) {
+  const resolvedParams = use(params); // Unpack params using React.use()
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const [order, setOrder] = useState<Order | null | undefined>(undefined); // undefined for loading, null for not found
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const effectiveIsExpress = order?.isExpress || searchParams.get('express') === 'true';
 
   // Placeholder for VAT settings - in a real app, this would come from context/settings
@@ -79,7 +80,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
 
   useEffect(() => {
     async function fetchOrder() {
-      if (!params.id) {
+      if (!resolvedParams.id) { // Use resolvedParams.id
         setError("Order ID is missing.");
         setIsLoading(false);
         return;
@@ -87,7 +88,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       setIsLoading(true);
       setError(null);
       try {
-        const fetchedOrder = await getOrderByIdDb(params.id);
+        const fetchedOrder = await getOrderByIdDb(resolvedParams.id); // Use resolvedParams.id
         setOrder(fetchedOrder);
       } catch (err: any) {
         console.error("Failed to fetch order:", err);
@@ -98,7 +99,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       }
     }
     fetchOrder();
-  }, [params.id]);
+  }, [resolvedParams.id]); // Use resolvedParams.id in dependency array
 
 
   useEffect(() => {
@@ -108,15 +109,15 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     const printTypeParam = searchParams.get('printType');
 
     if (autoprint === 'true') {
-      console.log("Attempting to print for type:", printTypeParam); 
+      console.log("Attempting to print for type:", printTypeParam);
       const printTimeout = setTimeout(() => {
         window.print();
         // Optionally, remove query params after printing attempt
-        // router.replace(`/orders/${order.id}`, { scroll: false }); 
-      }, 100); 
+        // router.replace(`/orders/${resolvedParams.id}`, { scroll: false }); // Use resolvedParams.id
+      }, 100);
       return () => clearTimeout(printTimeout);
     }
-  }, [searchParams, params.id, router, order, effectiveIsExpress]); 
+  }, [searchParams, resolvedParams.id, router, order, effectiveIsExpress]); // Use resolvedParams.id
 
 
   if (isLoading) {
@@ -176,7 +177,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
 
   const handlePrint = (printType: string = "default") => {
     const queryParams = `?autoprint=true&printType=${printType}${effectiveIsExpress ? '&express=true' : ''}`;
-    router.push(`/orders/${order.id}${queryParams}`);
+    router.push(`/orders/${resolvedParams.id}${queryParams}`); // Use resolvedParams.id
   };
 
   const subTotal = order.totalAmount; // Assuming totalAmount from DB is pre-cart-override subtotal
@@ -304,7 +305,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
           </Table>
         </CardContent>
       </Card>
-      
+
       {order.notes && (
         <Card className="shadow-lg">
           <CardHeader>
@@ -318,5 +319,3 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     </div>
   );
 }
-
-    
