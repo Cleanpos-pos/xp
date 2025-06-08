@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -19,7 +20,7 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 print-hidden app-header-print-hidden">
       <SidebarTrigger className="sm:hidden" />
       {/* Added Logout Button */}
       <Button variant="ghost" size="sm" onClick={handleLogout}>
@@ -44,8 +45,14 @@ export function AppHeader() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Settings</DropdownMenuItem>
-          <DropdownMenuItem>Support</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/settings">Settings</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem disabled>
+            {/* Placeholder for support link, can be enabled later */}
+            {/* <Link href="/support">Support</Link> */}
+            Support (Coming Soon)
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           {/* Modified Dropdown Logout Item */}
           <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
