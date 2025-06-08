@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { use, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getOrderByIdDb } from '@/lib/data'; // Fetch from Supabase
 import type { Order, OrderItem, OrderStatus, PaymentStatus } from '@/types'; // Ensure OrderItem matches your types
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -64,7 +64,6 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
 
 
 export default function OrderDetailsPage({ params }: { params: { id: string } }) {
-  const resolvedParams = use(params); // Unpack params using React.use()
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -80,7 +79,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
 
   useEffect(() => {
     async function fetchOrder() {
-      if (!resolvedParams.id) { // Use resolvedParams.id
+      if (!params.id) {
         setError("Order ID is missing.");
         setIsLoading(false);
         return;
@@ -88,7 +87,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       setIsLoading(true);
       setError(null);
       try {
-        const fetchedOrder = await getOrderByIdDb(resolvedParams.id); // Use resolvedParams.id
+        const fetchedOrder = await getOrderByIdDb(params.id);
         setOrder(fetchedOrder);
       } catch (err: any) {
         console.error("Failed to fetch order:", err);
@@ -99,7 +98,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       }
     }
     fetchOrder();
-  }, [resolvedParams.id]); // Use resolvedParams.id in dependency array
+  }, [params.id]);
 
 
   useEffect(() => {
@@ -113,11 +112,11 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       const printTimeout = setTimeout(() => {
         window.print();
         // Optionally, remove query params after printing attempt
-        // router.replace(`/orders/${resolvedParams.id}`, { scroll: false }); // Use resolvedParams.id
+        // router.replace(`/orders/${params.id}`, { scroll: false });
       }, 100);
       return () => clearTimeout(printTimeout);
     }
-  }, [searchParams, resolvedParams.id, router, order, effectiveIsExpress]); // Use resolvedParams.id
+  }, [searchParams, params.id, router, order, effectiveIsExpress]);
 
 
   if (isLoading) {
@@ -177,7 +176,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
 
   const handlePrint = (printType: string = "default") => {
     const queryParams = `?autoprint=true&printType=${printType}${effectiveIsExpress ? '&express=true' : ''}`;
-    router.push(`/orders/${resolvedParams.id}${queryParams}`); // Use resolvedParams.id
+    router.push(`/orders/${params.id}${queryParams}`);
   };
 
   const subTotal = order.totalAmount; // Assuming totalAmount from DB is pre-cart-override subtotal
