@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, ListChecks, Users, ShoppingBag, Briefcase, BarChart3 } from "lucide-react";
+import { DollarSign, ListChecks, Users, ShoppingBag, Briefcase, BarChart3, Settings } from "lucide-react"; // Added Settings icon
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -42,8 +42,8 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3"> {/* Changed to md:grid-cols-3 */}
-        <Card className="shadow-md md:col-span-1"> {/* Recent Orders takes 1 column */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="shadow-md md:col-span-1"> {/* Recent Orders */}
           <CardHeader>
             <CardTitle>Recent Orders</CardTitle>
             <CardDescription>A quick look at the latest orders.</CardDescription>
@@ -60,7 +60,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-md md:col-span-1"> {/* Today's Takings takes 1 column */}
+        <Card className="shadow-md md:col-span-1"> {/* Today's Takings */}
           <CardHeader>
             <CardTitle className="flex items-center">
               <BarChart3 className="mr-2 h-5 w-5 text-primary" /> Today's Takings
@@ -85,7 +85,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
         
-        <Card className="shadow-md md:col-span-1"> {/* Quick Actions takes 1 column */}
+        <Card className="shadow-md md:col-span-1"> {/* Quick Actions */}
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
             <CardDescription>Commonly used functions.</CardDescription>
@@ -102,6 +102,24 @@ export default function DashboardPage() {
             </Link>
           </CardContent>
         </Card>
+
+        {/* New Settings Card */}
+        <Card className="shadow-md md:col-span-1">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Settings className="mr-2 h-5 w-5 text-primary" /> Application Settings
+            </CardTitle>
+            <CardDescription>Configure staff, catalog, printers, and more system options.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href="/settings">
+              <Button className="w-full" variant="secondary">
+                <Settings className="mr-2 h-4 w-4" /> Go to Settings
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );
