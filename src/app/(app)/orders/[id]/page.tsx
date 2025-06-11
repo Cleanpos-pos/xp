@@ -1,9 +1,9 @@
 
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { getOrderByIdDb } from '@/lib/data'; // Fetch from Supabase
-import type { Order, OrderItem, OrderStatus, PaymentStatus } from '@/types'; // Ensure OrderItem matches your types
+import React, { useEffect, useState, use } from 'react'; // Ensure 'use' is imported
+import { getOrderByIdDb } from '@/lib/data';
+import type { Order, OrderItem, OrderStatus, PaymentStatus } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,20 +62,26 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
   Refunded: DollarSign,
 }
 
+// Updated props type to expect params as a Promise
+interface OrderDetailsPageProps {
+  params: Promise<{ id: string }>;
+}
 
-export default function OrderDetailsPage({ params }: { params: { id: string } }) {
+export default function OrderDetailsPage({ params: paramsPromise }: OrderDetailsPageProps) {
+  // Unwrap the params Promise using React.use()
+  const params = use(paramsPromise);
+
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [order, setOrder] = useState<Order | null | undefined>(undefined); // undefined for loading, null for not found
+  const [order, setOrder] = useState<Order | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const effectiveIsExpress = order?.isExpress || searchParams.get('express') === 'true';
 
-  // Placeholder for VAT settings - in a real app, this would come from context/settings
-  const [isVatEnabled, setIsVatEnabled] = useState(true); // Default to true for demo
-  const [vatRate, setVatRate] = useState(0.20); // 20% VAT for demo
+  const [isVatEnabled, setIsVatEnabled] = useState(true);
+  const [vatRate, setVatRate] = useState(0.20);
 
   useEffect(() => {
     async function fetchOrder() {
@@ -98,11 +104,11 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       }
     }
     fetchOrder();
-  }, [params.id]);
+  }, [params.id]); // Now params.id is from the resolved params object
 
 
   useEffect(() => {
-    if (order === undefined || order === null) return; // Don't run if loading or not found
+    if (order === undefined || order === null) return;
 
     const autoprint = searchParams.get('autoprint');
     const printTypeParam = searchParams.get('printType');
@@ -111,12 +117,10 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       console.log("Attempting to print for type:", printTypeParam);
       const printTimeout = setTimeout(() => {
         window.print();
-        // Optionally, remove query params after printing attempt
-        // router.replace(`/orders/${params.id}`, { scroll: false });
       }, 100);
       return () => clearTimeout(printTimeout);
     }
-  }, [searchParams, params.id, router, order, effectiveIsExpress]);
+  }, [searchParams, params.id, router, order, effectiveIsExpress]); // Use resolved params.id
 
 
   if (isLoading) {
@@ -176,16 +180,12 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
 
   const handlePrint = (printType: string = "default") => {
     const queryParams = `?autoprint=true&printType=${printType}${effectiveIsExpress ? '&express=true' : ''}`;
-    router.push(`/orders/${params.id}${queryParams}`);
+    router.push(`/orders/${params.id}${queryParams}`); // Use resolved params.id
   };
 
-  const subTotal = order.totalAmount; // Assuming totalAmount from DB is pre-cart-override subtotal
+  const subTotal = order.totalAmount;
   const vatAmount = isVatEnabled ? subTotal * vatRate : 0;
   const grandTotal = isVatEnabled ? subTotal + vatAmount : subTotal;
-  // If totalAmount in DB is already the grand total after all discounts, adjust logic:
-  // const subTotalBeforeVAT = order.totalAmount / (1 + (isVatEnabled ? vatRate : 0));
-  // const vatAmount = order.totalAmount - subTotalBeforeVAT;
-  // const grandTotal = order.totalAmount;
 
 
   return (
@@ -197,7 +197,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
             </Button>
         </Link>
         <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled> {/* Edit Order to be implemented */}
+            <Button variant="outline" size="sm" disabled>
                 <Edit className="mr-2 h-4 w-4" /> Edit Order
             </Button>
             <Button variant="outline" size="sm" onClick={() => handlePrint('customer_copy')}><Printer className="mr-2 h-4 w-4" /> Print Customer Copy</Button>
@@ -233,8 +233,6 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
           <div className="space-y-1">
             <h4 className="text-sm font-medium flex items-center text-muted-foreground"><User className="mr-2 h-4 w-4" /> Customer</h4>
             <p className="text-base">{order.customerName}</p>
-            {/* Consider adding a link to customer details if available */}
-            {/* <Link href={`/customers/${order.customerId}`} className="text-xs text-primary hover:underline">View Customer</Link> */}
           </div>
           <div className="space-y-1">
             <h4 className="text-sm font-medium flex items-center text-muted-foreground"><CalendarDays className="mr-2 h-4 w-4" /> Due Date</h4>
@@ -275,7 +273,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
                 </TableRow>
               ))}
             </TableBody>
-             {isVatEnabled && ( /* This VAT display assumes 'order.totalAmount' is pre-VAT subtotal. Adjust if DB stores grand total. */
+             {isVatEnabled && (
               <TableBody>
                 <TableRow>
                   <TableCell colSpan={3} className="text-right font-medium">Subtotal (after discounts):</TableCell>
