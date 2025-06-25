@@ -1,26 +1,14 @@
-
-"use client"; // Required for usePathname
-
 import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
-import Link from 'next/link';
-import { Cog } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-// usePathname is no longer needed here if we remove the conditional logic based on it
-// import { usePathname } from 'next/navigation';
 import './globals.css'; // Ensure globals.css is imported
 
-export default function RootAuthLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // const pathname = usePathname(); // No longer needed
-  // const isSettingsPage = pathname === '/settings'; // No longer needed
-  const logoHref = "/"; // Root is now login page
-
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -28,25 +16,7 @@ export default function RootAuthLayout({
         <title>XP Clean</title>
       </head>
       <body className="font-body antialiased bg-background text-foreground">
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
-          <div className="absolute top-6 left-6">
-            <Link href={logoHref} className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-primary">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-              </svg>
-              <span className="font-bold text-xl font-headline">XP Clean</span>
-            </Link>
-          </div>
-          {/* Settings Cog Icon - always visible on this layout */}
-          <div className="absolute top-6 right-6">
-            <Link href="/settings" passHref>
-              <Button variant="ghost" size="icon" aria-label="Staff Management Settings">
-                <Cog className="h-8 w-8" />
-              </Button>
-            </Link>
-          </div>
-          {children}
-        </div>
+        {children}
         <Toaster />
       </body>
     </html>

@@ -18,7 +18,7 @@ import { LoginSchema, type LoginInput } from "./(auth)/login/login.schema";
 import { loginAction, getQuickLoginStaffAction } from "./(auth)/login/actions"; // Actions now use Supabase
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { LogIn, KeyRound, UserCheck, Users, Grid, Globe } from "lucide-react"; // Import Grid, KeyRound, and Globe icons
+import { LogIn, KeyRound, UserCheck, Users, Grid, Globe, Cog } from "lucide-react"; // Import Grid, KeyRound, Globe, and Cog icons
 import type { StaffCredentials } from "@/types"; // Updated import
 import Link from 'next/link';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -121,156 +121,174 @@ export default function RootLoginPage() {
 
 
   return (
-    <div className="w-full max-w-sm space-y-6">
-      <Card className="shadow-xl">
-        <CardHeader className="text-center">
-          <CardTitle className="font-headline text-2xl flex items-center justify-center">
-            <LogIn className="mr-2 h-6 w-6" /> Staff Login
-          </CardTitle>
-          <CardDescription>Enter your credentials to access the system. (Now uses Supabase)</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="employeeId" // This should map to login_id
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Employee ID</FormLabel>
-                    {/* Input field that triggers the modal */} 
-                    <FormControl> 
-                       {/* This div acts as the clickable trigger for the modal */} 
-                       <div className="flex items-center space-x-2 cursor-pointer" onClick={() => {
-                          setCurrentEmployeeIdInput(field.value);
-                          setIsEmployeeIdModalOpen(true);
-                        }}> 
-                          <Input 
-                            placeholder="Tap to enter ID" 
-                            readOnly 
-                            className="cursor-pointer flex-grow" // Use flex-grow to make input take available space
-                            value={field.value} // Display the current form value
-                           />
-                           <Grid className="h-5 w-5 text-muted-foreground flex-shrink-0" /> {/* Icon */} 
-                        </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    {/* Input field that triggers the modal */} 
-                    <FormControl>
-                       {/* This div acts as the clickable trigger for the modal */} 
-                       <div className="flex items-center space-x-2 cursor-pointer" onClick={() => {
-                          setCurrentPasswordInput(field.value);
-                          setIsPasswordModalOpen(true);
-                        }}> 
-                          <Input 
-                            type="password" 
-                            placeholder="Tap to enter password" 
-                            readOnly 
-                             className="cursor-pointer flex-grow"
-                             value={field.value} // Display the current form value
-                          />
-                           <KeyRound className="h-5 w-5 text-muted-foreground flex-shrink-0" /> {/* Icon for password */} 
-                        </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Logging In..." : "Login"}
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 relative">
+        <div className="absolute top-6 left-6">
+            <Link href="/" className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-primary">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+              </svg>
+              <span className="font-bold text-xl font-headline">XP Clean</span>
+            </Link>
+        </div>
+        <div className="absolute top-6 right-6">
+            <Link href="/settings" passHref>
+              <Button variant="ghost" size="icon" aria-label="Staff Management Settings">
+                <Cog className="h-8 w-8" />
               </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </Link>
+        </div>
 
-      {/* Employee ID Keypad Modal */}
-      <AlphanumericKeypadModal
-        isOpen={isEmployeeIdModalOpen}
-        onOpenChange={setIsEmployeeIdModalOpen}
-        inputValue={currentEmployeeIdInput}
-        onInputChange={setCurrentEmployeeIdInput}
-        onConfirm={handleEmployeeIdConfirm}
-        title="Enter Employee ID"
-      />
-
-      {/* Password Keypad Modal */}
-       <AlphanumericKeypadModal
-        isOpen={isPasswordModalOpen}
-        onOpenChange={setIsPasswordModalOpen}
-        inputValue={currentPasswordInput}
-        onInputChange={setCurrentPasswordInput}
-        onConfirm={handlePasswordConfirm}
-        title="Enter Password"
-      />
-
-      {isQuickLoginLoading && (
-         <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl font-headline flex items-center">
-              <Skeleton className="h-5 w-5 mr-2" /> <Skeleton className="h-5 w-32" />
+        <div className="w-full max-w-sm space-y-6">
+        <Card className="shadow-xl">
+            <CardHeader className="text-center">
+            <CardTitle className="font-headline text-2xl flex items-center justify-center">
+                <LogIn className="mr-2 h-6 w-6" /> Staff Login
             </CardTitle>
-            <Skeleton className="h-4 w-48 mt-1" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-           <CardFooter>
-            <p className="text-xs text-muted-foreground">
-              Enable quick login for your account in <Link href="/settings" className="underline hover:text-primary">Settings</Link>.
-            </p>
-          </CardFooter>
+            <CardDescription>Enter your credentials to access the system. (Now uses Supabase)</CardDescription>
+            </CardHeader>
+            <CardContent>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleLogin)} className="space-y-6">
+                <FormField
+                    control={form.control}
+                    name="employeeId" // This should map to login_id
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Employee ID</FormLabel>
+                        {/* Input field that triggers the modal */} 
+                        <FormControl> 
+                        {/* This div acts as the clickable trigger for the modal */} 
+                        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => {
+                            setCurrentEmployeeIdInput(field.value);
+                            setIsEmployeeIdModalOpen(true);
+                            }}> 
+                            <Input 
+                                placeholder="Tap to enter ID" 
+                                readOnly 
+                                className="cursor-pointer flex-grow" // Use flex-grow to make input take available space
+                                value={field.value} // Display the current form value
+                            />
+                            <Grid className="h-5 w-5 text-muted-foreground flex-shrink-0" /> {/* Icon */} 
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        {/* Input field that triggers the modal */} 
+                        <FormControl>
+                        {/* This div acts as the clickable trigger for the modal */} 
+                        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => {
+                            setCurrentPasswordInput(field.value);
+                            setIsPasswordModalOpen(true);
+                            }}> 
+                            <Input 
+                                type="password" 
+                                placeholder="Tap to enter password" 
+                                readOnly 
+                                className="cursor-pointer flex-grow"
+                                value={field.value} // Display the current form value
+                            />
+                            <KeyRound className="h-5 w-5 text-muted-foreground flex-shrink-0" /> {/* Icon for password */} 
+                            </div>
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? "Logging In..." : "Login"}
+                </Button>
+                </form>
+            </Form>
+            </CardContent>
         </Card>
-      )}
 
-      {!isQuickLoginLoading && quickLoginUsers.length > 0 && (
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-xl font-headline flex items-center">
-              <Users className="mr-2 h-5 w-5 text-primary" /> Quick Login
-            </CardTitle>
-            <CardDescription>Click your name to log in instantly.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {quickLoginUsers.map((user) => (
-              <Button
-                key={user.login_id} // Use login_id as key
-                variant="secondary"
-                className="w-full justify-start"
-                onClick={() => handleQuickLogin(user)}
-                disabled={form.formState.isSubmitting}
-              >
-                <UserCheck className="mr-2 h-4 w-4" />
-                {user.name}
-              </Button>
-            ))}
-          </CardContent>
-           <CardFooter>
-            <p className="text-xs text-muted-foreground">
-              Enable quick login for your account in <Link href="/settings" className="underline hover:text-primary">Settings</Link>.
-            </p>
-          </CardFooter>
-        </Card>
-      )}
+        {/* Employee ID Keypad Modal */}
+        <AlphanumericKeypadModal
+            isOpen={isEmployeeIdModalOpen}
+            onOpenChange={setIsEmployeeIdModalOpen}
+            inputValue={currentEmployeeIdInput}
+            onInputChange={setCurrentEmployeeIdInput}
+            onConfirm={handleEmployeeIdConfirm}
+            title="Enter Employee ID"
+        />
 
-       <div className="text-center pt-4">
-        <Button variant="link" asChild>
-          <Link href="/order" className="text-muted-foreground">
-            <Globe className="mr-2 h-4 w-4" />
-            Go to Online Customer Portal
-          </Link>
-        </Button>
-      </div>
+        {/* Password Keypad Modal */}
+        <AlphanumericKeypadModal
+            isOpen={isPasswordModalOpen}
+            onOpenChange={setIsPasswordModalOpen}
+            inputValue={currentPasswordInput}
+            onInputChange={setCurrentPasswordInput}
+            onConfirm={handlePasswordConfirm}
+            title="Enter Password"
+        />
+
+        {isQuickLoginLoading && (
+            <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="text-xl font-headline flex items-center">
+                <Skeleton className="h-5 w-5 mr-2" /> <Skeleton className="h-5 w-32" />
+                </CardTitle>
+                <Skeleton className="h-4 w-48 mt-1" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+            </CardContent>
+            <CardFooter>
+                <p className="text-xs text-muted-foreground">
+                Enable quick login for your account in <Link href="/settings" className="underline hover:text-primary">Settings</Link>.
+                </p>
+            </CardFooter>
+            </Card>
+        )}
+
+        {!isQuickLoginLoading && quickLoginUsers.length > 0 && (
+            <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="text-xl font-headline flex items-center">
+                <Users className="mr-2 h-5 w-5 text-primary" /> Quick Login
+                </CardTitle>
+                <CardDescription>Click your name to log in instantly.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {quickLoginUsers.map((user) => (
+                <Button
+                    key={user.login_id} // Use login_id as key
+                    variant="secondary"
+                    className="w-full justify-start"
+                    onClick={() => handleQuickLogin(user)}
+                    disabled={form.formState.isSubmitting}
+                >
+                    <UserCheck className="mr-2 h-4 w-4" />
+                    {user.name}
+                </Button>
+                ))}
+            </CardContent>
+            <CardFooter>
+                <p className="text-xs text-muted-foreground">
+                Enable quick login for your account in <Link href="/settings" className="underline hover:text-primary">Settings</Link>.
+                </p>
+            </CardFooter>
+            </Card>
+        )}
+
+        <div className="text-center pt-4">
+            <Button variant="link" asChild>
+            <Link href="/order" className="text-muted-foreground">
+                <Globe className="mr-2 h-4 w-4" />
+                Go to Online Customer Portal
+            </Link>
+            </Button>
+        </div>
+        </div>
     </div>
   );
 }
