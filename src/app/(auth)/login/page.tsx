@@ -1,11 +1,4 @@
-
-import { redirect } from 'next/navigation';
-
-// This page component handles the old /login route.
-// Since the main login page is now at the root ('/'),
-// we redirect any traffic to /login to / to ensure users
-// see the correct login screen.
-export default function LoginPageRedirect() {
-  redirect('/'); // Redirect to the root login page
-  return null; // Pages in Next.js App Router must return null or JSX
-}
+// This file is intentionally blank.
+// It previously created a redirect for /login which now conflicts with the new customer portal login page.
+// The route for this file has been removed to resolve the conflict.
+// Staff login is at the root page ('/'). Customer login is now at '/login'.

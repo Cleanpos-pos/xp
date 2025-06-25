@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -19,7 +18,7 @@ import { LoginSchema, type LoginInput } from "./(auth)/login/login.schema";
 import { loginAction, getQuickLoginStaffAction } from "./(auth)/login/actions"; // Actions now use Supabase
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { LogIn, KeyRound, UserCheck, Users, Grid } from "lucide-react"; // Import Grid and KeyRound icons
+import { LogIn, KeyRound, UserCheck, Users, Grid, Globe } from "lucide-react"; // Import Grid, KeyRound, and Globe icons
 import type { StaffCredentials } from "@/types"; // Updated import
 import Link from 'next/link';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -263,8 +262,15 @@ export default function RootLoginPage() {
           </CardFooter>
         </Card>
       )}
+
+       <div className="text-center pt-4">
+        <Button variant="link" asChild>
+          <Link href="/order" className="text-muted-foreground">
+            <Globe className="mr-2 h-4 w-4" />
+            Go to Online Customer Portal
+          </Link>
+        </Button>
+      </div>
     </div>
   );
 }
-
-    
