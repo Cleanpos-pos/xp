@@ -1,4 +1,5 @@
 
+
 export type UserRole = 'clerk' | 'admin' | 'super_admin';
 
 export type Customer = {
@@ -164,6 +165,8 @@ export interface CompanySettings {
   include_vat_in_prices?: boolean;
   selected_currency?: string;
   selected_language?: string;
+  available_collection_days?: Record<string, boolean>; // e.g., { "monday": true, "tuesday": false, ... }
+  available_delivery_days?: Record<string, boolean>; // e.g., { "monday": false, "tuesday": true, ... }
   created_at?: string;
   updated_at?: string;
 }

@@ -23,7 +23,7 @@ import { getPrinterSettingsAction, updatePrinterSettingsAction } from "./printer
 import { getSpecialOffersAction, upsertSpecialOfferAction } from "./special-offers-actions"; // Import special offer actions
 import type { CompanySettings, PrinterSettings, SpecialOffer, SpecialOfferTypeIdentifier, StaffCredentials, UserRole } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon, Truck } from "lucide-react";
 import Link from 'next/link';
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
@@ -108,6 +108,7 @@ const rolePermissions = {
 };
 
 const userRoles: UserRole[] = ["clerk", "admin", "super_admin"];
+const daysOfWeek = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 
 export default function SettingsPage() {
@@ -131,6 +132,10 @@ export default function SettingsPage() {
   const [includeVatInPrices, setIncludeVatInPrices] = React.useState<boolean>(true);
   const [selectedCurrency, setSelectedCurrency] = React.useState<string>("GBP");
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("en");
+  
+  // Scheduling Settings State
+  const [collectionDays, setCollectionDays] = React.useState<Record<string, boolean>>({});
+  const [deliveryDays, setDeliveryDays] = React.useState<Record<string, boolean>>({});
 
 
   // Printer Settings State
@@ -201,7 +206,10 @@ export default function SettingsPage() {
         setIncludeVatInPrices(settings.include_vat_in_prices !== undefined ? settings.include_vat_in_prices : true);
         setSelectedCurrency(settings.selected_currency || "GBP");
         setSelectedLanguage(settings.selected_language || "en");
+        setCollectionDays(settings.available_collection_days || {});
+        setDeliveryDays(settings.available_delivery_days || {});
       } else {
+        // Set default values if no settings are found
         setCompanyName("XP Clean Ltd.");
         setCompanyAddress("123 Clean Street, Suite 100, YourTown, YT 54321");
         setCompanyPhone("(555) 123-4567");
@@ -211,6 +219,8 @@ export default function SettingsPage() {
         setIncludeVatInPrices(true);
         setSelectedCurrency("GBP");
         setSelectedLanguage("en");
+        setCollectionDays({});
+        setDeliveryDays({});
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to load company settings.", variant: "destructive" });
@@ -369,7 +379,7 @@ export default function SettingsPage() {
     setStaffToRemove(null);
   };
 
-  const handleSaveCompanyRegionalSettings = async () => {
+  const handleSaveCompanySettings = async () => {
     setIsSavingCompanySettings(true);
     const settingsToSave: CompanySettings = {
       id: 'global_settings', 
@@ -382,6 +392,8 @@ export default function SettingsPage() {
       include_vat_in_prices: includeVatInPrices,
       selected_currency: selectedCurrency,
       selected_language: selectedLanguage,
+      available_collection_days: collectionDays,
+      available_delivery_days: deliveryDays,
     };
     const result = await updateCompanySettingsAction(settingsToSave);
     if (result.success) {
@@ -519,61 +531,37 @@ export default function SettingsPage() {
 
       <Tabs defaultValue="staffManagement" className="w-full print-hidden settings-tabs-print-hidden">
         <div className="flex flex-col gap-2 print-hidden">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2">
-            <TabsTrigger
-              value="staffManagement"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-            >
-              <Users className="mr-1.5 h-4 w-4" /> Staff Admin
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2 h-auto flex-wrap">
+            <TabsTrigger value="staffManagement" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
+              <Users className="mr-1.5 h-4 w-4" /> Staff
             </TabsTrigger>
-            <TabsTrigger
-              value="rolesPermissions"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-            >
-              Roles &amp; Permissions
+            <TabsTrigger value="rolesPermissions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
+              Roles
             </TabsTrigger>
-            <TabsTrigger
-              value="customerManagement"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-            >
+            <TabsTrigger value="customerManagement" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
               <Contact className="mr-1.5 h-4 w-4" />Customers
             </TabsTrigger>
-            <TabsTrigger
-              value="itemCatalog"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-            >
+            <TabsTrigger value="itemCatalog" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
               Catalog
             </TabsTrigger>
-          </TabsList>
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-2">
-            <TabsTrigger
-              value="orderStatus"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-            >
+            <TabsTrigger value="orderStatus" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
               Order Status
             </TabsTrigger>
-            <TabsTrigger
-              value="specialOffers"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-            >
+          </TabsList>
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 gap-2 h-auto flex-wrap">
+            <TabsTrigger value="scheduling" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
+                <Truck className="mr-1.5 h-4 w-4" /> Scheduling
+            </TabsTrigger>
+            <TabsTrigger value="specialOffers" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
               <Percent className="mr-1.5 h-4 w-4" /> Offers
             </TabsTrigger>
-            <TabsTrigger
-              value="cashUp"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-            >
+            <TabsTrigger value="cashUp" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
               Cash Up
             </TabsTrigger>
-            <TabsTrigger
-              value="printerSetup"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-            >
+            <TabsTrigger value="printerSetup" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
               Printers
             </TabsTrigger>
-            <TabsTrigger
-              value="companyRegional"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground"
-            >
+            <TabsTrigger value="companyRegional" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=inactive]:hover:bg-accent/30 data-[state=inactive]:hover:text-accent-foreground">
              <Building className="mr-1.5 h-4 w-4" /> Company
             </TabsTrigger>
           </TabsList>
@@ -831,7 +819,69 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
+        
+        <TabsContent value="scheduling" className="mt-6 space-y-6">
+            <Card className="shadow-xl">
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl flex items-center">
+                        <Truck className="mr-2 h-5 w-5 text-primary" /> Online Order Scheduling
+                    </CardTitle>
+                    <CardDescription>
+                        Define the days of the week when customers can schedule collections and deliveries for online orders.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {isLoadingCompanySettings ? (
+                        <div className="space-y-4">
+                            <Skeleton className="h-24 w-full" />
+                            <Skeleton className="h-24 w-full" />
+                        </div>
+                    ) : (
+                        <>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">Available Collection Days</CardTitle>
+                                </CardHeader>
+                                <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    {daysOfWeek.map(day => (
+                                        <div key={`coll-${day}`} className="flex items-center space-x-2">
+                                            <Switch
+                                                id={`coll-${day}`}
+                                                checked={collectionDays[day] || false}
+                                                onCheckedChange={(checked) => setCollectionDays(prev => ({ ...prev, [day]: checked }))}
+                                            />
+                                            <Label htmlFor={`coll-${day}`} className="capitalize">{day}</Label>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-base">Available Delivery Days</CardTitle>
+                                </CardHeader>
+                                <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    {daysOfWeek.map(day => (
+                                        <div key={`del-${day}`} className="flex items-center space-x-2">
+                                            <Switch
+                                                id={`del-${day}`}
+                                                checked={deliveryDays[day] || false}
+                                                onCheckedChange={(checked) => setDeliveryDays(prev => ({ ...prev, [day]: checked }))}
+                                            />
+                                            <Label htmlFor={`del-${day}`} className="capitalize">{day}</Label>
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        </>
+                    )}
+                </CardContent>
+                <CardFooter>
+                    <Button onClick={handleSaveCompanySettings} disabled={isSavingCompanySettings}>
+                        {isSavingCompanySettings ? "Saving..." : "Save Scheduling Settings"}
+                    </Button>
+                </CardFooter>
+            </Card>
+        </TabsContent>
 
         <TabsContent value="specialOffers" className="mt-6 space-y-6">
           {isLoadingSpecialOffers ? (
@@ -1247,7 +1297,7 @@ export default function SettingsPage() {
                       </Select>
                     </div>
                   </div>
-                  <Button onClick={handleSaveCompanyRegionalSettings} disabled={isSavingCompanySettings}>
+                  <Button onClick={handleSaveCompanySettings} disabled={isSavingCompanySettings}>
                     {isSavingCompanySettings ? "Saving..." : "Save Company & Regional Settings"}
                   </Button>
                   <p className="text-xs text-muted-foreground pt-4">

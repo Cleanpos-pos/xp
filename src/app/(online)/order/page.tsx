@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -8,7 +9,7 @@ import type { ServiceItem } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, MinusCircle, ShoppingCart, Trash2 } from 'lucide-react';
+import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CalendarDays, ArrowRight } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 
 interface CartItem extends ServiceItem {
@@ -19,9 +20,12 @@ interface ServicesByCategory {
   [category: string]: ServiceItem[];
 }
 
+type OrderStep = 'basket' | 'schedule';
+
 export default function OnlineOrderPage() {
   const { toast } = useToast();
 
+  const [step, setStep] = useState<OrderStep>('basket');
   const [servicesByCategory, setServicesByCategory] = useState<ServicesByCategory>({});
   const [serviceCategoryNames, setServiceCategoryNames] = useState<string[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
@@ -79,56 +83,92 @@ export default function OnlineOrderPage() {
   }, [cart]);
 
   const handleProceedToSchedule = () => {
-    toast({
-      title: "Next Step: Scheduling",
-      description: "This is where you would proceed to schedule collection and delivery.",
-    });
+    if (cart.length === 0) {
+        toast({
+            title: "Your basket is empty",
+            description: "Please add at least one item to proceed.",
+            variant: "default",
+        });
+        return;
+    }
+    setStep('schedule');
   };
+
+  const renderBasketStep = () => (
+     <Card>
+        <CardHeader>
+        <CardTitle className="text-2xl font-headline">Step 1: Choose Your Services</CardTitle>
+        <CardDescription>Select the items you want us to clean. Click an item to add it to your basket.</CardDescription>
+        </CardHeader>
+        <CardContent>
+        {isLoadingServices ? (
+            <div className="space-y-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-24 w-full" />
+            </div>
+        ) : serviceCategoryNames.length > 0 ? (
+            <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">
+                {serviceCategoryNames.map(category => (
+                <TabsTrigger key={category} value={category}>{category}</TabsTrigger>
+                ))}
+            </TabsList>
+            {serviceCategoryNames.map(category => (
+                <TabsContent key={category} value={category}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 border-t pt-4">
+                    {servicesByCategory[category]?.map(service => (
+                    <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleAddToCart(service)}>
+                        <CardHeader className="p-4">
+                        <CardTitle className="text-base">{service.name}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-0">
+                        <p className="text-sm text-primary font-semibold">${service.price.toFixed(2)}</p>
+                        </CardContent>
+                    </Card>
+                    ))}
+                </div>
+                </TabsContent>
+            ))}
+            </Tabs>
+        ) : (
+            <p className="text-center py-8 text-muted-foreground">No services are currently available online. Please check back later.</p>
+        )}
+        </CardContent>
+    </Card>
+  );
+
+  const renderScheduleStep = () => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl font-headline">Step 2: Schedule Collection & Delivery</CardTitle>
+        <CardDescription>Choose your preferred dates based on our availability. Final confirmation will be sent via email.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <h3 className="font-semibold text-lg mb-2">Collection Date</h3>
+          <p className="text-muted-foreground">Calendar placeholder: The interactive calendar will be implemented here, showing available collection days.</p>
+        </div>
+        <div>
+          <h3 className="font-semibold text-lg mb-2">Delivery Date</h3>
+          <p className="text-muted-foreground">Calendar placeholder: The interactive calendar for delivery will appear here after you select a collection date.</p>
+        </div>
+        <Button variant="outline" onClick={() => setStep('basket')}>Back to Basket</Button>
+      </CardContent>
+       <CardFooter>
+            <Button className="w-full" disabled>
+                Proceed to Payment (Placeholder)
+                <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+       </CardFooter>
+    </Card>
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-      {/* Service Selection */}
+      {/* Main Content Area */}
       <div className="lg:col-span-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl font-headline">Step 1: Choose Your Services</CardTitle>
-            <CardDescription>Select the items you want us to clean. Click an item to add it to your basket.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoadingServices ? (
-              <div className="space-y-4">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </div>
-            ) : serviceCategoryNames.length > 0 ? (
-              <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">
-                  {serviceCategoryNames.map(category => (
-                    <TabsTrigger key={category} value={category}>{category}</TabsTrigger>
-                  ))}
-                </TabsList>
-                {serviceCategoryNames.map(category => (
-                  <TabsContent key={category} value={category}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 border-t pt-4">
-                      {servicesByCategory[category]?.map(service => (
-                        <Card key={service.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => handleAddToCart(service)}>
-                          <CardHeader className="p-4">
-                            <CardTitle className="text-base">{service.name}</CardTitle>
-                          </CardHeader>
-                          <CardContent className="p-4 pt-0">
-                            <p className="text-sm text-primary font-semibold">${service.price.toFixed(2)}</p>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </TabsContent>
-                ))}
-              </Tabs>
-            ) : (
-              <p className="text-center py-8 text-muted-foreground">No services are currently available online. Please check back later.</p>
-            )}
-          </CardContent>
-        </Card>
+        {step === 'basket' && renderBasketStep()}
+        {step === 'schedule' && renderScheduleStep()}
       </div>
 
       {/* Cart Summary */}
@@ -149,14 +189,14 @@ export default function OnlineOrderPage() {
                       <p className="text-xs text-muted-foreground">${item.price.toFixed(2)} each</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)} disabled={step === 'schedule'}>
                         <MinusCircle className="h-4 w-4" />
                       </Button>
                       <span className="text-sm w-4 text-center">{item.quantity}</span>
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)} disabled={step === 'schedule'}>
                         <PlusCircle className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleUpdateQuantity(item.id, 0)}>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleUpdateQuantity(item.id, 0)} disabled={step === 'schedule'}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -171,13 +211,18 @@ export default function OnlineOrderPage() {
                 <span>Subtotal:</span>
                 <span>${cartSubtotal.toFixed(2)}</span>
               </div>
-              <Button onClick={handleProceedToSchedule} className="w-full">
-                Proceed to Scheduling
-              </Button>
+                {step === 'basket' && (
+                    <Button onClick={handleProceedToSchedule} className="w-full">
+                        Proceed to Scheduling
+                        <CalendarDays className="ml-2 h-4 w-4" />
+                    </Button>
+                )}
+                {step === 'schedule' && (
+                    <p className="text-sm text-center text-muted-foreground">Complete scheduling options on the left.</p>
+                )}
             </CardFooter>
           )}
         </Card>
-        <p className="text-xs text-muted-foreground mt-2 text-center">Next steps: Scheduling & Payment via Stripe.</p>
       </div>
     </div>
   );
