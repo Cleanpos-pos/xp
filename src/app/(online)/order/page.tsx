@@ -5,12 +5,17 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { getServices } from '@/lib/data';
-import type { ServiceItem } from '@/types';
+import type { ServiceItem, CompanySettings, TimeSlot } from '@/types';
+import { getCompanySettingsAction } from '@/app/(auth)/settings/company-settings-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CalendarDays, ArrowRight } from 'lucide-react';
+import { PlusCircle, MinusCircle, ShoppingCart, Trash2, CalendarDays, ArrowRight, Clock } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Calendar } from '@/components/ui/calendar';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { format, isBefore, startOfToday } from 'date-fns';
 
 interface CartItem extends ServiceItem {
   quantity: number;
@@ -22,6 +27,8 @@ interface ServicesByCategory {
 
 type OrderStep = 'basket' | 'schedule';
 
+const dayIndexToName = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
 export default function OnlineOrderPage() {
   const { toast } = useToast();
 
@@ -30,6 +37,14 @@ export default function OnlineOrderPage() {
   const [serviceCategoryNames, setServiceCategoryNames] = useState<string[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
+
+  // State for scheduling
+  const [settings, setSettings] = useState<CompanySettings | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [collectionDate, setCollectionDate] = useState<Date | undefined>();
+  const [collectionSlot, setCollectionSlot] = useState<TimeSlot | undefined>();
+  const [deliveryDate, setDeliveryDate] = useState<Date | undefined>();
+  const [deliverySlot, setDeliverySlot] = useState<TimeSlot | undefined>();
 
   useEffect(() => {
     async function fetchServicesData() {
@@ -52,6 +67,26 @@ export default function OnlineOrderPage() {
       }
     }
     fetchServicesData();
+  }, [toast]);
+
+  useEffect(() => {
+    async function fetchSettings() {
+      setIsLoadingSettings(true);
+      try {
+        const companySettings = await getCompanySettingsAction();
+        if (companySettings) {
+          setSettings(companySettings);
+        } else {
+          toast({ title: "Scheduling Error", description: "Could not load scheduling options.", variant: "destructive" });
+        }
+      } catch (err) {
+        console.error("Failed to fetch company settings:", err);
+        toast({ title: "Error", description: "Could not load company settings. Please try again later.", variant: "destructive" });
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    }
+    fetchSettings();
   }, [toast]);
 
   const handleAddToCart = (service: ServiceItem) => {
@@ -92,6 +127,20 @@ export default function OnlineOrderPage() {
         return;
     }
     setStep('schedule');
+  };
+
+  const isCollectionDayDisabled = (day: Date) => {
+    if (isBefore(day, startOfToday())) return true;
+    const dayName = dayIndexToName[day.getDay()];
+    const schedule = settings?.available_collection_schedule?.[dayName];
+    return !schedule || !schedule.is_active || schedule.slots.length === 0;
+  };
+
+  const isDeliveryDayDisabled = (day: Date) => {
+    if (!collectionDate || isBefore(day, collectionDate)) return true;
+    const dayName = dayIndexToName[day.getDay()];
+    const schedule = settings?.available_delivery_schedule?.[dayName];
+    return !schedule || !schedule.is_active || schedule.slots.length === 0;
   };
 
   const renderBasketStep = () => (
@@ -137,31 +186,124 @@ export default function OnlineOrderPage() {
     </Card>
   );
 
-  const renderScheduleStep = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-2xl font-headline">Step 2: Schedule Collection & Delivery</CardTitle>
-        <CardDescription>Choose your preferred dates based on our availability. Final confirmation will be sent via email.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <h3 className="font-semibold text-lg mb-2">Collection Date</h3>
-          <p className="text-muted-foreground">Calendar placeholder: The interactive calendar will be implemented here, showing available collection days.</p>
-        </div>
-        <div>
-          <h3 className="font-semibold text-lg mb-2">Delivery Date</h3>
-          <p className="text-muted-foreground">Calendar placeholder: The interactive calendar for delivery will appear here after you select a collection date.</p>
-        </div>
-        <Button variant="outline" onClick={() => setStep('basket')}>Back to Basket</Button>
-      </CardContent>
-       <CardFooter>
-            <Button className="w-full" disabled>
+  const renderScheduleStep = () => {
+    const collectionDayName = collectionDate ? dayIndexToName[collectionDate.getDay()] : null;
+    const collectionSlots = collectionDayName ? settings?.available_collection_schedule?.[collectionDayName]?.slots : [];
+
+    const deliveryDayName = deliveryDate ? dayIndexToName[deliveryDate.getDay()] : null;
+    const deliverySlots = deliveryDayName ? settings?.available_delivery_schedule?.[deliveryDayName]?.slots : [];
+
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl font-headline">Step 2: Schedule Collection & Delivery</CardTitle>
+          <CardDescription>Choose your preferred dates and time slots based on our availability.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid md:grid-cols-2 gap-8">
+          {/* Collection Column */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg flex items-center">
+                <CalendarDays className="mr-2 h-5 w-5 text-primary" />
+                1. Select Collection Slot
+            </h3>
+            {isLoadingSettings ? (
+                <Skeleton className="h-64 w-full" />
+            ) : (
+                <Calendar
+                    mode="single"
+                    selected={collectionDate}
+                    onSelect={(date) => {
+                        setCollectionDate(date);
+                        setCollectionSlot(undefined);
+                        setDeliveryDate(undefined);
+                        setDeliverySlot(undefined);
+                    }}
+                    disabled={isCollectionDayDisabled}
+                    className="rounded-md border"
+                />
+            )}
+            {collectionDate && (
+                <div className="space-y-2">
+                    <Label>Available Slots for {format(collectionDate, 'PPP')}:</Label>
+                    {collectionSlots && collectionSlots.length > 0 ? (
+                        <RadioGroup
+                            value={collectionSlot?.id}
+                            onValueChange={(slotId) => setCollectionSlot(collectionSlots.find(s => s.id === slotId))}
+                        >
+                            {collectionSlots.map(slot => (
+                                <div key={slot.id} className="flex items-center space-x-2">
+                                    <RadioGroupItem value={slot.id} id={`coll-${slot.id}`} />
+                                    <Label htmlFor={`coll-${slot.id}`} className="font-normal flex items-center">
+                                        <Clock className="mr-1.5 h-4 w-4 text-muted-foreground"/> {slot.time_range}
+                                    </Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No slots available for this day.</p>
+                    )}
+                </div>
+            )}
+          </div>
+
+          {/* Delivery Column */}
+          <div className="space-y-4">
+            <h3 className={`font-semibold text-lg flex items-center ${!collectionSlot ? 'text-muted-foreground' : ''}`}>
+                 <CalendarDays className="mr-2 h-5 w-5" />
+                2. Select Delivery Slot
+            </h3>
+            {!collectionSlot ? (
+                <div className="h-64 flex items-center justify-center border rounded-md bg-muted/50">
+                    <p className="text-sm text-muted-foreground">Please select a collection slot first.</p>
+                </div>
+            ) : isLoadingSettings ? (
+                <Skeleton className="h-64 w-full" />
+            ) : (
+                <Calendar
+                    mode="single"
+                    selected={deliveryDate}
+                    onSelect={(date) => {
+                        setDeliveryDate(date);
+                        setDeliverySlot(undefined);
+                    }}
+                    disabled={isDeliveryDayDisabled}
+                    className="rounded-md border"
+                />
+            )}
+            {deliveryDate && (
+                <div className="space-y-2">
+                    <Label>Available Slots for {format(deliveryDate, 'PPP')}:</Label>
+                     {deliverySlots && deliverySlots.length > 0 ? (
+                        <RadioGroup
+                            value={deliverySlot?.id}
+                            onValueChange={(slotId) => setDeliverySlot(deliverySlots.find(s => s.id === slotId))}
+                        >
+                            {deliverySlots.map(slot => (
+                                <div key={slot.id} className="flex items-center space-x-2">
+                                    <RadioGroupItem value={slot.id} id={`del-${slot.id}`} />
+                                    <Label htmlFor={`del-${slot.id}`} className="font-normal flex items-center">
+                                        <Clock className="mr-1.5 h-4 w-4 text-muted-foreground"/> {slot.time_range}
+                                    </Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No slots available for this day.</p>
+                    )}
+                </div>
+            )}
+          </div>
+        </CardContent>
+         <CardFooter className="flex justify-between items-center">
+            <Button variant="outline" onClick={() => setStep('basket')}>Back to Basket</Button>
+            <Button className="w-auto" disabled={!collectionSlot || !deliverySlot}>
                 Proceed to Payment (Placeholder)
                 <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
        </CardFooter>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
@@ -211,14 +353,26 @@ export default function OnlineOrderPage() {
                 <span>Subtotal:</span>
                 <span>${cartSubtotal.toFixed(2)}</span>
               </div>
-                {step === 'basket' && (
+                {step === 'basket' ? (
                     <Button onClick={handleProceedToSchedule} className="w-full">
                         Proceed to Scheduling
                         <CalendarDays className="ml-2 h-4 w-4" />
                     </Button>
-                )}
-                {step === 'schedule' && (
-                    <p className="text-sm text-center text-muted-foreground">Complete scheduling options on the left.</p>
+                ) : (
+                  <>
+                    <Separator className="my-2" />
+                    <div className="text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Collection:</span>
+                        <span className="font-medium text-right">{collectionSlot && collectionDate ? `${format(collectionDate, 'EEE, MMM d')} @ ${collectionSlot.time_range}` : 'Not selected'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Delivery:</span>
+                        <span className="font-medium text-right">{deliverySlot && deliveryDate ? `${format(deliveryDate, 'EEE, MMM d')} @ ${deliverySlot.time_range}` : 'Not selected'}</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-center text-muted-foreground pt-4">Complete scheduling options on the left.</p>
+                  </>
                 )}
             </CardFooter>
           )}
