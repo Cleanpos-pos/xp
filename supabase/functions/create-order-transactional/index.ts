@@ -237,5 +237,3 @@ serve(async (req: Request) => {
 });
 
 console.log("[create-order-transactional] Full function module loaded and serve called.");
-
-    
