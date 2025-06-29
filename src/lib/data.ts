@@ -493,7 +493,7 @@ export async function getInventoryItemById(id: string): Promise<InventoryItem | 
 export async function getCatalogEntries(): Promise<CatalogEntry[]> {
   const { data, error } = await supabase
     .from('catalog_entries')
-    .select('*')
+    .select('id, name, parent_id, type, price, description, sort_order, has_color_identifier, created_at, updated_at')
     .order('sort_order', { ascending: true });
 
   if (error) {
