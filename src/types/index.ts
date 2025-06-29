@@ -178,6 +178,13 @@ export interface CompanySettings {
   selected_language?: string;
   available_collection_schedule?: Record<string, DaySchedule>;
   available_delivery_schedule?: Record<string, DaySchedule>;
+  // Stripe Connect & Platform Fees
+  stripe_connect_account_id?: string | null;
+  enable_platform_fee_pass_through?: boolean; // Let shop owner pass our fees to their customer
+  // Delivery Fees (charged by shop to their customer)
+  delivery_fee_base_gbp?: number;
+  delivery_fee_per_mile_gbp?: number;
+  delivery_fee_minimum_gbp?: number;
   created_at?: string;
   updated_at?: string;
 }

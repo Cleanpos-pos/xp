@@ -137,6 +137,13 @@ export default function SettingsPage() {
   const [collectionSchedule, setCollectionSchedule] = React.useState<Record<string, DaySchedule>>({});
   const [deliverySchedule, setDeliverySchedule] = React.useState<Record<string, DaySchedule>>({});
 
+  // Payment & Delivery Fee Settings State
+  const [stripeConnectAccountId, setStripeConnectAccountId] = React.useState<string | null>(null);
+  const [enablePlatformFeePassThrough, setEnablePlatformFeePassThrough] = React.useState<boolean>(false);
+  const [deliveryFeeBase, setDeliveryFeeBase] = React.useState<string>("0");
+  const [deliveryFeePerMile, setDeliveryFeePerMile] = React.useState<string>("0");
+  const [deliveryFeeMinimum, setDeliveryFeeMinimum] = React.useState<string>("0");
+
 
   // Printer Settings State
   const [isLoadingPrinterSettings, setIsLoadingPrinterSettings] = React.useState(true);
@@ -208,6 +215,13 @@ export default function SettingsPage() {
         setSelectedLanguage(settings.selected_language || "en");
         setCollectionSchedule(settings.available_collection_schedule || {});
         setDeliverySchedule(settings.available_delivery_schedule || {});
+        
+        setStripeConnectAccountId(settings.stripe_connect_account_id || null);
+        setEnablePlatformFeePassThrough(settings.enable_platform_fee_pass_through || false);
+        setDeliveryFeeBase(settings.delivery_fee_base_gbp?.toString() || "0");
+        setDeliveryFeePerMile(settings.delivery_fee_per_mile_gbp?.toString() || "0");
+        setDeliveryFeeMinimum(settings.delivery_fee_minimum_gbp?.toString() || "0");
+
       } else {
         // Set default values if no settings are found
         setCompanyName("XP Clean Ltd.");
@@ -221,6 +235,11 @@ export default function SettingsPage() {
         setSelectedLanguage("en");
         setCollectionSchedule({});
         setDeliverySchedule({});
+        setStripeConnectAccountId(null);
+        setEnablePlatformFeePassThrough(false);
+        setDeliveryFeeBase("0");
+        setDeliveryFeePerMile("0");
+        setDeliveryFeeMinimum("0");
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to load company settings.", variant: "destructive" });
@@ -394,6 +413,11 @@ export default function SettingsPage() {
       selected_language: selectedLanguage,
       available_collection_schedule: collectionSchedule,
       available_delivery_schedule: deliverySchedule,
+      stripe_connect_account_id: stripeConnectAccountId,
+      enable_platform_fee_pass_through: enablePlatformFeePassThrough,
+      delivery_fee_base_gbp: parseFloat(deliveryFeeBase) || 0,
+      delivery_fee_per_mile_gbp: parseFloat(deliveryFeePerMile) || 0,
+      delivery_fee_minimum_gbp: parseFloat(deliveryFeeMinimum) || 0,
     };
     const result = await updateCompanySettingsAction(settingsToSave);
     if (result.success) {
@@ -510,7 +534,6 @@ export default function SettingsPage() {
     toast({
       title: "Logo Upload (Placeholder)",
       description: "Actual logo upload functionality requires backend integration for file storage and processing. This is a UI placeholder.",
-      duration: 5000,
     });
   };
 
@@ -1271,13 +1294,13 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="companyRegional" className="mt-6">
+        <TabsContent value="companyRegional" className="mt-6 space-y-6">
          <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex items-center">
-                <Building className="mr-2 h-6 w-6" /> Company &amp; Regional Settings
+                <Building className="mr-2 h-6 w-6" /> Company Information
               </CardTitle>
-              <CardDescription>Manage company details, system currency, language, and tax settings.</CardDescription>
+              <CardDescription>Manage your main company details.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {isLoadingCompanySettings ? (
@@ -1285,7 +1308,6 @@ export default function SettingsPage() {
                   <Skeleton className="h-12 w-full" />
                   <Skeleton className="h-10 w-2/3" />
                   <Skeleton className="h-20 w-full" />
-                  <Skeleton className="h-10 w-full" />
                 </div>
               ) : (
                 <>
@@ -1329,6 +1351,20 @@ export default function SettingsPage() {
                     <Label htmlFor="company-address">Company Address</Label>
                     <Textarea id="company-address" value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} placeholder="123 Main St, City, Country" className="mt-1" rows={3}/>
                   </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-xl flex items-center"><Globe className="mr-2 h-5 w-5" /> Regional Settings</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {isLoadingCompanySettings ? (
+                  <Skeleton className="h-40 w-full" />
+                ) : (
+                <>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label htmlFor="vat-tax-id">VAT / Tax ID Number</Label>
@@ -1343,10 +1379,7 @@ export default function SettingsPage() {
                     <Switch id="include-vat" checked={includeVatInPrices} onCheckedChange={setIncludeVatInPrices} />
                     <Label htmlFor="include-vat">Include VAT / Sales Tax in Displayed Service Prices</Label>
                   </div>
-
-                  <div className="border-t pt-6 space-y-2">
-                    <h3 className="text-md font-medium text-muted-foreground">Regional Preferences</h3>
-                  </div>
+                  <div className="border-t pt-6"></div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <Label htmlFor="system-currency" className="flex items-center"><Landmark className="mr-2 h-4 w-4 text-muted-foreground" /> System Currency</Label>
@@ -1378,16 +1411,71 @@ export default function SettingsPage() {
                       </Select>
                     </div>
                   </div>
-                  <Button onClick={handleSaveCompanySettings} disabled={isSavingCompanySettings}>
-                    {isSavingCompanySettings ? "Saving..." : "Save Company & Regional Settings"}
-                  </Button>
-                  <p className="text-xs text-muted-foreground pt-4">
-                    These settings are now saved to and loaded from your Supabase database.
-                  </p>
                 </>
               )}
             </CardContent>
           </Card>
+
+           <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-xl flex items-center">
+                <Landmark className="mr-2 h-5 w-5 text-purple-600" /> Stripe Connect & Platform Fees
+              </CardTitle>
+              <CardDescription>
+                Connect your Stripe account to process payments. Platform fees of £1.50 + a percentage apply to each order.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {isLoadingCompanySettings ? <Skeleton className="h-24 w-full" /> : (
+                <>
+                  <div>
+                      <Label htmlFor="stripe-connect-id">Stripe Connect Account ID</Label>
+                      <Input id="stripe-connect-id" value={stripeConnectAccountId || ""} onChange={(e) => setStripeConnectAccountId(e.target.value)} placeholder="acct_..." className="mt-1" disabled />
+                      <p className="text-xs text-muted-foreground mt-1">This would be automatically populated after completing the Stripe Connect onboarding process.</p>
+                  </div>
+                  <div className="flex items-center space-x-2 pt-2">
+                      <Switch id="platform-fee-pass-through" checked={enablePlatformFeePassThrough} onCheckedChange={setEnablePlatformFeePassThrough} />
+                      <Label htmlFor="platform-fee-pass-through">Pass Platform Fees to End Customer</Label>
+                  </div>
+                  <p className="text-xs text-muted-foreground">If enabled, the platform fee will be added to the customer's final bill. Otherwise, it will be deducted from your payout.</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-xl flex items-center">
+                <Truck className="mr-2 h-5 w-5 text-green-600" /> Delivery Fee Configuration
+              </CardTitle>
+              <CardDescription>
+                Set up mileage-based delivery fees for online orders. This requires an integration with a mapping service (e.g., Google Maps) to calculate distance, which is not yet implemented.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoadingCompanySettings ? <Skeleton className="h-20 w-full" /> : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                      <Label htmlFor="delivery-base-fee">Base Fee ({selectedCurrency})</Label>
+                      <Input id="delivery-base-fee" type="number" step="0.01" value={deliveryFeeBase} onChange={(e) => setDeliveryFeeBase(e.target.value)} placeholder="e.g., 2.50" className="mt-1" />
+                  </div>
+                  <div>
+                      <Label htmlFor="delivery-per-mile-fee">Fee Per Mile ({selectedCurrency})</Label>
+                      <Input id="delivery-per-mile-fee" type="number" step="0.01" value={deliveryFeePerMile} onChange={(e) => setDeliveryFeePerMile(e.target.value)} placeholder="e.g., 0.50" className="mt-1" />
+                  </div>
+                  <div>
+                      <Label htmlFor="delivery-minimum-fee">Minimum Fee ({selectedCurrency})</Label>
+                      <Input id="delivery-minimum-fee" type="number" step="0.01" value={deliveryFeeMinimum} onChange={(e) => setDeliveryFeeMinimum(e.target.value)} placeholder="e.g., 3.00" className="mt-1" />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Button onClick={handleSaveCompanySettings} disabled={isSavingCompanySettings} className="w-full sm:w-auto">
+            {isSavingCompanySettings ? "Saving..." : "Save All Company Settings"}
+          </Button>
+
         </TabsContent>
 
       </Tabs>
