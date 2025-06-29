@@ -66,6 +66,8 @@ export async function updateCompanySettingsAction(
       delivery_fee_minimum_gbp: settingsData.delivery_fee_minimum_gbp !== undefined ? Number(settingsData.delivery_fee_minimum_gbp) : null,
       updated_at: new Date().toISOString(),
     };
+    
+    console.log("Attempting to save company settings with this data:", JSON.stringify(dataToUpsert, null, 2));
 
     const { data, error } = await supabase
       .from("company_settings")
