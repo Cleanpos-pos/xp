@@ -32,8 +32,8 @@ export async function getCompanySettingsAction(): Promise<CompanySettings | null
         return {
             ...data,
             vat_sales_tax_rate: data.vat_sales_tax_rate !== null ? parseFloat(data.vat_sales_tax_rate) : undefined,
-            available_collection_days: data.available_collection_days || {},
-            available_delivery_days: data.available_delivery_days || {},
+            available_collection_schedule: data.available_collection_schedule || {},
+            available_delivery_schedule: data.available_delivery_schedule || {},
         } as CompanySettings;
     }
     return null;
@@ -52,8 +52,8 @@ export async function updateCompanySettingsAction(
       ...settingsData,
       id: SETTINGS_ROW_ID, // Ensure the ID is always our fixed ID for upsert
       vat_sales_tax_rate: settingsData.vat_sales_tax_rate !== undefined ? Number(settingsData.vat_sales_tax_rate) : null,
-      available_collection_days: settingsData.available_collection_days || {},
-      available_delivery_days: settingsData.available_delivery_days || {},
+      available_collection_schedule: settingsData.available_collection_schedule || {},
+      available_delivery_schedule: settingsData.available_delivery_schedule || {},
       updated_at: new Date().toISOString(),
     };
 
@@ -80,8 +80,8 @@ export async function updateCompanySettingsAction(
       settings: data ? ({
         ...data,
         vat_sales_tax_rate: data.vat_sales_tax_rate !== null ? parseFloat(data.vat_sales_tax_rate) : undefined,
-        available_collection_days: data.available_collection_days || {},
-        available_delivery_days: data.available_delivery_days || {},
+        available_collection_schedule: data.available_collection_schedule || {},
+        available_delivery_schedule: data.available_delivery_schedule || {},
       } as CompanySettings) : undefined,
     };
   } catch (error: any) {

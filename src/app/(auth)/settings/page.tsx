@@ -21,9 +21,9 @@ import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffA
 import { getCompanySettingsAction, updateCompanySettingsAction } from "./company-settings-actions";
 import { getPrinterSettingsAction, updatePrinterSettingsAction } from "./printer-settings-actions"; 
 import { getSpecialOffersAction, upsertSpecialOfferAction } from "./special-offers-actions"; // Import special offer actions
-import type { CompanySettings, PrinterSettings, SpecialOffer, SpecialOfferTypeIdentifier, StaffCredentials, UserRole } from "@/types"; 
+import type { CompanySettings, DaySchedule, PrinterSettings, SpecialOffer, SpecialOfferTypeIdentifier, StaffCredentials, TimeSlot, UserRole } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon, Truck } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon, Truck, PlusCircle, Clock, Trash } from "lucide-react";
 import Link from 'next/link';
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
@@ -134,8 +134,8 @@ export default function SettingsPage() {
   const [selectedLanguage, setSelectedLanguage] = React.useState<string>("en");
   
   // Scheduling Settings State
-  const [collectionDays, setCollectionDays] = React.useState<Record<string, boolean>>({});
-  const [deliveryDays, setDeliveryDays] = React.useState<Record<string, boolean>>({});
+  const [collectionSchedule, setCollectionSchedule] = React.useState<Record<string, DaySchedule>>({});
+  const [deliverySchedule, setDeliverySchedule] = React.useState<Record<string, DaySchedule>>({});
 
 
   // Printer Settings State
@@ -206,8 +206,8 @@ export default function SettingsPage() {
         setIncludeVatInPrices(settings.include_vat_in_prices !== undefined ? settings.include_vat_in_prices : true);
         setSelectedCurrency(settings.selected_currency || "GBP");
         setSelectedLanguage(settings.selected_language || "en");
-        setCollectionDays(settings.available_collection_days || {});
-        setDeliveryDays(settings.available_delivery_days || {});
+        setCollectionSchedule(settings.available_collection_schedule || {});
+        setDeliverySchedule(settings.available_delivery_schedule || {});
       } else {
         // Set default values if no settings are found
         setCompanyName("XP Clean Ltd.");
@@ -219,8 +219,8 @@ export default function SettingsPage() {
         setIncludeVatInPrices(true);
         setSelectedCurrency("GBP");
         setSelectedLanguage("en");
-        setCollectionDays({});
-        setDeliveryDays({});
+        setCollectionSchedule({});
+        setDeliverySchedule({});
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to load company settings.", variant: "destructive" });
@@ -392,8 +392,8 @@ export default function SettingsPage() {
       include_vat_in_prices: includeVatInPrices,
       selected_currency: selectedCurrency,
       selected_language: selectedLanguage,
-      available_collection_days: collectionDays,
-      available_delivery_days: deliveryDays,
+      available_collection_schedule: collectionSchedule,
+      available_delivery_schedule: deliverySchedule,
     };
     const result = await updateCompanySettingsAction(settingsToSave);
     if (result.success) {
@@ -511,6 +511,38 @@ export default function SettingsPage() {
       title: "Logo Upload (Placeholder)",
       description: "Actual logo upload functionality requires backend integration for file storage and processing. This is a UI placeholder.",
       duration: 5000,
+    });
+  };
+
+  const handleScheduleChange = (
+    type: 'collection' | 'delivery',
+    day: string,
+    field: 'is_active' | 'update_slot' | 'add_slot' | 'remove_slot',
+    value: any,
+    slotId?: string
+  ) => {
+    const setSchedule = type === 'collection' ? setCollectionSchedule : setDeliverySchedule;
+    setSchedule(prev => {
+      const newSchedule = { ...prev };
+      const daySchedule = newSchedule[day] || { is_active: false, slots: [] };
+
+      if (field === 'is_active') {
+        daySchedule.is_active = value as boolean;
+        if (!daySchedule.is_active) {
+            daySchedule.slots = []; // Clear slots if day is deactivated
+        }
+      } else if (field === 'add_slot') {
+        daySchedule.slots.push({ id: crypto.randomUUID(), time_range: '09:00-11:00', max_orders: 10 });
+      } else if (field === 'remove_slot' && slotId) {
+        daySchedule.slots = daySchedule.slots.filter(slot => slot.id !== slotId);
+      } else if (field === 'update_slot' && slotId) {
+        daySchedule.slots = daySchedule.slots.map(slot =>
+          slot.id === slotId ? { ...slot, ...value } : slot
+        );
+      }
+      
+      newSchedule[day] = daySchedule;
+      return newSchedule;
     });
   };
 
@@ -827,57 +859,106 @@ export default function SettingsPage() {
                         <Truck className="mr-2 h-5 w-5 text-primary" /> Online Order Scheduling
                     </CardTitle>
                     <CardDescription>
-                        Define the days of the week when customers can schedule collections and deliveries for online orders.
+                        Define available days, time slots, and order limits for customer collections and deliveries.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {isLoadingCompanySettings ? (
-                        <div className="space-y-4">
-                            <Skeleton className="h-24 w-full" />
-                            <Skeleton className="h-24 w-full" />
-                        </div>
-                    ) : (
-                        <>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-base">Available Collection Days</CardTitle>
-                                </CardHeader>
-                                <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                    {daysOfWeek.map(day => (
-                                        <div key={`coll-${day}`} className="flex items-center space-x-2">
-                                            <Switch
-                                                id={`coll-${day}`}
-                                                checked={collectionDays[day] || false}
-                                                onCheckedChange={(checked) => setCollectionDays(prev => ({ ...prev, [day]: checked }))}
-                                            />
-                                            <Label htmlFor={`coll-${day}`} className="capitalize">{day}</Label>
-                                        </div>
-                                    ))}
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="text-base">Available Delivery Days</CardTitle>
-                                </CardHeader>
-                                <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                    {daysOfWeek.map(day => (
-                                        <div key={`del-${day}`} className="flex items-center space-x-2">
-                                            <Switch
-                                                id={`del-${day}`}
-                                                checked={deliveryDays[day] || false}
-                                                onCheckedChange={(checked) => setDeliveryDays(prev => ({ ...prev, [day]: checked }))}
-                                            />
-                                            <Label htmlFor={`del-${day}`} className="capitalize">{day}</Label>
-                                        </div>
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        </>
-                    )}
+                  {isLoadingCompanySettings ? (
+                    <Skeleton className="h-64 w-full" />
+                  ) : (
+                    <Tabs defaultValue="collection" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="collection">Collection Schedule</TabsTrigger>
+                        <TabsTrigger value="delivery">Delivery Schedule</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="collection" className="mt-4 space-y-4">
+                        {daysOfWeek.map(day => (
+                          <Card key={`coll-${day}`} className="p-4">
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor={`coll-active-${day}`} className="text-lg font-medium capitalize">{day}</Label>
+                              <Switch
+                                id={`coll-active-${day}`}
+                                checked={collectionSchedule[day]?.is_active || false}
+                                onCheckedChange={(checked) => handleScheduleChange('collection', day, 'is_active', checked)}
+                              />
+                            </div>
+                            {collectionSchedule[day]?.is_active && (
+                              <div className="mt-4 pl-2 space-y-3">
+                                {(collectionSchedule[day].slots || []).map((slot, index) => (
+                                  <div key={slot.id} className="flex items-center gap-2">
+                                    <Input
+                                      value={slot.time_range}
+                                      onChange={(e) => handleScheduleChange('collection', day, 'update_slot', { time_range: e.target.value }, slot.id)}
+                                      placeholder="e.g., 09:00-11:00"
+                                      className="w-1/2"
+                                    />
+                                    <Input
+                                      type="number"
+                                      value={slot.max_orders}
+                                      onChange={(e) => handleScheduleChange('collection', day, 'update_slot', { max_orders: parseInt(e.target.value, 10) || 0 }, slot.id)}
+                                      placeholder="Max Orders"
+                                      className="w-1/3"
+                                    />
+                                    <Button variant="ghost" size="icon" onClick={() => handleScheduleChange('collection', day, 'remove_slot', null, slot.id)}>
+                                      <Trash className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button variant="outline" size="sm" onClick={() => handleScheduleChange('collection', day, 'add_slot', null)}>
+                                  <PlusCircle className="mr-2 h-4 w-4" /> Add Time Slot
+                                </Button>
+                              </div>
+                            )}
+                          </Card>
+                        ))}
+                      </TabsContent>
+                      <TabsContent value="delivery" className="mt-4 space-y-4">
+                      {daysOfWeek.map(day => (
+                          <Card key={`del-${day}`} className="p-4">
+                            <div className="flex items-center justify-between">
+                              <Label htmlFor={`del-active-${day}`} className="text-lg font-medium capitalize">{day}</Label>
+                              <Switch
+                                id={`del-active-${day}`}
+                                checked={deliverySchedule[day]?.is_active || false}
+                                onCheckedChange={(checked) => handleScheduleChange('delivery', day, 'is_active', checked)}
+                              />
+                            </div>
+                            {deliverySchedule[day]?.is_active && (
+                              <div className="mt-4 pl-2 space-y-3">
+                                {(deliverySchedule[day].slots || []).map((slot, index) => (
+                                  <div key={slot.id} className="flex items-center gap-2">
+                                    <Input
+                                      value={slot.time_range}
+                                      onChange={(e) => handleScheduleChange('delivery', day, 'update_slot', { time_range: e.target.value }, slot.id)}
+                                      placeholder="e.g., 09:00-11:00"
+                                      className="w-1/2"
+                                    />
+                                    <Input
+                                      type="number"
+                                      value={slot.max_orders}
+                                      onChange={(e) => handleScheduleChange('delivery', day, 'update_slot', { max_orders: parseInt(e.target.value, 10) || 0 }, slot.id)}
+                                      placeholder="Max Orders"
+                                      className="w-1/3"
+                                    />
+                                    <Button variant="ghost" size="icon" onClick={() => handleScheduleChange('delivery', day, 'remove_slot', null, slot.id)}>
+                                      <Trash className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ))}
+                                <Button variant="outline" size="sm" onClick={() => handleScheduleChange('delivery', day, 'add_slot', null)}>
+                                  <PlusCircle className="mr-2 h-4 w-4" /> Add Time Slot
+                                </Button>
+                              </div>
+                            )}
+                          </Card>
+                        ))}
+                      </TabsContent>
+                    </Tabs>
+                  )}
                 </CardContent>
                 <CardFooter>
                     <Button onClick={handleSaveCompanySettings} disabled={isSavingCompanySettings}>
-                        {isSavingCompanySettings ? "Saving..." : "Save Scheduling Settings"}
+                        {isSavingCompanySettings ? "Saving Schedule..." : "Save Scheduling Settings"}
                     </Button>
                 </CardFooter>
             </Card>

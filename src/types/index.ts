@@ -154,6 +154,17 @@ export interface StaffCredentials {
   updated_at?: string;
 }
 
+export interface TimeSlot {
+  id: string; // e.g., a UUID for react keys
+  time_range: string; // e.g., "09:00-11:00"
+  max_orders: number;
+}
+
+export interface DaySchedule {
+  is_active: boolean;
+  slots: TimeSlot[];
+}
+
 export interface CompanySettings {
   id: string; // e.g., 'global_settings'
   company_name?: string;
@@ -165,8 +176,8 @@ export interface CompanySettings {
   include_vat_in_prices?: boolean;
   selected_currency?: string;
   selected_language?: string;
-  available_collection_days?: Record<string, boolean>; // e.g., { "monday": true, "tuesday": false, ... }
-  available_delivery_days?: Record<string, boolean>; // e.g., { "monday": false, "tuesday": true, ... }
+  available_collection_schedule?: Record<string, DaySchedule>;
+  available_delivery_schedule?: Record<string, DaySchedule>;
   created_at?: string;
   updated_at?: string;
 }
