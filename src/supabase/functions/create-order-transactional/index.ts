@@ -1,3 +1,4 @@
+
 // supabase/functions/create-order-transactional/index.ts
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.44.4'; // Using a specific version
@@ -105,6 +106,20 @@ serve(async (req: Request) => {
       });
     }
     console.log(`[create-order-transactional] Customer found: ${customer.name}`);
+
+    // Fetch company settings for business address for Shipday
+    const { data: companySettings, error: settingsError } = await supabaseAdminClient
+      .from('company_settings')
+      .select('company_name, company_address')
+      .eq('id', 'global_settings')
+      .single();
+      
+    const businessName = companySettings?.company_name || 'XP Clean';
+    const businessAddress = companySettings?.company_address || '123 Clean Street, YourTown, YT 54321';
+    if(settingsError) {
+        console.warn('[create-order-transactional] Could not fetch company settings for Shipday integration. Using fallbacks.', settingsError);
+    }
+
 
     // 2. Prepare items for the pg function, calculating total_price for each item
     const p_items_for_db_func = orderInput.items.map(item => {
@@ -241,61 +256,81 @@ serve(async (req: Request) => {
     }
     console.log("[create-order-transactional] Full order fetched successfully.");
 
-    // --- [NEW] SHIPDAY INTEGRATION ---
-    try {
-      // IMPORTANT: Replace with your actual Shipday API Key
-      const shipdayApiKey = 'YOUR_SHIPDAY_API_KEY';
-      
-      const shipdayPayload = {
-        orderNumber: fullOrder.order_number,
-        customerName: fullOrder.customer_name,
-        customerAddress: customer.address || 'Address not provided',
-        customerEmail: customer.email || '',
-        customerPhoneNumber: customer.phone || '',
-        // These are your business details. Use placeholders or fetch from settings.
-        restaurantName: 'XP Clean',
-        restaurantAddress: '123 Clean Street, YourTown, YT 54321',
-        // In a real scenario, you'd calculate pickup/delivery times based on scheduling
-        expectedPickupTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // e.g., 1 hour from now
-        expectedDeliveryTime: fullOrder.due_date || new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(), // e.g., 3 hours from now
-        tips: 0,
-        tax: 0, // Tax handling can be added if needed
-        total: fullOrder.total_amount,
-        orderItem: fullOrder.order_items.map(item => ({
-          name: item.service_name,
-          quantity: item.quantity,
-          unit: "pcs",
-          price: item.unit_price
-        })),
-        deliveryInstruction: fullOrder.notes || '',
-      };
+    // --- SHIPDAY INTEGRATION ---
+    const shipdayApiKey = 'YOUR_SHIPDAY_API_KEY';
+    if (shipdayApiKey === 'YOUR_SHIPDAY_API_KEY' || !customer.address) {
+      if(shipdayApiKey === 'YOUR_SHIPDAY_API_KEY') console.warn("[Shipday] Integration skipped: API key is a placeholder.");
+      if(!customer.address) console.warn("[Shipday] Integration skipped: Customer address is missing.");
+    } else {
+        const orderItemsForShipday = fullOrder.order_items.map(item => ({
+            name: item.service_name,
+            quantity: item.quantity,
+            unit: "pcs",
+            price: item.unit_price
+        }));
 
-      console.log('[Shipday] Sending payload:', JSON.stringify(shipdayPayload, null, 2));
-
-      if (shipdayApiKey === 'YOUR_SHIPDAY_API_KEY') {
-        console.warn("[Shipday] Integration skipped: API key is a placeholder. Please replace 'YOUR_SHIPDAY_API_KEY'.");
-      } else {
-        const shipdayResponse = await fetch('https://api.shipday.com/orders', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${shipdayApiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(shipdayPayload)
-        });
-
-        if (!shipdayResponse.ok) {
-          const errorBody = await shipdayResponse.json();
-          console.error('[Shipday] API call failed:', shipdayResponse.status, errorBody);
-        } else {
-          const successBody = await shipdayResponse.json();
-          console.log('[Shipday] Successfully created order in Shipday:', successBody);
+        // 1. COLLECTION TASK
+        const collectionPayload = {
+            orderNumber: `${fullOrder.order_number}-C`, // 'C' for Collection
+            customerName: businessName, // The "customer" for this task is the business
+            customerAddress: businessAddress,
+            customerEmail: 'internal@example.com',
+            customerPhoneNumber: '',
+            restaurantName: fullOrder.customer_name, // The "pickup location" is the customer's house
+            restaurantAddress: customer.address,
+            expectedPickupTime: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 mins from now
+            expectedDeliveryTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Arrive at business in 1hr
+            deliveryInstruction: `Collection for order ${fullOrder.order_number}. Items: ${orderItemsForShipday.map(i => i.name).join(', ')}.`,
+            orderItem: [{ name: "Collection Task", quantity: 1, unit: "task", price: 0 }]
+        };
+        try {
+            console.log('[Shipday] Sending COLLECTION payload:', JSON.stringify(collectionPayload, null, 2));
+            const collectionResponse = await fetch('https://api.shipday.com/orders', {
+              method: 'POST',
+              headers: { 'Authorization': `Basic ${shipdayApiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(collectionPayload)
+            });
+            if (!collectionResponse.ok) {
+              console.error('[Shipday] COLLECTION API call failed:', collectionResponse.status, await collectionResponse.json());
+            } else {
+              console.log('[Shipday] Successfully created COLLECTION order in Shipday:', await collectionResponse.json());
+            }
+        } catch (e) {
+            console.error('[Shipday] An error occurred during the COLLECTION API call:', e);
         }
-      }
-    } catch (shipdayError) {
-      console.error('[Shipday] An error occurred during the Shipday API call:', shipdayError);
-      // We log the error but don't fail the entire function,
-      // as the order is already created in our system.
+
+        // 2. DELIVERY TASK
+        const deliveryPayload = {
+            orderNumber: `${fullOrder.order_number}-D`, // 'D' for Delivery
+            customerName: fullOrder.customer_name,
+            customerAddress: customer.address,
+            customerEmail: customer.email || '',
+            customerPhoneNumber: customer.phone || '',
+            restaurantName: businessName,
+            restaurantAddress: businessAddress,
+            expectedPickupTime: new Date(new Date(fullOrder.due_date || Date.now() + 24*60*60*1000).getTime() - 60 * 60 * 1000).toISOString(), // e.g., 1 hour before due
+            expectedDeliveryTime: fullOrder.due_date || new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(), // On due date
+            tips: 0,
+            tax: 0,
+            total: fullOrder.total_amount,
+            orderItem: orderItemsForShipday,
+            deliveryInstruction: fullOrder.notes || '',
+        };
+         try {
+            console.log('[Shipday] Sending DELIVERY payload:', JSON.stringify(deliveryPayload, null, 2));
+            const deliveryResponse = await fetch('https://api.shipday.com/orders', {
+              method: 'POST',
+              headers: { 'Authorization': `Basic ${shipdayApiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(deliveryPayload)
+            });
+            if (!deliveryResponse.ok) {
+              console.error('[Shipday] DELIVERY API call failed:', deliveryResponse.status, await deliveryResponse.json());
+            } else {
+              console.log('[Shipday] Successfully created DELIVERY order in Shipday:', await deliveryResponse.json());
+            }
+        } catch (e) {
+            console.error('[Shipday] An error occurred during the DELIVERY API call:', e);
+        }
     }
     // --- [END] SHIPDAY INTEGRATION ---
 
