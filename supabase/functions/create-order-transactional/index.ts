@@ -203,6 +203,38 @@ serve(async (req: Request) => {
         });
     }
     console.log(`[create-order-transactional] Order header created with ID: ${createdOrderHeader.id}`);
+
+    // ----- [NEW] LOGIC TO GENERATE AND UPDATE ORDER NUMBER -----
+    const now = new Date();
+    // In Deno, constructing a date with just year and month defaults to the first day at UTC.
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const { count, error: countError } = await supabaseAdminClient
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', startOfMonth.toISOString());
+    
+    if (countError) {
+      console.error('[create-order-transactional] Error counting orders for the month:', countError);
+    } else if (count !== null) {
+      const monthPrefix = String(now.getMonth() + 1).padStart(2, '0');
+      // The count of orders in the month *is* the sequence number for the newly created order.
+      const sequence = String(count).padStart(4, '0');
+      const newOrderNumber = `${monthPrefix}-${sequence}`;
+
+      console.log(`[create-order-transactional] Updating order number for ID ${createdOrderHeader.id} to ${newOrderNumber}`);
+
+      const { error: updateError } = await supabaseAdminClient
+        .from('orders')
+        .update({ order_number: newOrderNumber, updated_at: new Date().toISOString() })
+        .eq('id', createdOrderHeader.id);
+
+      if (updateError) {
+        console.error('[create-order-transactional] Error updating order number:', updateError);
+        // If update fails, we'll just fall through and return the order with its default number.
+      }
+    }
+    // ----- [END NEW] LOGIC -----
     
     // Fetch the newly created order with its items to return the full structure
     console.log(`[create-order-transactional] Fetching full order details for ID: ${createdOrderHeader.id}`);
