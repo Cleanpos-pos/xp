@@ -75,9 +75,17 @@ export async function updateCompanySettingsAction(
 
     if (error) {
       console.error("Error updating company settings:", error);
+      let userFriendlyMessage = "Failed to update company settings. " + error.message;
+
+      // Check for the specific schema cache error
+      if (typeof error.message === 'string' && 
+          (error.message.includes("Could not find the column") || error.message.includes("schema cache"))) {
+        userFriendlyMessage = `Failed to update settings. The database schema might be out of sync. Please try reloading the schema cache in your Supabase project dashboard (API section -> Reload schema) and try again.`;
+      }
+      
       return {
         success: false,
-        message: "Failed to update company settings. " + error.message,
+        message: userFriendlyMessage,
         error,
       };
     }

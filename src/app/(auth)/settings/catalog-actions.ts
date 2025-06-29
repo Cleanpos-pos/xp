@@ -98,7 +98,7 @@ export async function updateCatalogEntryAction(entryId: string, data: UpdateCata
      let userFriendlyMessage = error.message || "Failed to update entry.";
     if (typeof error.message === 'string' && 
         (error.message.includes("Could not find the column") || error.message.includes("schema cache"))) {
-      userFriendlyMessage = `Failed to update entry. The database schema might be out of sync. Please try reloading the schema in your Supabase project dashboard (API section -> Reload schema) and try again.`;
+      userFriendlyMessage = `Failed to update entry. The database schema might be out of sync. Please try reloading the schema cache in your Supabase project dashboard (API section -> Reload schema) and try again.`;
     }
     return { success: false, message: userFriendlyMessage };
   }
