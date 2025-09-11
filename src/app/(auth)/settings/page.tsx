@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CatalogManagementTab } from "@/components/settings/catalog-management";
 import { CashUpManagementTab } from "@/components/settings/cash-up-tab";
 import { CustomerManagementTab } from "@/components/settings/customer-management-tab";
+import { OrderStatusUpdateTab } from "@/components/settings/order-status-update-tab";
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -876,20 +877,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="orderStatus" className="mt-6">
-          <Card className="shadow-xl">
-             <CardHeader>
-                <CardTitle className="font-headline text-2xl flex items-center">
-                <ListPlus className="mr-2 h-6 w-6" /> Quick Order Status Updates
-                </CardTitle>
-                <CardDescription>
-                Quickly update order statuses, especially for marking items as "Ready for Pickup".
-                This section will use the &lt;OrderStatusUpdateTab /&gt; component once it is created.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p className="text-muted-foreground">Order status update interface will be displayed here.</p>
-            </CardContent>
-          </Card>
+            <OrderStatusUpdateTab />
         </TabsContent>
         
         <TabsContent value="scheduling" className="mt-6 space-y-6">
