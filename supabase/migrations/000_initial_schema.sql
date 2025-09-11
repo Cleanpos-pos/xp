@@ -1,346 +1,245 @@
 
--- 000_initial_schema.sql
+-- Initial Schema for XP Clean App
 
--- Enable the uuid-ossp extension if not already enabled
-create extension if not exists "uuid-ossp" with schema extensions;
-
--- Staff Table
--- Stores credentials and roles for staff members accessing the main application.
-create table if not exists public.staff (
-  id uuid primary key default uuid_generate_v4(),
-  name text not null,
-  login_id text not null unique,
-  hashed_password text not null, -- Note: Store hashed passwords in production!
-  role text not null default 'clerk' check (role in ('clerk', 'admin', 'super_admin')),
-  enable_quick_login boolean default false,
-  is_active boolean default true,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-comment on table public.staff is 'Stores staff credentials and roles for application access.';
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Customers Table
--- Stores information about customers.
-create table if not exists public.customers (
-  id uuid primary key default uuid_generate_v4(),
-  name text not null,
-  phone text,
-  email text,
-  address text,
-  loyalty_status text default 'None',
-  price_band text default 'Standard',
-  is_account_client boolean default false,
-  account_id text,
-  sms_opt_in boolean default false,
-  email_opt_in boolean default false,
-  has_preferred_pricing boolean default false,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS public.customers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    phone TEXT,
+    email TEXT,
+    address TEXT,
+    loyalty_status TEXT DEFAULT 'None',
+    price_band TEXT DEFAULT 'Standard',
+    is_account_client BOOLEAN DEFAULT false,
+    account_id TEXT,
+    sms_opt_in BOOLEAN DEFAULT false,
+    email_opt_in BOOLEAN DEFAULT false,
+    has_preferred_pricing BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-comment on table public.customers is 'Stores information about business customers.';
+ALTER TABLE public.customers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage customers" ON public.customers FOR ALL TO authenticated USING (true);
+
+
+-- Staff Table
+CREATE TABLE IF NOT EXISTS public.staff (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    login_id TEXT NOT NULL UNIQUE,
+    hashed_password TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'clerk',
+    enable_quick_login BOOLEAN DEFAULT false,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.staff ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage staff" ON public.staff FOR ALL TO authenticated USING (true);
+
 
 -- Catalog Entries Table
--- A hierarchical table for service categories and individual service items.
-create table if not exists public.catalog_entries (
-  id uuid primary key default uuid_generate_v4(),
-  name text not null,
-  parent_id uuid references public.catalog_entries(id) on delete restrict, -- Prevent deleting a category that has children
-  type text not null check (type in ('category', 'item')),
-  price numeric(10, 2),
-  description text,
-  sort_order integer not null default 0,
-  has_color_identifier boolean default false,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS public.catalog_entries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    parent_id UUID REFERENCES public.catalog_entries(id) ON DELETE RESTRICT,
+    type TEXT NOT NULL, -- 'category' or 'item'
+    price NUMERIC(10, 2),
+    description TEXT,
+    sort_order INTEGER DEFAULT 0,
+    has_color_identifier BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-comment on table public.catalog_entries is 'Hierarchical storage for service categories and items.';
+ALTER TABLE public.catalog_entries ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage catalog" ON public.catalog_entries FOR ALL TO authenticated USING (true);
+
 
 -- Orders Table
--- Main table for customer orders.
-create table if not exists public.orders (
-  id uuid primary key default uuid_generate_v4(),
-  order_number text unique, -- Should be generated and updated by the app/function
-  customer_id uuid not null references public.customers(id) on delete restrict,
-  customer_name text not null,
-  subtotal_amount numeric(10, 2) not null default 0,
-  cart_discount_amount numeric(10, 2),
-  cart_discount_percentage numeric(5, 2),
-  cart_price_override numeric(10, 2),
-  total_amount numeric(10, 2) not null,
-  status text not null default 'Received',
-  payment_status text default 'Unpaid',
-  notes text,
-  is_express boolean default false,
-  due_date timestamptz,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS public.orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_number TEXT UNIQUE, -- Should be set by trigger or function
+    customer_id UUID NOT NULL REFERENCES public.customers(id),
+    customer_name TEXT NOT NULL,
+    subtotal_amount NUMERIC(10, 2) NOT NULL,
+    cart_discount_amount NUMERIC(10, 2),
+    cart_discount_percentage NUMERIC(5, 2),
+    cart_price_override NUMERIC(10, 2),
+    total_amount NUMERIC(10, 2) NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Received',
+    payment_status TEXT NOT NULL DEFAULT 'Unpaid',
+    notes TEXT,
+    is_express BOOLEAN DEFAULT false,
+    due_date TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-comment on table public.orders is 'Main table for customer orders.';
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage orders" ON public.orders FOR ALL TO authenticated USING (true);
+
 
 -- Order Items Table
--- Line items associated with an order.
-create table if not exists public.order_items (
-  id uuid primary key default uuid_generate_v4(),
-  order_id uuid not null references public.orders(id) on delete cascade,
-  service_item_id uuid references public.catalog_entries(id) on delete set null, -- Don't lose order history if a service is deleted
-  service_name text not null,
-  quantity integer not null check (quantity > 0),
-  unit_price numeric(10, 2) not null,
-  original_unit_price numeric(10, 2),
-  item_discount_amount numeric(10, 2),
-  item_discount_percentage numeric(5, 2),
-  total_price numeric(10, 2) not null,
-  notes text,
-  has_color_identifier boolean default false,
-  color_value text,
-  created_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS public.order_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    service_item_id UUID, -- Can be null if it's a custom item
+    service_name TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price NUMERIC(10, 2) NOT NULL,
+    original_unit_price NUMERIC(10, 2),
+    item_discount_amount NUMERIC(10, 2),
+    item_discount_percentage NUMERIC(5, 2),
+    total_price NUMERIC(10, 2) NOT NULL,
+    notes TEXT,
+    has_color_identifier BOOLEAN,
+    color_value TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTamptz DEFAULT NOW()
 );
-comment on table public.order_items is 'Line items for each order.';
+ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage order items" ON public.order_items FOR ALL TO authenticated USING (true);
+
 
 -- Inventory Items Table
--- Tracks consumable supplies.
-create table if not exists public.inventory_items (
-  id uuid primary key default uuid_generate_v4(),
-  name text not null,
-  quantity integer not null default 0,
-  unit text not null,
-  low_stock_threshold integer default 0,
-  last_restocked_at timestamptz,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS public.inventory_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit TEXT NOT NULL,
+    low_stock_threshold INTEGER DEFAULT 0,
+    last_restocked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-comment on table public.inventory_items is 'Tracks business supplies and inventory levels.';
-
+ALTER TABLE public.inventory_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage inventory" ON public.inventory_items FOR ALL TO authenticated USING (true);
 
 -- Company Settings Table
--- Stores global settings for the company, designed as a single-row table.
-create table if not exists public.company_settings (
-  id text primary key default 'global_settings',
-  company_name text,
-  company_address text,
-  company_phone text,
-  company_logo_url text,
-  vat_tax_id text,
-  vat_sales_tax_rate numeric(5, 2),
-  include_vat_in_prices boolean default true,
-  selected_currency text default 'GBP',
-  selected_language text default 'en',
-  available_collection_schedule jsonb,
-  available_delivery_schedule jsonb,
-  stripe_connect_account_id text,
-  enable_platform_fee_pass_through boolean default false,
-  delivery_fee_base_gbp numeric(10, 2),
-  delivery_fee_per_mile_gbp numeric(10, 2),
-  delivery_fee_minimum_gbp numeric(10, 2),
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS public.company_settings (
+    id TEXT PRIMARY KEY, -- 'global_settings'
+    company_name TEXT,
+    company_address TEXT,
+    company_phone TEXT,
+    company_logo_url TEXT,
+    vat_tax_id TEXT,
+    vat_sales_tax_rate NUMERIC(5, 2),
+    include_vat_in_prices BOOLEAN DEFAULT true,
+    selected_currency TEXT DEFAULT 'GBP',
+    selected_language TEXT DEFAULT 'en',
+    available_collection_schedule JSONB,
+    available_delivery_schedule JSONB,
+    stripe_connect_account_id TEXT,
+    enable_platform_fee_pass_through BOOLEAN,
+    delivery_fee_base_gbp NUMERIC(10, 2),
+    delivery_fee_per_mile_gbp NUMERIC(10, 2),
+    delivery_fee_minimum_gbp NUMERIC(10, 2),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-comment on table public.company_settings is 'Singleton table for global company and regional settings.';
-
--- Ensure only one row can exist in company_settings
-alter table public.company_settings add constraint singleton_check check (id = 'global_settings');
+ALTER TABLE public.company_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage company settings" ON public.company_settings FOR ALL TO authenticated USING (true);
 
 
 -- Printer Settings Table
--- Stores global printer configurations, designed as a single-row table.
-create table if not exists public.printer_settings (
-  id text primary key default 'global_printer_settings',
-  receipt_printer text,
-  customer_receipt_copies text,
-  stub_printer text,
-  receipt_header text,
-  receipt_footer text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS public.printer_settings (
+    id TEXT PRIMARY KEY, -- 'global_printer_settings'
+    receipt_printer TEXT,
+    customer_receipt_copies TEXT,
+    stub_printer TEXT,
+    receipt_header TEXT,
+    receipt_footer TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-comment on table public.printer_settings is 'Singleton table for global printer configurations.';
-
--- Ensure only one row can exist in printer_settings
-alter table public.printer_settings add constraint singleton_check check (id = 'global_printer_settings');
+ALTER TABLE public.printer_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage printer settings" ON public.printer_settings FOR ALL TO authenticated USING (true);
 
 
 -- Special Offers Table
--- Stores configuration for various types of special offers.
-create table if not exists public.special_offers (
-  id uuid primary key default uuid_generate_v4(),
-  offer_type_identifier text not null unique check (offer_type_identifier in ('BUY_X_GET_Y', 'BUNDLE_DEAL', 'SPEND_GET_FREE_ITEM')),
-  is_active boolean default false,
-  valid_from timestamptz,
-  valid_to timestamptz,
-  notes text,
-  
-  -- Fields for "Buy X Get Y"
-  buy_x_items integer,
-  pay_for_y_items integer,
-  
-  -- Fields for "Bundle Deal"
-  bundle_item_count integer,
-  bundle_price numeric(10, 2),
-
-  -- Fields for "Spend & Get"
-  spend_threshold numeric(10, 2),
-  free_item_description text,
-
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+CREATE TABLE IF NOT EXISTS public.special_offers (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    offer_type_identifier TEXT NOT NULL UNIQUE,
+    is_active BOOLEAN DEFAULT false,
+    valid_from TIMESTAMPTZ,
+    valid_to TIMESTAMPTZ,
+    notes TEXT,
+    buy_x_items INTEGER,
+    pay_for_y_items INTEGER,
+    bundle_item_count INTEGER,
+    bundle_price NUMERIC(10, 2),
+    spend_threshold NUMERIC(10, 2),
+    free_item_description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-comment on table public.special_offers is 'Stores configurations for different types of special offers.';
+ALTER TABLE public.special_offers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow authenticated users to manage special offers" ON public.special_offers FOR ALL TO authenticated USING (true);
 
 
--- PostgreSQL function to create an order and its items transactionally
-create or replace function public.create_order_with_items_tx(
-    p_customer_id uuid,
-    p_customer_name text,
-    p_subtotal_amount numeric,
-    p_cart_discount_amount numeric,
-    p_cart_discount_percentage numeric,
-    p_cart_price_override numeric,
-    p_total_amount numeric,
-    p_status text,
-    p_payment_status text,
-    p_notes text,
-    p_is_express boolean,
-    p_due_date timestamptz,
-    p_items jsonb
+-- PG Function to create an order and its items transactionally
+CREATE OR REPLACE FUNCTION create_order_with_items_tx(
+    p_customer_id UUID,
+    p_customer_name TEXT,
+    p_subtotal_amount NUMERIC,
+    p_cart_discount_amount NUMERIC,
+    p_cart_discount_percentage NUMERIC,
+    p_cart_price_override NUMERIC,
+    p_total_amount NUMERIC,
+    p_status TEXT,
+    p_payment_status TEXT,
+    p_notes TEXT,
+    p_is_express BOOLEAN,
+    p_due_date TIMESTAMPTZ,
+    p_items JSONB
 )
-returns table (
-    id uuid,
-    order_number text,
-    customer_id uuid,
-    customer_name text,
-    subtotal_amount numeric,
-    cart_discount_amount numeric,
-    cart_discount_percentage numeric,
-    cart_price_override numeric,
-    total_amount numeric,
-    status text,
-    payment_status text,
-    notes text,
-    is_express boolean,
-    due_date timestamptz,
-    created_at timestamptz,
-    updated_at timestamptz
-) as $$
-declare
-    new_order_id uuid;
-    item jsonb;
-begin
+RETURNS TABLE (
+    id UUID, order_number TEXT, customer_id UUID, customer_name TEXT, subtotal_amount NUMERIC,
+    cart_discount_amount NUMERIC, cart_discount_percentage NUMERIC, cart_price_override NUMERIC,
+    total_amount NUMERIC, status TEXT, payment_status TEXT, notes TEXT, is_express BOOLEAN,
+    due_date TIMESTAMPTZ, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    new_order_id UUID;
+    item JSONB;
+BEGIN
     -- Insert the order header
-    insert into public.orders (
-        customer_id, customer_name, subtotal_amount, cart_discount_amount, cart_discount_percentage, cart_price_override, total_amount, status, payment_status, notes, is_express, due_date
-    ) values (
-        p_customer_id, p_customer_name, p_subtotal_amount, p_cart_discount_amount, p_cart_discount_percentage, p_cart_price_override, p_total_amount, p_status, p_payment_status, p_notes, p_is_express, p_due_date
-    ) returning public.orders.id into new_order_id;
+    INSERT INTO public.orders (
+        customer_id, customer_name, subtotal_amount, cart_discount_amount,
+        cart_discount_percentage, cart_price_override, total_amount, status,
+        payment_status, notes, is_express, due_date
+    ) VALUES (
+        p_customer_id, p_customer_name, p_subtotal_amount, p_cart_discount_amount,
+        p_cart_discount_percentage, p_cart_price_override, p_total_amount, p_status,
+        p_payment_status, p_notes, p_is_express, p_due_date
+    ) RETURNING public.orders.id INTO new_order_id;
 
-    -- Insert order items
-    if p_items is not null then
-        for item in select * from jsonb_array_elements(p_items)
-        loop
-            insert into public.order_items (
-                order_id,
-                service_item_id,
-                service_name,
-                quantity,
-                unit_price,
-                original_unit_price,
-                item_discount_amount,
-                item_discount_percentage,
-                total_price,
-                notes,
-                has_color_identifier,
-                color_value
-            ) values (
-                new_order_id,
-                (item->>'service_item_id')::uuid,
-                item->>'service_name',
-                (item->>'quantity')::integer,
-                (item->>'unit_price')::numeric,
-                (item->>'original_unit_price')::numeric,
-                (item->>'item_discount_amount')::numeric,
-                (item->>'item_discount_percentage')::numeric,
-                (item->>'total_price')::numeric,
-                item->>'notes',
-                (item->>'has_color_identifier')::boolean,
-                item->>'color_value'
-            );
-        end loop;
-    end if;
+    -- Loop through the items and insert them
+    FOR item IN SELECT * FROM jsonb_array_elements(p_items)
+    LOOP
+        INSERT INTO public.order_items (
+            order_id, service_item_id, service_name, quantity, unit_price,
+            original_unit_price, item_discount_amount, item_discount_percentage,
+            total_price, notes, has_color_identifier, color_value
+        ) VALUES (
+            new_order_id,
+            (item->>'service_item_id')::UUID,
+            item->>'service_name',
+            (item->>'quantity')::INTEGER,
+            (item->>'unit_price')::NUMERIC,
+            (item->>'original_unit_price')::NUMERIC,
+            (item->>'item_discount_amount')::NUMERIC,
+            (item->>'item_discount_percentage')::NUMERIC,
+            (item->>'total_price')::NUMERIC,
+            item->>'notes',
+            (item->>'has_color_identifier')::BOOLEAN,
+            item->>'color_value'
+        );
+    END LOOP;
 
-    -- Return the created order header
-    return query select * from public.orders where public.orders.id = new_order_id;
-end;
-$$ language plpgsql volatile security definer;
-
--- Grant usage on the function to the authenticated role
-grant execute on function public.create_order_with_items_tx(uuid,text,numeric,numeric,numeric,numeric,numeric,text,text,text,boolean,timestamptz,jsonb) to authenticated;
-
-
--- Add RLS policies for tables
-
--- Staff: Allow all operations for super_admins. Admins can manage other admins and clerks. All authenticated can read.
-alter table public.staff enable row level security;
-drop policy if exists "Allow super_admins full access" on public.staff;
-create policy "Allow super_admins full access" on public.staff for all
-  using (true)
-  with check (true);
-
--- Customers: Allow authenticated users to perform all operations.
-alter table public.customers enable row level security;
-drop policy if exists "Allow authenticated users full access" on public.customers;
-create policy "Allow authenticated users full access" on public.customers for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
-
--- Catalog Entries: Allow authenticated users to perform all operations.
-alter table public.catalog_entries enable row level security;
-drop policy if exists "Allow authenticated users full access" on public.catalog_entries;
-create policy "Allow authenticated users full access" on public.catalog_entries for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
-
--- Orders: Allow authenticated users to perform all operations.
-alter table public.orders enable row level security;
-drop policy if exists "Allow authenticated users full access" on public.orders;
-create policy "Allow authenticated users full access" on public.orders for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
-
--- Order Items: Allow authenticated users to perform all operations.
-alter table public.order_items enable row level security;
-drop policy if exists "Allow authenticated users full access" on public.order_items;
-create policy "Allow authenticated users full access" on public.order_items for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
-
--- Inventory Items: Allow authenticated users to perform all operations.
-alter table public.inventory_items enable row level security;
-drop policy if exists "Allow authenticated users full access" on public.inventory_items;
-create policy "Allow authenticated users full access" on public.inventory_items for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
-
--- Company Settings: Allow authenticated users to perform all operations.
-alter table public.company_settings enable row level security;
-drop policy if exists "Allow authenticated users full access" on public.company_settings;
-create policy "Allow authenticated users full access" on public.company_settings for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
-
--- Printer Settings: Allow authenticated users to perform all operations.
-alter table public.printer_settings enable row level security;
-drop policy if exists "Allow authenticated users full access" on public.printer_settings;
-create policy "Allow authenticated users full access" on public.printer_settings for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
-
--- Special Offers: Allow authenticated users to perform all operations.
-alter table public.special_offers enable row level security;
-drop policy if exists "Allow authenticated users full access" on public.special_offers;
-create policy "Allow authenticated users full access" on public.special_offers for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
-  
--- Note: The staff table RLS is restrictive for demo.
--- The rest are permissive for authenticated users for simplicity in this prototype.
--- A production app would have much more granular RLS, likely based on user roles from a custom claims setup.
-
+    -- Return the newly created order header
+    RETURN QUERY SELECT * FROM public.orders WHERE public.orders.id = new_order_id;
+END;
+$$ LANGUAGE plpgsql;
