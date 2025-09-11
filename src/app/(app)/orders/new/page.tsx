@@ -500,7 +500,27 @@ export default function NewOrderPage() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
       <AlphanumericKeypadModal isOpen={isKeypadOpen} onOpenChange={setIsKeypadOpen} inputValue={amountTendered} onInputChange={setAmountTendered} onConfirm={handleAmountKeypadConfirm} title="Enter Amount Tendered" numericOnly={true} />
-      {createdOrderDetails && (<Dialog open={showPrintDialog} onOpenChange={(isOpen) => { setShowPrintDialog(isOpen); if (!isOpen && !printType && createdOrderDetails) { handlePayLaterAndNav(); } }}> <DialogContent><DialogHeader><DialogTitle className="flex items-center"><Printer className="mr-2 h-5 w-5"/>Print Options for Order {createdOrderDetails.id}{createdOrderDetails.isExpress && <Badge variant="destructive" className="ml-2 text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}</DialogTitle><DialogDescription>Select receipt type. Print dialog opens after navigation.</DialogDescription></DialogHeader><div className="grid grid-cols-2 gap-4 py-4"><Button onClick={() => handlePrintSelection('customer_copy')}>Customer Copy</Button><Button onClick={() => handlePrintSelection('shop_copy')}>Shop Copy</Button><Button onClick={() => handlePrintSelection('stubs')}>Item Stubs</Button><Button onClick={() => handlePrintSelection('all_tickets')}>All Tickets</Button></div><DialogFooter><Button variant="outline" onClick={() => { setShowPrintDialog(false); setPrintType(null); handlePayLaterAndNav(); }}>Skip Printing & View Order</Button></DialogFooter></DialogContent></Dialog>)}
+      {createdOrderDetails && (<Dialog open={showPrintDialog} onOpenChange={(isOpen) => { setShowPrintDialog(isOpen); if (!isOpen && !printType && createdOrderDetails) { handlePayLaterAndNav(); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Printer className="mr-2 h-5 w-5"/>Print Options for Order {createdOrderDetails.id}{createdOrderDetails.isExpress && <Badge variant="destructive" className="ml-2 text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
+            </DialogTitle>
+            <DialogDescription>
+              Select the type of receipt or ticket you want to print. The print dialog will open after navigation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <Button onClick={() => handlePrintSelection('customer_copy')}>Customer Copy</Button>
+            <Button onClick={() => handlePrintSelection('shop_copy')}>Shop Copy</Button>
+            <Button onClick={() => handlePrintSelection('stubs')}>Item Stubs</Button>
+            <Button onClick={() => handlePrintSelection('all_tickets')}>All Tickets</Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowPrintDialog(false); setPrintType(null); handlePayLaterAndNav(); }}>Skip Printing & View Order</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>)}
       <div className="lg:col-span-2 space-y-6">
         <Card className="shadow-lg">
           <CardHeader><CardTitle className="font-headline text-2xl">Select Services for {isLoadingSpecificCustomer ? <Skeleton className="h-7 w-32 inline-block" /> : selectedCustomerName || 'Customer'}</CardTitle><CardDescription>Choose category, then click service to add.</CardDescription></CardHeader>

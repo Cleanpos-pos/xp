@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Delete } from "lucide-react"; // For backspace icon
 
@@ -134,6 +134,9 @@ export function AlphanumericKeypadModal({
       <DialogContent className="sm:max-w-md p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+           <DialogDescription>
+            Use the keypad below to enter the value.
+          </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <Input
