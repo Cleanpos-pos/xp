@@ -47,6 +47,7 @@ export function EditCatalogEntryDialog({ entry, isOpen, onOpenChange, onSuccess 
       price: entry.type === "item" ? (entry.price ?? 0) : undefined,
       description: entry.description || "",
       has_color_identifier: entry.type === "item" ? (entry.has_color_identifier ?? false) : undefined,
+      small_tags_to_print: entry.type === "item" ? (entry.small_tags_to_print ?? 1) : undefined,
     },
   });
 
@@ -56,6 +57,7 @@ export function EditCatalogEntryDialog({ entry, isOpen, onOpenChange, onSuccess 
       price: entry.type === "item" ? (entry.price ?? 0) : undefined,
       description: entry.description || "",
       has_color_identifier: entry.type === "item" ? (entry.has_color_identifier ?? false) : undefined,
+      small_tags_to_print: entry.type === "item" ? (entry.small_tags_to_print ?? 1) : undefined,
     });
   }, [entry, form, isOpen]); // Reset form when entry or isOpen changes
 
@@ -65,6 +67,7 @@ export function EditCatalogEntryDialog({ entry, isOpen, onOpenChange, onSuccess 
       ...data,
       price: entry.type === "item" ? (data.price ?? undefined) : undefined,
       has_color_identifier: entry.type === "item" ? (data.has_color_identifier ?? false) : undefined,
+      small_tags_to_print: entry.type === 'item' ? (data.small_tags_to_print ?? 1) : undefined,
     };
 
     if (entry.type === "item" && (submissionData.price === undefined || submissionData.price <=0) ) {
@@ -101,7 +104,7 @@ export function EditCatalogEntryDialog({ entry, isOpen, onOpenChange, onSuccess 
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
             <FormField
               control={form.control}
               name="name"
@@ -126,6 +129,20 @@ export function EditCatalogEntryDialog({ entry, isOpen, onOpenChange, onSuccess 
                       <FormControl>
                         <Input type="number" step="0.01" placeholder="e.g., 12.99" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="small_tags_to_print"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Small Tags to Print</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="1" min="0" {...field} />
+                      </FormControl>
+                      <FormDescription>Number of small tags to print for this item.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

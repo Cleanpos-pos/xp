@@ -22,9 +22,9 @@ import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffA
 import { getCompanySettingsAction, updateCompanySettingsAction } from "./company-settings-actions";
 import { getPrinterSettingsAction, updatePrinterSettingsAction } from "./printer-settings-actions"; 
 import { getSpecialOffersAction, upsertSpecialOfferAction } from "./special-offers-actions"; // Import special offer actions
-import type { CompanySettings, DaySchedule, PrinterSettings, SpecialOffer, SpecialOfferTypeIdentifier, StaffCredentials, TimeSlot, UserRole } from "@/types"; 
+import type { CompanySettings, DaySchedule, PrinterSettings, SpecialOffer, SpecialOfferTypeIdentifier, StaffCredentials, TimeSlot, UserRole, SmallTagPrintSettings } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";
-import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon, Truck, PlusCircle, Clock, Trash } from "lucide-react";
+import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon, Truck, PlusCircle, Clock, Trash, Tag } from "lucide-react";
 import Link from 'next/link';
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
@@ -154,6 +154,12 @@ export default function SettingsPage() {
   const [stubPrinter, setStubPrinter] = React.useState<string>("dotmatrix_76mm");
   const [receiptHeader, setReceiptHeader] = React.useState<string>("XP Clean - Your Town Branch");
   const [receiptFooter, setReceiptFooter] = React.useState<string>("Thank you for your business!");
+  const [smallTagPrintSettings, setSmallTagPrintSettings] = React.useState<SmallTagPrintSettings>({
+    show_order_number: true,
+    show_due_date: true,
+    show_item_name: true,
+    show_store_name: false,
+  });
 
   // Special Offers State
   const [isLoadingSpecialOffers, setIsLoadingSpecialOffers] = React.useState(true);
@@ -259,12 +265,14 @@ export default function SettingsPage() {
         setStubPrinter(settings.stub_printer || "dotmatrix_76mm");
         setReceiptHeader(settings.receipt_header || "XP Clean - Your Town Branch");
         setReceiptFooter(settings.receipt_footer || "Thank you for your business!");
+        setSmallTagPrintSettings(settings.small_tag_print_settings || { show_order_number: true, show_due_date: true, show_item_name: true, show_store_name: false });
       } else {
         setReceiptPrinter("thermal_80mm");
         setCustomerReceiptCopies("1");
         setStubPrinter("dotmatrix_76mm");
         setReceiptHeader("XP Clean - Your Town Branch");
         setReceiptFooter("Thank you for your business!");
+        setSmallTagPrintSettings({ show_order_number: true, show_due_date: true, show_item_name: true, show_store_name: false });
       }
     } catch (error) {
       toast({ title: "Error", description: "Failed to load printer settings.", variant: "destructive" });
@@ -446,6 +454,7 @@ export default function SettingsPage() {
       stub_printer: stubPrinter,
       receipt_header: receiptHeader,
       receipt_footer: receiptFooter,
+      small_tag_print_settings: smallTagPrintSettings,
     };
     const result = await updatePrinterSettingsAction(settingsToSave);
     if (result.success) {
@@ -568,6 +577,13 @@ export default function SettingsPage() {
       newSchedule[day] = daySchedule;
       return newSchedule;
     });
+  };
+  
+  const handleSmallTagSettingChange = (key: keyof SmallTagPrintSettings, value: boolean) => {
+    setSmallTagPrintSettings(prev => ({
+      ...prev,
+      [key]: value,
+    }));
   };
 
 
@@ -1197,7 +1213,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="printerSetup" className="mt-6">
+        <TabsContent value="printerSetup" className="mt-6 space-y-6">
          <Card className="shadow-xl">
             <CardHeader>
               <CardTitle className="font-headline text-2xl flex items-center">
@@ -1285,13 +1301,55 @@ export default function SettingsPage() {
                     <Label htmlFor="receipt-footer">Receipt Footer Text</Label>
                     <Textarea id="receipt-footer" value={receiptFooter} onChange={(e) => setReceiptFooter(e.target.value)} placeholder="e.g., Thank you! Visit us again at www.example.com" className="mt-1" rows={2}/>
                   </div>
-
-                  <Button onClick={handleSavePrinterSettings} disabled={isSavingPrinterSettings}>
-                    {isSavingPrinterSettings ? "Saving..." : "Save Printer Settings"}
-                  </Button>
                 </>
               )}
             </CardContent>
+            <CardFooter>
+                <Button onClick={handleSavePrinterSettings} disabled={isSavingPrinterSettings}>
+                    {isSavingPrinterSettings ? "Saving..." : "Save General Printer Settings"}
+                </Button>
+            </CardFooter>
+          </Card>
+          <Card className="shadow-xl">
+            <CardHeader>
+                <CardTitle className="font-headline text-xl flex items-center">
+                    <Tag className="mr-2 h-5 w-5" /> Small Tag Content
+                </CardTitle>
+                <CardDescription>Choose which details to print on the small item tags.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                 {isLoadingPrinterSettings ? (
+                    <div className="space-y-4">
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                    </div>
+                 ) : (
+                    <>
+                        <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <Label htmlFor="tag-show-number" className="text-sm">Show Order Number</Label>
+                            <Switch id="tag-show-number" checked={smallTagPrintSettings.show_order_number} onCheckedChange={(checked) => handleSmallTagSettingChange('show_order_number', checked)} />
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <Label htmlFor="tag-show-date" className="text-sm">Show Due Date</Label>
+                            <Switch id="tag-show-date" checked={smallTagPrintSettings.show_due_date} onCheckedChange={(checked) => handleSmallTagSettingChange('show_due_date', checked)} />
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <Label htmlFor="tag-show-item" className="text-sm">Show Item Name</Label>
+                            <Switch id="tag-show-item" checked={smallTagPrintSettings.show_item_name} onCheckedChange={(checked) => handleSmallTagSettingChange('show_item_name', checked)} />
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <Label htmlFor="tag-show-store" className="text-sm">Show Store Name</Label>
+                            <Switch id="tag-show-store" checked={smallTagPrintSettings.show_store_name} onCheckedChange={(checked) => handleSmallTagSettingChange('show_store_name', checked)} />
+                        </div>
+                    </>
+                 )}
+            </CardContent>
+            <CardFooter>
+                 <Button onClick={handleSavePrinterSettings} disabled={isSavingPrinterSettings}>
+                    {isSavingPrinterSettings ? "Saving..." : "Save Tag Settings"}
+                </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
 

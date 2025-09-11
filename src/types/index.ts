@@ -107,6 +107,7 @@ export interface CatalogEntry {
   description?: string; // For items or categories
   sort_order: number; // To handle manual sorting later
   has_color_identifier?: boolean; // For items, to prompt for color
+  small_tags_to_print?: number; // For items, number of small tags
   created_at?: string; // ISO string
   updated_at?: string; // ISO string
 }
@@ -189,6 +190,13 @@ export interface CompanySettings {
   updated_at?: string;
 }
 
+export interface SmallTagPrintSettings {
+  show_order_number?: boolean;
+  show_due_date?: boolean;
+  show_item_name?: boolean;
+  show_store_name?: boolean;
+}
+
 export interface PrinterSettings {
   id: string; // e.g., 'global_printer_settings'
   receipt_printer?: string;
@@ -196,9 +204,11 @@ export interface PrinterSettings {
   stub_printer?: string;
   receipt_header?: string;
   receipt_footer?: string;
+  small_tag_print_settings?: SmallTagPrintSettings; // New field for small tag content
   created_at?: string;
   updated_at?: string;
 }
+
 
 export type SpecialOfferTypeIdentifier = 'BUY_X_GET_Y' | 'BUNDLE_DEAL' | 'SPEND_GET_FREE_ITEM';
 

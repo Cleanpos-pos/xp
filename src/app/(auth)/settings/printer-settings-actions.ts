@@ -28,7 +28,10 @@ export async function getPrinterSettingsAction(): Promise<PrinterSettings | null
       // Don't throw, allow defaults to be used on client if table doesn't exist yet
       return null;
     }
-    return data ? (data as PrinterSettings) : null;
+    return data ? ({
+      ...data,
+      small_tag_print_settings: data.small_tag_print_settings || { show_order_number: true, show_due_date: true, show_item_name: true, show_store_name: true }
+    } as PrinterSettings) : null;
   } catch (error) {
     console.error("Catch block: Error fetching printer settings:", error);
     return null;
@@ -42,6 +45,7 @@ export async function updatePrinterSettingsAction(
     const dataToUpsert = {
       ...settingsData,
       id: PRINTER_SETTINGS_ROW_ID, // Ensure the ID is always our fixed ID for upsert
+      small_tag_print_settings: settingsData.small_tag_print_settings || {},
       updated_at: new Date().toISOString(),
     };
 

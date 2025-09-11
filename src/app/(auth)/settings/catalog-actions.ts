@@ -17,7 +17,7 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
     };
   }
 
-  const { name, parent_id, type, price, description } = validationResult.data;
+  const { name, parent_id, type, price, description, small_tags_to_print } = validationResult.data;
   // Ensure has_color_identifier is explicitly false for items if not provided, and undefined for categories
   const has_color_identifier = type === 'item' ? (validationResult.data.has_color_identifier ?? false) : undefined;
 
@@ -38,6 +38,7 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
       price: type === "item" ? price : undefined,
       description,
       has_color_identifier: has_color_identifier, // Pass the processed value
+      small_tags_to_print: type === 'item' ? small_tags_to_print : undefined,
     };
     
     const newEntry = await addCatalogEntry(newEntryData as any);
@@ -48,7 +49,7 @@ export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise
 
     return { success: true, message: `${type === 'category' ? 'Category' : 'Item'} "${name}" added successfully.`, newEntry };
   } catch (error: any) {
-    const inputDataForLog = { name, parent_id, type, price, description, has_color_identifier };
+    const inputDataForLog = { name, parent_id, type, price, description, has_color_identifier, small_tags_to_print };
     console.error("Error in addCatalogEntryAction. Input data was:", JSON.stringify(inputDataForLog, null, 2));
     console.error("Caught error details in action:", error);
 
@@ -86,6 +87,7 @@ export async function updateCatalogEntryAction(entryId: string, data: UpdateCata
       price: processedData.price, 
       description: processedData.description,
       has_color_identifier: processedData.has_color_identifier,
+      small_tags_to_print: processedData.small_tags_to_print,
     });
 
     revalidatePath("/settings");

@@ -9,6 +9,7 @@ export const AddCatalogEntrySchema = z.object({
   price: z.coerce.number().optional(),
   description: z.string().max(500, "Description too long").optional(),
   has_color_identifier: z.boolean().optional(),
+  small_tags_to_print: z.coerce.number().int().min(0).optional(),
 });
 
 export type AddCatalogEntryInput = z.infer<typeof AddCatalogEntrySchema>;
@@ -18,6 +19,7 @@ export const UpdateCatalogEntrySchema = z.object({
   price: z.coerce.number().optional(), // Only applicable if type is 'item'
   description: z.string().max(500, "Description too long").optional(),
   has_color_identifier: z.boolean().optional(), // Only applicable if type is 'item'
+  small_tags_to_print: z.coerce.number().int().min(0).optional(),
 });
 export type UpdateCatalogEntryData = z.infer<typeof UpdateCatalogEntrySchema>;
 
@@ -29,4 +31,3 @@ export interface ActionResult {
   newEntry?: CatalogEntry; // For add action
   updatedEntry?: CatalogEntry; // For update action
 }
-
