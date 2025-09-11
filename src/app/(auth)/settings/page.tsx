@@ -1487,8 +1487,7 @@ export default function SettingsPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Confirm Staff Removal</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to remove staff member "{staffToRemove.name}" (Login ID: {staffToRemove.login_id})?
-                This action cannot be undone.
+                Are you sure you want to remove staff member "{staffToRemove.name}" (Login ID: {staffToRemove.login_id})? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
