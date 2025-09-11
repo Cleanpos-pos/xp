@@ -9,7 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { PlusCircle, Edit3, Trash2 } from "lucide-react";
+import { PlusCircle, Edit3, Trash2, Tag } from "lucide-react";
 import type { CatalogHierarchyNode, CatalogEntryType } from "@/types";
 import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
@@ -63,6 +63,12 @@ function CatalogNodeDisplay({ node, onAddEntry, onEditEntry, onDeleteEntry, leve
             )}
             {node.type === "item" && node.has_color_identifier && (
                 <span className="ml-2 text-xs text-blue-500">(Color ID)</span>
+            )}
+            {node.type === 'item' && node.small_tags_to_print !== undefined && node.small_tags_to_print > 0 && (
+                <span className="ml-2 text-xs text-purple-600 flex items-center">
+                    <Tag className="mr-1 h-3 w-3" />
+                    {node.small_tags_to_print} {node.small_tags_to_print === 1 ? 'stub' : 'stubs'}
+                </span>
             )}
           </div>
           <div className="flex items-center space-x-1">
@@ -315,7 +321,7 @@ export function CatalogManagementTab() {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        Drag &amp; drop sorting for categories and items will be implemented in a future update.
+        Drag & drop sorting for categories and items will be implemented in a future update.
       </p>
     </div>
   );
