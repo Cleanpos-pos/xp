@@ -15,7 +15,7 @@ import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAct
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
 import { EditCatalogEntryDialog } from "./edit-catalog-entry-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog as AddDialog, DialogContent as AddDialogContent, DialogHeader as AddDialogHeader, DialogTitle as AddDialogTitle, DialogTrigger as AddDialogTrigger } from "@/components/ui/dialog";
+import { Dialog as AddDialog, DialogContent as AddDialogContent, DialogHeader as AddDialogHeader, DialogTitle as AddDialogTitle, DialogTrigger as AddDialogTrigger, DialogDescription as AddDialogDescription } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -138,6 +138,9 @@ function CatalogNodeDisplay({ node, onAddEntry, onEditEntry, onDeleteEntry, leve
               <AddDialogContent>
                 <AddDialogHeader>
                   <AddDialogTitle>Add New {addFormType === 'category' ? 'Sub-category' : 'Item/Service'} to {node.name}</AddDialogTitle>
+                  <AddDialogDescription>
+                    Fill in the details for the new catalog entry below.
+                  </AddDialogDescription>
                 </AddDialogHeader>
                 <AddCatalogEntryForm
                   parent_id={node.id} 
@@ -251,6 +254,9 @@ export function CatalogManagementTab() {
         <AddDialogContent>
           <AddDialogHeader>
             <AddDialogTitle>Add New Top-Level Category</AddDialogTitle>
+             <AddDialogDescription>
+                Create a main category to organize your services and items.
+             </AddDialogDescription>
           </AddDialogHeader>
           <AddCatalogEntryForm
             parent_id={null} 
@@ -314,4 +320,3 @@ export function CatalogManagementTab() {
     </div>
   );
 }
-
