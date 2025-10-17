@@ -1503,15 +1503,15 @@ export default function SettingsPage() {
               {isLoadingCompanySettings ? <Skeleton className="h-20 w-full" /> : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div>
-                      <Label htmlFor="delivery-base-fee">Base Fee ({selectedCurrency})</Label>
+                      <Label htmlFor="delivery-base-fee">Base Fee (£)</Label>
                       <Input id="delivery-base-fee" type="number" step="0.01" value={deliveryFeeBase} onChange={(e) => setDeliveryFeeBase(e.target.value)} placeholder="e.g., 2.50" className="mt-1" />
                   </div>
                   <div>
-                      <Label htmlFor="delivery-per-mile-fee">Fee Per Mile ({selectedCurrency})</Label>
+                      <Label htmlFor="delivery-per-mile-fee">Fee Per Mile (£)</Label>
                       <Input id="delivery-per-mile-fee" type="number" step="0.01" value={deliveryFeePerMile} onChange={(e) => setDeliveryFeePerMile(e.target.value)} placeholder="e.g., 0.50" className="mt-1" />
                   </div>
                   <div>
-                      <Label htmlFor="delivery-minimum-fee">Minimum Fee ({selectedCurrency})</Label>
+                      <Label htmlFor="delivery-minimum-fee">Minimum Fee (£)</Label>
                       <Input id="delivery-minimum-fee" type="number" step="0.01" value={deliveryFeeMinimum} onChange={(e) => setDeliveryFeeMinimum(e.target.value)} placeholder="e.g., 3.00" className="mt-1" />
                   </div>
                 </div>

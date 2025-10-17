@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/accordion";
 import { PlusCircle, Edit3, Trash2, Tag } from "lucide-react";
 import type { CatalogHierarchyNode, CatalogEntryType } from "@/types";
-import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
+import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/settings/catalog-actions";
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
 import { EditCatalogEntryDialog } from "./edit-catalog-entry-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,7 +59,7 @@ function CatalogNodeDisplay({ node, onAddEntry, onEditEntry, onDeleteEntry, leve
           <div className="flex items-center">
             <span className="font-medium">{node.name}</span>
             {node.type === "item" && node.price !== undefined && (
-              <span className="ml-2 text-sm text-muted-foreground">${Number(node.price).toFixed(2)}</span>
+              <span className="ml-2 text-sm text-muted-foreground">£{Number(node.price).toFixed(2)}</span>
             )}
             {node.type === "item" && node.has_color_identifier && (
                 <span className="ml-2 text-xs text-blue-500">(Color ID)</span>

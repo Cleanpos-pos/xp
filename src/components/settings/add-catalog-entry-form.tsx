@@ -149,7 +149,7 @@ export function AddCatalogEntryForm({ parent_id, defaultType = "category", onSuc
               <FormItem>
                 <FormLabel>Price (£)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="e.g., 12.99" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                  <Input type="number" step="0.01" placeholder="e.g., 12.99" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
