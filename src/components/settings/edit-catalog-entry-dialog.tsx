@@ -26,8 +26,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { UpdateCatalogEntrySchema, type UpdateCatalogEntryData } from "@/app/(auth)/settings/catalog.schema";
-import { updateCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
+import { UpdateCatalogEntrySchema, type UpdateCatalogEntryData } from "@/app/settings/catalog.schema";
+import { updateCatalogEntryAction } from "@/app/settings/catalog-actions";
 import type { CatalogHierarchyNode } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -62,7 +62,6 @@ export function EditCatalogEntryDialog({ entry, isOpen, onOpenChange, onSuccess 
   }, [entry, form, isOpen]); // Reset form when entry or isOpen changes
 
   async function onSubmit(data: UpdateCatalogEntryData) {
-    // Ensure price is undefined or null if not an item, or not provided
     const submissionData: UpdateCatalogEntryData = {
       ...data,
       price: entry.type === "item" ? (data.price ?? undefined) : undefined,
@@ -125,9 +124,9 @@ export function EditCatalogEntryDialog({ entry, isOpen, onOpenChange, onSuccess 
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price ($)</FormLabel>
+                      <FormLabel>Price (£)</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" placeholder="e.g., 12.99" {...field} />
+                        <Input type="number" step="0.01" placeholder="e.g., 12.99" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -140,7 +139,7 @@ export function EditCatalogEntryDialog({ entry, isOpen, onOpenChange, onSuccess 
                     <FormItem>
                       <FormLabel>Small Tags to Print</FormLabel>
                       <FormControl>
-                        <Input type="number" step="1" min="0" {...field} />
+                        <Input type="number" step="1" min="0" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} />
                       </FormControl>
                       <FormDescription>Number of small tags to print for this item.</FormDescription>
                       <FormMessage />

@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { AddCatalogEntrySchema, type AddCatalogEntryInput } from "@/app/(auth)/settings/catalog.schema";
+import { AddCatalogEntrySchema, type AddCatalogEntryInput } from "@/app/settings/catalog.schema";
 import type { CatalogEntryType } from "@/types";
 
 interface AddCatalogEntryFormProps {
@@ -36,19 +36,16 @@ export function AddCatalogEntryForm({ parent_id, defaultType = "category", onSuc
       type: defaultType,
       price: 0,
       description: "",
-      has_color_identifier: false, // Explicitly default for items if form is used directly
+      has_color_identifier: false,
     },
   });
 
   const watchedType = form.watch("type");
 
-  // Reset has_color_identifier when type changes
   React.useEffect(() => {
     if (watchedType === "category") {
-      form.setValue("has_color_identifier", undefined); // Should be undefined for categories
-      form.setValue("price", undefined);
+      form.setValue("has_color_identifier", undefined);
     } else {
-      // For items, ensure a default if it became undefined
       if (form.getValues("has_color_identifier") === undefined) {
         form.setValue("has_color_identifier", false);
       }
@@ -62,8 +59,6 @@ export function AddCatalogEntryForm({ parent_id, defaultType = "category", onSuc
     const submissionData = {
       ...data,
       price: data.type === "item" ? data.price : undefined,
-      // has_color_identifier will be based on form values (defaulted to false for item)
-      // or undefined if it's a category (due to useEffect hook)
     };
 
     const result = await submitAction(submissionData);
@@ -106,12 +101,9 @@ export function AddCatalogEntryForm({ parent_id, defaultType = "category", onSuc
                 <RadioGroup
                   onValueChange={(value) => {
                     field.onChange(value);
-                    // Trigger re-evaluation of dependent fields
                     if (value === "category") {
-                      form.setValue("price", undefined);
                       form.setValue("has_color_identifier", undefined);
                     } else {
-                      form.setValue("price", form.getValues("price") ?? 0);
                       form.setValue("has_color_identifier", form.getValues("has_color_identifier") ?? false);
                     }
                   }}
@@ -150,33 +142,19 @@ export function AddCatalogEntryForm({ parent_id, defaultType = "category", onSuc
           )}
         />
         {watchedType === "item" && (
-          <>
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Price ($)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" placeholder="e.g., 12.99" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {/* Placeholder for a Switch if you want to edit has_color_identifier in this form
-            <FormField
-              control={form.control}
-              name="has_color_identifier"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                  <FormLabel>Needs Color Specification?</FormLabel>
-                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                </FormItem>
-              )}
-            />
-            */}
-          </>
+          <FormField
+            control={form.control}
+            name="price"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Price (£)</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" placeholder="e.g., 12.99" {...field} value={field.value ?? ""} onChange={e => field.onChange(e.target.value === '' ? '' : parseFloat(e.target.value))} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         )}
         <FormField
           control={form.control}
