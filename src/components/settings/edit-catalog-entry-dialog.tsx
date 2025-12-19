@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect } from "react";
@@ -198,5 +197,3 @@ export function EditCatalogEntryDialog({ entry, isOpen, onOpenChange, onSuccess 
     </Dialog>
   );
 }
-
-    
