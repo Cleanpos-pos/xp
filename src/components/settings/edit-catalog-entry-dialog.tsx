@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect } from "react";
@@ -26,8 +25,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { UpdateCatalogEntrySchema, type UpdateCatalogEntryData } from "@/app/settings/catalog.schema";
-import { updateCatalogEntryAction } from "@/app/settings/catalog-actions";
+import { UpdateCatalogEntrySchema, type UpdateCatalogEntryData } from "@/app/(auth)/settings/catalog.schema";
+import { updateCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
 import type { CatalogHierarchyNode } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 

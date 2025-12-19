@@ -17,11 +17,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from "@/components/ui/card";
-import { type AddStaffInput, AddStaffSchema } from "@/app/(auth)/settings/settings.schema";
-import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffAction, toggleStaffActiveStatusAction } from "@/app/(auth)/settings/actions";
-import { getCompanySettingsAction, updateCompanySettingsAction } from "@/app/(auth)/settings/company-settings-actions";
-import { getPrinterSettingsAction, updatePrinterSettingsAction } from "@/app/(auth)/settings/printer-settings-actions"; 
-import { getSpecialOffersAction, upsertSpecialOfferAction } from "@/app/(auth)/settings/special-offers-actions"; // Import special offer actions
+import { type AddStaffInput, AddStaffSchema } from "../(auth)/settings/settings.schema";
+import { addStaffAction, getAllStaffAction, toggleQuickLoginAction, removeStaffAction, toggleStaffActiveStatusAction } from "../(auth)/settings/actions";
+import { getCompanySettingsAction, updateCompanySettingsAction } from "../(auth)/settings/company-settings-actions";
+import { getPrinterSettingsAction, updatePrinterSettingsAction } from "../(auth)/settings/printer-settings-actions"; 
+import { getSpecialOffersAction, upsertSpecialOfferAction } from "../(auth)/settings/special-offers-actions"; // Import special offer actions
 import type { CompanySettings, DaySchedule, PrinterSettings, SpecialOffer, SpecialOfferTypeIdentifier, StaffCredentials, TimeSlot, UserRole, SmallTagPrintSettings } from "@/types"; 
 import { useToast } from "@/hooks/use-toast";
 import { Users, Cog, KeyRound, ShoppingBasket, DollarSign, Globe, Landmark, UserCog, ShieldCheck, ShieldAlert, ShieldQuestion, ListPlus, PrinterIcon, SettingsIcon, MonitorSmartphone, Percent, Gift, CalendarIcon, Building, ImageUp, Contact, Trash2, UserCheckIcon, UserXIcon, InfoIcon, Truck, PlusCircle, Clock, Trash, Tag } from "lucide-react";
@@ -188,7 +188,6 @@ export default function SettingsPage() {
 
   const [spendGet_Threshold, setSpendGet_Threshold] = React.useState<string>("50.00");
   const [spendGet_FreeItemDesc, setSpendGet_FreeItemDesc] = React.useState<string>("1 Free Shirt Press");
-  const [spendGet_Notes, setSpendGet_Notes] = React.useState<string>("");
   const [spendGet_Active, setSpendGet_Active] = React.useState<boolean>(false);
   const [spendGet_ValidFrom, setSpendGet_ValidFrom] = React.useState<Date | undefined>();
   const [spendGet_ValidTo, setSpendGet_ValidTo] = React.useState<Date | undefined>();
@@ -1548,5 +1547,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    
