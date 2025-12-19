@@ -493,7 +493,7 @@ export async function getInventoryItemById(id: string): Promise<InventoryItem | 
 export async function getCatalogEntries(): Promise<CatalogEntry[]> {
   const { data, error } = await supabase
     .from('catalog_entries')
-    .select('id, name, parent_id, type, price, description, sort_order, has_color_identifier, created_at, updated_at')
+    .select('id, name, parent_id, type, price, description, sort_order, has_color_identifier, small_tags_to_print, created_at, updated_at')
     .order('sort_order', { ascending: true });
 
   if (error) {
@@ -504,6 +504,7 @@ export async function getCatalogEntries(): Promise<CatalogEntry[]> {
     ...entry,
     price: entry.price !== null && entry.price !== undefined ? parseFloat(entry.price) : undefined,
     has_color_identifier: entry.has_color_identifier ?? false,
+    small_tags_to_print: entry.small_tags_to_print !== null && entry.small_tags_to_print !== undefined ? parseInt(entry.small_tags_to_print, 10) : undefined,
     created_at: entry.created_at ? new Date(entry.created_at).toISOString() : undefined,
     updated_at: entry.updated_at ? new Date(entry.updated_at).toISOString() : undefined,
   })) as CatalogEntry[];
@@ -543,6 +544,7 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
       ? entry.has_color_identifier
       : false;
     entryToInsert.price = entry.price ?? 0;
+    entryToInsert.small_tags_to_print = entry.small_tags_to_print ?? 1;
   }
   console.log("[addCatalogEntry] Object being inserted into Supabase:", JSON.stringify(entryToInsert, null, 2));
 
@@ -568,6 +570,7 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
     ...data,
     price: data.price !== null && data.price !== undefined ? parseFloat(data.price) : undefined,
     has_color_identifier: data.has_color_identifier ?? false,
+    small_tags_to_print: data.small_tags_to_print !== null && data.small_tags_to_print !== undefined ? parseInt(data.small_tags_to_print, 10) : undefined,
     created_at: data.created_at ? new Date(data.created_at).toISOString() : undefined,
     updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : undefined,
   } as CatalogEntry;
@@ -575,7 +578,7 @@ export async function addCatalogEntry(entry: Omit<CatalogEntry, 'id' | 'created_
 
 export async function updateCatalogEntry(
   entryId: string,
-  dataToUpdate: Partial<Pick<CatalogEntry, 'name' | 'price' | 'description' | 'has_color_identifier'>>
+  dataToUpdate: Partial<Pick<CatalogEntry, 'name' | 'price' | 'description' | 'has_color_identifier' | 'small_tags_to_print'>>
 ): Promise<CatalogEntry> {
   const updatePayload: { [key: string]: any } = { ...dataToUpdate };
 
@@ -597,9 +600,11 @@ export async function updateCatalogEntry(
       updatePayload.price = dataToUpdate.price;
     }
     updatePayload.has_color_identifier = dataToUpdate.has_color_identifier ?? false;
+    updatePayload.small_tags_to_print = dataToUpdate.small_tags_to_print ?? 1;
   } else {
      updatePayload.price = null;
      delete updatePayload.has_color_identifier;
+     delete updatePayload.small_tags_to_print;
   }
 
 
@@ -623,6 +628,7 @@ export async function updateCatalogEntry(
     ...data,
     price: data.price !== null && data.price !== undefined ? parseFloat(data.price) : undefined,
     has_color_identifier: data.has_color_identifier ?? false,
+    small_tags_to_print: data.small_tags_to_print !== null && data.small_tags_to_print !== undefined ? parseInt(data.small_tags_to_print, 10) : undefined,
     created_at: data.created_at ? new Date(data.created_at).toISOString() : undefined,
     updated_at: data.updated_at ? new Date(data.updated_at).toISOString() : undefined,
   } as CatalogEntry;

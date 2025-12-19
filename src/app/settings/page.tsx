@@ -41,6 +41,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -215,7 +216,7 @@ export default function SettingsPage() {
         setCompanyName(settings.company_name || "XP Clean Ltd.");
         setCompanyAddress(settings.company_address || "123 Clean Street, Suite 100, YourTown, YT 54321");
         setCompanyPhone(settings.company_phone || "(555) 123-4567");
-        setCompanyLogoUrl(settings.company_logo_url || "https://placehold.co/150x50.png?text=Your+Logo");
+        setCompanyLogoUrl(settings.company_logo_url || null);
         setVatTaxId(settings.vat_tax_id || "GB123456789");
         setVatSalesTaxRate(settings.vat_sales_tax_rate?.toString() || "20");
         setIncludeVatInPrices(settings.include_vat_in_prices !== undefined ? settings.include_vat_in_prices : true);
@@ -235,7 +236,7 @@ export default function SettingsPage() {
         setCompanyName("XP Clean Ltd.");
         setCompanyAddress("123 Clean Street, Suite 100, YourTown, YT 54321");
         setCompanyPhone("(555) 123-4567");
-        setCompanyLogoUrl("https://placehold.co/150x50.png?text=Your+Logo");
+        setCompanyLogoUrl(null);
         setVatTaxId("GB123456789");
         setVatSalesTaxRate("20");
         setIncludeVatInPrices(true);
@@ -410,12 +411,10 @@ export default function SettingsPage() {
 
   const handleSaveCompanySettings = async () => {
     setIsSavingCompanySettings(true);
-    const settingsToSave: CompanySettings = {
-      id: 'global_settings', 
+    const settingsToSave: Partial<CompanySettings> = {
       company_name: companyName,
       company_address: companyAddress,
       company_phone: companyPhone,
-      company_logo_url: companyLogoUrl,
       vat_tax_id: vatTaxId,
       vat_sales_tax_rate: parseFloat(vatSalesTaxRate) || 0,
       include_vat_in_prices: includeVatInPrices,
@@ -531,6 +530,57 @@ export default function SettingsPage() {
     setIsSavingState(false);
   };
 
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      toast({ title: "No file selected", description: "Please select an image file to upload.", variant: "default" });
+      return;
+    }
+
+    setIsSavingCompanySettings(true);
+    const fileName = `${Date.now()}_${file.name}`;
+    const filePath = `public/${fileName}`;
+
+    try {
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('logos') // Make sure you have a 'logos' bucket in Supabase Storage
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('logos')
+        .getPublicUrl(filePath);
+
+      if (!urlData || !urlData.publicUrl) {
+        throw new Error("Could not get public URL for the uploaded logo.");
+      }
+
+      const newLogoUrl = urlData.publicUrl;
+      setCompanyLogoUrl(newLogoUrl);
+
+      // Save the new URL to company_settings
+      const result = await updateCompanySettingsAction({
+        company_logo_url: newLogoUrl,
+      });
+
+      if (result.success) {
+        toast({ title: "Logo Uploaded", description: "Your company logo has been updated successfully." });
+      } else {
+        throw new Error(result.message || "Failed to save the new logo URL to settings.");
+      }
+    } catch (error: any) {
+      console.error("Logo upload failed:", error);
+      toast({ title: "Upload Failed", description: error.message || "An error occurred during logo upload.", variant: "destructive" });
+    } finally {
+      setIsSavingCompanySettings(false);
+    }
+  };
+
 
   const getRoleBadgeVariant = (role: UserRole): "default" | "secondary" | "destructive" | "outline" => {
     switch (role) {
@@ -540,14 +590,7 @@ export default function SettingsPage() {
       default: return "secondary";
     }
   };
-
-  const handleLogoUploadPlaceholder = () => {
-    toast({
-      title: "Logo Upload (Placeholder)",
-      description: "Actual logo upload functionality requires backend integration for file storage and processing. This is a UI placeholder.",
-    });
-  };
-
+  
   const handleScheduleChange = (
     type: 'collection' | 'delivery',
     day: string,
@@ -1361,26 +1404,31 @@ export default function SettingsPage() {
                   <div className="space-y-2">
                     <Label>Company Logo</Label>
                     <div className="flex items-center gap-4">
-                      {companyLogoUrl ? (
-                        <Image
-                          src={companyLogoUrl}
-                          alt="Company Logo Placeholder"
-                          width={150}
-                          height={50}
-                          className="rounded-md border object-contain"
-                          data-ai-hint="company logo"
-                        />
-                      ) : (
-                        <div className="w-[150px] h-[50px] flex items-center justify-center rounded-md border border-dashed text-muted-foreground">
-                          No Logo
+                      <div className="w-[150px] h-[50px] flex items-center justify-center rounded-md border border-dashed text-muted-foreground">
+                        {isSavingCompanySettings ? (
+                            <Skeleton className="h-full w-full" />
+                        ) : companyLogoUrl ? (
+                            <Image
+                            src={companyLogoUrl}
+                            alt="Company Logo"
+                            width={150}
+                            height={50}
+                            className="rounded-md object-contain"
+                            />
+                        ) : (
+                            "No Logo"
+                        )}
                         </div>
-                      )}
-                      <Button variant="outline" onClick={handleLogoUploadPlaceholder}>
-                        <ImageUp className="mr-2 h-4 w-4" /> Upload / Change Logo
+                      <Button asChild variant="outline" disabled={isSavingCompanySettings}>
+                         <label htmlFor="logo-upload">
+                          <ImageUp className="mr-2 h-4 w-4" />
+                          {isSavingCompanySettings ? 'Uploading...' : 'Upload / Change'}
+                          <input id="logo-upload" type="file" accept="image/png, image/jpeg, image/webp" className="hidden" onChange={handleLogoUpload} disabled={isSavingCompanySettings} />
+                        </label>
                       </Button>
                     </div>
-                    <p className={cn("text-muted-foreground", "text-xs")}>
-                      Placeholder for logo upload. Actual file upload requires backend integration.
+                     <p className={cn("text-muted-foreground", "text-xs")}>
+                      Upload your company logo. Max file size 1MB.
                     </p>
                   </div>
 
