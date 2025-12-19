@@ -188,6 +188,7 @@ export default function SettingsPage() {
 
   const [spendGet_Threshold, setSpendGet_Threshold] = React.useState<string>("50.00");
   const [spendGet_FreeItemDesc, setSpendGet_FreeItemDesc] = React.useState<string>("1 Free Shirt Press");
+  const [spendGet_Notes, setSpendGet_Notes] = React.useState<string>("");
   const [spendGet_Active, setSpendGet_Active] = React.useState<boolean>(false);
   const [spendGet_ValidFrom, setSpendGet_ValidFrom] = React.useState<Date | undefined>();
   const [spendGet_ValidTo, setSpendGet_ValidTo] = React.useState<Date | undefined>();
@@ -1547,3 +1548,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
