@@ -3,7 +3,7 @@
 
 import { updateCustomerAccountDetailsDb, updateFullCustomerDb } from "@/lib/data";
 import { UpdateCustomerAccountDetailsSchema, type UpdateCustomerAccountDetailsInput } from "./settings.schema";
-import { CreateCustomerSchema, type CreateCustomerInput } from "@/app/customers/new/customer.schema";
+import { CreateCustomerSchema, type CreateCustomerInput } from "@/app/(app)/customers/new/customer.schema";
 import type { Customer } from "@/types";
 import { revalidatePath } from "next/cache";
 import type { z } from "zod";
@@ -90,5 +90,3 @@ export async function updateCustomerAction(
     };
   }
 }
-
-    
