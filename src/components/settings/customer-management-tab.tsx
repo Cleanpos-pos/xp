@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCustomers } from "@/lib/data";
-import { updateCustomerAction } from "@/app/(auth)/settings/customer-actions";
+import { updateCustomerAction } from "@/lib/actions/customer-actions";
 import type { Customer } from "@/types";
 import type { CreateCustomerInput } from "@/app/(app)/customers/new/customer.schema";
 import { useToast } from "@/hooks/use-toast";
@@ -165,3 +165,5 @@ export function CustomerManagementTab() {
     </div>
   );
 }
+
+    
