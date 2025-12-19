@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/accordion";
 import { PlusCircle, Edit3, Trash2, Tag } from "lucide-react";
 import type { CatalogHierarchyNode, CatalogEntryType } from "@/types";
-import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/settings/catalog-actions";
+import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
 import { EditCatalogEntryDialog } from "./edit-catalog-entry-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -326,3 +326,5 @@ export function CatalogManagementTab() {
     </div>
   );
 }
+
+    
