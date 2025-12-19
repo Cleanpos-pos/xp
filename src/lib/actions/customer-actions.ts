@@ -1,7 +1,7 @@
 
 "use server";
 
-import { type CreateCustomerInput, CreateCustomerSchema } from "./customer.schema";
+import { type CreateCustomerInput, CreateCustomerSchema } from "@/lib/schemas/customer.schema";
 import { createCustomer as createCustomerInDb, updateFullCustomerDb } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 import type { Customer } from "@/types";
