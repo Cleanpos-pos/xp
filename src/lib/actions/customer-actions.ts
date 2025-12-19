@@ -1,9 +1,20 @@
 
 "use server";
 
-import { type CreateCustomerInput, CreateCustomerSchema } from "@/app/(app)/customers/new/customer.schema";
-import { createCustomer as createCustomerInDb } from "@/lib/data";
+import { type CreateCustomerInput, CreateCustomerSchema } from "./customer.schema";
+import { createCustomer as createCustomerInDb, updateFullCustomerDb } from "@/lib/data";
 import { revalidatePath } from "next/cache";
+import type { Customer } from "@/types";
+import type { z } from "zod";
+
+
+interface ActionResult {
+  success: boolean;
+  message?: string;
+  customer?: Customer;
+  errors?: z.ZodIssue[] | null;
+}
+
 
 export async function createCustomerAction(data: CreateCustomerInput) {
   const validationResult = CreateCustomerSchema.safeParse(data);
@@ -34,6 +45,7 @@ export async function createCustomerAction(data: CreateCustomerInput) {
     const newCustomer = await createCustomerInDb(customerToInsert);
     
     revalidatePath('/customers');
+    revalidatePath('/settings');
 
     return {
       success: true,
@@ -45,6 +57,42 @@ export async function createCustomerAction(data: CreateCustomerInput) {
     return {
       success: false,
       message: error.message || "Failed to create customer.",
+    };
+  }
+}
+
+export async function updateCustomerAction(
+  customerId: string,
+  data: CreateCustomerInput
+): Promise<ActionResult> {
+  const validationResult = CreateCustomerSchema.safeParse(data);
+
+  if (!validationResult.success) {
+    return {
+      success: false,
+      message: "Invalid customer data provided.",
+      errors: validationResult.error.issues,
+    };
+  }
+
+  try {
+    const updatedCustomer = await updateFullCustomerDb(customerId, validationResult.data);
+    
+    revalidatePath("/settings");
+    revalidatePath("/customers");
+    revalidatePath(`/customers/${customerId}`);
+
+    return {
+      success: true,
+      message: `Customer ${updatedCustomer.name}'s details updated successfully.`,
+      customer: updatedCustomer,
+    };
+  } catch (error: any) {
+    console.error("Error in updateCustomerAction:", error);
+    return {
+      success: false,
+      message: error.message || "Failed to update customer details.",
+      errors: null,
     };
   }
 }
