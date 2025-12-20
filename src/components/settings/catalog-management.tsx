@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Accordion,
@@ -8,9 +8,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { PlusCircle, Edit3, Trash2, Tag } from "lucide-react";
+import { PlusCircle, Edit3, Trash2, Tag, Upload } from "lucide-react";
 import type { CatalogHierarchyNode, CatalogEntryType } from "@/types";
-import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/lib/actions/catalog-actions";
+import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
 import { EditCatalogEntryDialog } from "./edit-catalog-entry-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import Papa from "papaparse";
 
 interface RenderNodeProps {
   node: CatalogHierarchyNode;
@@ -168,6 +169,8 @@ export function CatalogManagementTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddTopLevelFormOpen, setIsAddTopLevelFormOpen] = useState(false);
   const { toast } = useToast();
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [entryToEdit, setEntryToEdit] = useState<CatalogHierarchyNode | null>(null);
   const [isEditDialogValidOpen, setIsEditDialogValidOpen] = useState(false);
@@ -237,6 +240,103 @@ export function CatalogManagementTab() {
     setEntryToDelete(null);
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const { data } = results;
+        console.log("Parsed CSV data:", data);
+
+        // Basic validation
+        if (!data.length || !('Category' in data[0] && 'ItemName' in data[0] && 'Price' in data[0])) {
+            toast({
+                title: "Invalid CSV Format",
+                description: "CSV must have 'Category', 'ItemName', and 'Price' columns.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        toast({ title: "Importing...", description: `Found ${data.length} rows to process.`});
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const row of data) {
+            const { Category, ItemName, Price } = row as { Category: string; ItemName: string; Price: string };
+            
+            if (!Category || !ItemName) {
+                console.warn("Skipping row due to missing Category or ItemName:", row);
+                errorCount++;
+                continue;
+            }
+
+            try {
+                // Find or create category
+                let category = catalogHierarchy.find(c => c.name.toLowerCase() === Category.trim().toLowerCase() && c.type === 'category');
+                let categoryId: string | null = category?.id || null;
+
+                if (!categoryId) {
+                    const newCategoryResult = await addCatalogEntryAction({ name: Category.trim(), type: 'category', parent_id: null });
+                    if (newCategoryResult.success && newCategoryResult.newEntry) {
+                        categoryId = newCategoryResult.newEntry.id;
+                    } else {
+                        console.error("Failed to create new category:", Category, newCategoryResult.message);
+                        errorCount++;
+                        continue;
+                    }
+                }
+
+                // Add item
+                const priceValue = parseFloat(Price);
+                if (isNaN(priceValue)) {
+                    console.warn("Skipping item due to invalid price:", row);
+                    errorCount++;
+                    continue;
+                }
+
+                await addCatalogEntryAction({
+                    name: ItemName.trim(),
+                    type: 'item',
+                    parent_id: categoryId,
+                    price: priceValue,
+                    description: '',
+                    has_color_identifier: false,
+                });
+                successCount++;
+            } catch (error) {
+                console.error("Error processing row:", row, error);
+                errorCount++;
+            }
+        }
+
+        toast({
+            title: "Import Complete",
+            description: `${successCount} items imported successfully. ${errorCount} rows failed.`,
+        });
+        fetchCatalog(); // Refresh list after import
+      },
+      error: (error) => {
+        toast({
+            title: "CSV Parsing Error",
+            description: error.message,
+            variant: "destructive",
+        });
+      }
+    });
+
+    // Reset file input
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -251,30 +351,44 @@ export function CatalogManagementTab() {
 
   return (
     <div className="space-y-6">
-      <AddDialog open={isAddTopLevelFormOpen} onOpenChange={setIsAddTopLevelFormOpen}>
-        <AddDialogTrigger asChild>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add New Top-Level Category
-          </Button>
-        </AddDialogTrigger>
-        <AddDialogContent>
-          <AddDialogHeader>
-            <AddDialogTitle>Add New Top-Level Category</AddDialogTitle>
-             <AddDialogDescription>
-                Create a main category to organize your services and items.
-             </AddDialogDescription>
-          </AddDialogHeader>
-          <AddCatalogEntryForm
-            parent_id={null} 
-            defaultType="category"
-            onSuccess={handleAddTopLevelSuccess}
-            submitAction={addCatalogEntryAction}
-          />
-        </AddDialogContent>
-      </AddDialog>
+      <div className="flex flex-wrap gap-2">
+        <AddDialog open={isAddTopLevelFormOpen} onOpenChange={setIsAddTopLevelFormOpen}>
+          <AddDialogTrigger asChild>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add New Top-Level Category
+            </Button>
+          </AddDialogTrigger>
+          <AddDialogContent>
+            <AddDialogHeader>
+              <AddDialogTitle>Add New Top-Level Category</AddDialogTitle>
+              <AddDialogDescription>
+                  Create a main category to organize your services and items.
+              </AddDialogDescription>
+            </AddDialogHeader>
+            <AddCatalogEntryForm
+              parent_id={null} 
+              defaultType="category"
+              onSuccess={handleAddTopLevelSuccess}
+              submitAction={addCatalogEntryAction}
+            />
+          </AddDialogContent>
+        </AddDialog>
+        
+        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+          <Upload className="mr-2 h-4 w-4" /> Import from CSV
+        </Button>
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          accept=".csv"
+          className="hidden"
+        />
+      </div>
+
 
       {catalogHierarchy.length === 0 ? (
-        <p className="text-muted-foreground mt-4">No categories found. Start by adding a top-level category.</p>
+        <p className="text-muted-foreground mt-4">No categories found. Start by adding a top-level category or importing a CSV.</p>
       ) : (
         <Accordion type="multiple" className="w-full space-y-1">
           {catalogHierarchy.map(node => (
@@ -321,7 +435,7 @@ export function CatalogManagementTab() {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        Drag & drop sorting for categories and items will be implemented in a future update.
+        CSV Import: Expects columns 'Category', 'ItemName', 'Price'. Drag & drop sorting for categories and items will be implemented in a future update.
       </p>
     </div>
   );
