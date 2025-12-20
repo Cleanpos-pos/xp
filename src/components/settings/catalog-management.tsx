@@ -245,7 +245,7 @@ export function CatalogManagementTab() {
   const processImportData = async (data: any[]) => {
     console.log("Parsed Data to Process:", data);
 
-    const requiredHeaders = ["menu1", "title", "pricelevel", "stubprint", "showcolo"];
+    const requiredHeaders = ["menu1", "title", "pricelevel1"];
     const fileHeaders = Object.keys(data[0] || {}).map(h => h.trim().toLowerCase());
 
     const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
@@ -263,40 +263,36 @@ export function CatalogManagementTab() {
 
     let successCount = 0;
     let errorCount = 0;
-    let localCatalogCache: CatalogHierarchyNode[] = [...catalogHierarchy];
+    
+    // Create a mutable copy of the current hierarchy to simulate real-time updates without re-fetching on every loop
+    let localCatalogCache: CatalogHierarchyNode[] = JSON.parse(JSON.stringify(catalogHierarchy));
 
-    const findOrCreateCategory = async (categoryNames: string[]): Promise<string | null> => {
-      let parentId: string | null = null;
-      let currentLevelNodes: CatalogHierarchyNode[] = localCatalogCache;
+    const findOrCreateCategory = async (categoryName: string): Promise<string | null> => {
+        if (!categoryName) return null;
+        const trimmedName = categoryName.trim();
 
-      for (const name of categoryNames) {
-        if (!name) continue;
-        const trimmedName = name.trim();
-        let categoryNode = currentLevelNodes.find(
+        let categoryNode = localCatalogCache.find(
           (node) => node.name.toLowerCase() === trimmedName.toLowerCase() && node.type === "category"
         );
 
         if (categoryNode) {
-          parentId = categoryNode.id;
-          currentLevelNodes = categoryNode.children || [];
+          return categoryNode.id;
         } else {
+          // Category not found, create it
           const newCategoryResult = await addCatalogEntryAction({
             name: trimmedName,
             type: "category",
-            parent_id: parentId,
+            parent_id: null, // This simplified logic only creates top-level categories
           });
           if (newCategoryResult.success && newCategoryResult.newEntry) {
             const newNode: CatalogHierarchyNode = { ...newCategoryResult.newEntry, children: [] };
-            currentLevelNodes.push(newNode);
-            parentId = newNode.id;
-            currentLevelNodes = newNode.children;
+            localCatalogCache.push(newNode); // Add to local cache for subsequent lookups
+            return newNode.id;
           } else {
             console.error("Failed to create category:", trimmedName, newCategoryResult.message);
             return null;
           }
         }
-      }
-      return parentId;
     };
 
     for (const row of data) {
@@ -306,33 +302,30 @@ export function CatalogManagementTab() {
           return actualKey ? row[actualKey] : undefined;
         }
 
-        const menuCols = ["menu1", "menu2", "menu3", "menu4", "menu5"];
-        const categoryPath = menuCols.map(col => getVal(col)).filter(Boolean);
-
-        const title = getVal("title");
-        if (!title) {
+        const categoryName = getVal("menu1");
+        const itemName = getVal("title");
+        
+        if (!itemName) {
           console.warn("Skipping row due to missing Title:", row);
           errorCount++;
           continue;
         }
 
-        const parentCategoryId = await findOrCreateCategory(categoryPath);
+        const parentCategoryId = await findOrCreateCategory(categoryName);
 
-        const price = parseFloat(getVal("pricelevel"));
+        const price = parseFloat(getVal("pricelevel1"));
         if (isNaN(price)) {
           console.warn("Skipping item due to invalid price:", row);
           errorCount++;
           continue;
         }
 
+        // Add the item
         await addCatalogEntryAction({
-          name: title.trim(),
+          name: itemName.trim(),
           type: "item",
           parent_id: parentCategoryId,
           price: price,
-          description: getVal("description") || "",
-          has_color_identifier: String(getVal("showcolo"))?.toUpperCase() === 'TRUE',
-          small_tags_to_print: parseInt(getVal("stubprint"), 10) || 1,
         });
         successCount++;
 
@@ -346,7 +339,7 @@ export function CatalogManagementTab() {
       title: "Import Complete",
       description: `${successCount} items processed successfully. ${errorCount} rows failed. Refreshing catalog...`,
     });
-    fetchCatalog();
+    fetchCatalog(); // Final refresh from DB
   };
 
 
@@ -488,7 +481,7 @@ export function CatalogManagementTab() {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        File Import: Expects columns 'Menu1', 'Menu2'...'Menu5', 'Title', 'Pricelevel', 'Stubprint', 'Showcolo', 'Description'. Supports CSV, XLS, and XLSX formats.
+        File Import: Expects columns 'Menu1', 'Title', and 'Pricelevel1'. Supports CSV, XLS, and XLSX formats.
       </p>
     </div>
   );
