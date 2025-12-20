@@ -412,6 +412,7 @@ function mapSupabaseOrderToAppOrder(dbOrder: any): Order {
     cartDiscountPercentage: dbOrder.cart_discount_percentage ? parseFloat(dbOrder.cart_discount_percentage) : undefined,
     cartPriceOverride: dbOrder.cart_price_override ? parseFloat(dbOrder.cart_price_override) : undefined,
     totalAmount: parseFloat(dbOrder.total_amount),
+    amount_paid: dbOrder.amount_paid ? parseFloat(dbOrder.amount_paid) : 0,
     status: dbOrder.status as OrderStatus,
     paymentStatus: dbOrder.payment_status as PaymentStatus,
     created_at: new Date(dbOrder.created_at).toISOString(),
@@ -715,3 +716,5 @@ export function getServiceById(id:string): ServiceItem | undefined {
   console.warn("getServiceById is using a non-performant mock lookup. Refactor if used broadly.");
   return undefined;
 }
+
+    
