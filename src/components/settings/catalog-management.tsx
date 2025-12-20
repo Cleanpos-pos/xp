@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -15,7 +14,7 @@ import {
   getCatalogHierarchyAction, 
   addCatalogEntryAction, 
   deleteCatalogEntryAction,
-  revalidateCatalogAction // <-- Import the new action
+  revalidateCatalogAction
 } from "@/app/(auth)/settings/catalog-actions";
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
 import { EditCatalogEntryDialog } from "./edit-catalog-entry-dialog";
@@ -172,7 +171,7 @@ export function CatalogManagementTab() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [entryToEdit, setEntryToEdit] = useState<CatalogHierarchyNode | null>(null);
-  const [isEditDialogValidOpen, setIsEditDialogValidOpen] = useState(false);
+  const [isEditDialogValiOpen, setIsEditDialogValiOpen] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<CatalogHierarchyNode | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -207,12 +206,12 @@ export function CatalogManagementTab() {
 
   const handleOpenEditDialog = (entry: CatalogHierarchyNode) => {
     setEntryToEdit(entry);
-    setIsEditDialogValidOpen(true);
+    setIsEditDialogValiOpen(true);
   };
 
   const handleCloseEditDialog = () => {
     setEntryToEdit(null);
-    setIsEditDialogValidOpen(false);
+    setIsEditDialogValiOpen(false);
   };
 
   const handleEditSuccess = () => {
@@ -242,7 +241,6 @@ export function CatalogManagementTab() {
   const processImportData = async (data: any[]) => {
     toast({ title: "Processing file...", description: `Found ${data.length} rows.` });
 
-    // Normalize header keys to lowercase
     const normalizedData = data.map(row => {
         const newRow: { [key: string]: any } = {};
         for (const key in row) {
@@ -298,6 +296,7 @@ export function CatalogManagementTab() {
             const group = row['group']?.trim();
             const itemName = row['title']?.trim();
             const price = parseFloat(row['pricelevel1']);
+            const showColor = row['showcolo']?.toString().toLowerCase() === 'true';
 
             if (!department || !group || !itemName || isNaN(price)) continue;
 
@@ -314,13 +313,11 @@ export function CatalogManagementTab() {
             itemsToCreate.push({
                 name: itemName,
                 price,
+                has_color_identifier: showColor,
                 parentPath: groupPath,
             });
         }
         
-        let createdCount = 0;
-        let skippedCount = 0;
-
         if (newCategories.size > 0) {
             toast({ title: "Creating Categories...", description: `Adding ${newCategories.size} new categories.` });
             const orderedNewCategories = Array.from(newCategories.entries()).sort((a, b) => a[0].length - b[0].length);
@@ -335,7 +332,6 @@ export function CatalogManagementTab() {
         const finalItemsToInsert = itemsToCreate.map(item => {
             const parentId = categoryPathMap.get(item.parentPath);
             if (!parentId || existingItems.has(`${parentId}_${item.name.toLowerCase()}`)) {
-                skippedCount++;
                 return null;
             }
             return {
@@ -343,6 +339,7 @@ export function CatalogManagementTab() {
                 price: item.price,
                 parent_id: parentId,
                 type: 'item' as CatalogEntryType,
+                has_color_identifier: item.has_color_identifier,
             };
         }).filter(Boolean);
 
@@ -350,10 +347,9 @@ export function CatalogManagementTab() {
             toast({ title: "Importing Items...", description: `Creating ${finalItemsToInsert.length} new items.` });
             const { error: itemError } = await supabase.from('catalog_entries').insert(finalItemsToInsert as any[]);
             if (itemError) throw new Error(`Failed to bulk insert items: ${itemError.message}`);
-            createdCount = finalItemsToInsert.length;
         }
 
-        toast({ title: "Import Complete", description: `Successfully created ${createdCount} new items. Skipped ${skippedCount} duplicate items.` });
+        toast({ title: "Import Complete", description: `Successfully processed file. Created ${finalItemsToInsert.length} new items.` });
     } catch (error: any) {
         console.error("Error during bulk import:", error);
         toast({ title: "Import Failed", description: error.message || "An unexpected error occurred.", variant: "destructive" });
@@ -474,8 +470,8 @@ export function CatalogManagementTab() {
       {entryToEdit && (
         <EditCatalogEntryDialog
           entry={entryToEdit}
-          isOpen={isEditDialogValidOpen}
-          onOpenChange={setIsEditDialogValidOpen}
+          isOpen={isEditDialogValiOpen}
+          onOpenChange={setIsEditDialogValiOpen}
           onSuccess={handleEditSuccess}
         />
       )}
