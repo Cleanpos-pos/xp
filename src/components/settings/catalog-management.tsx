@@ -260,29 +260,27 @@ export function CatalogManagementTab() {
       const { data: existingData, error: fetchError } = await supabase.from('catalog_entries').select('id, name, parent_id, type');
       if (fetchError) throw new Error("Could not fetch existing catalog to check for duplicates.");
 
-      const existingCategories = new Map<string, string>(); // 'path/to/cat' -> 'uuid'
-      const existingItems = new Set<string>(); // 'parent_uuid_itemname'
-      
-      const buildCategoryPathMap = (entries: {id: string, name: string, parent_id: string | null}[]) => {
-        const entryMap = new Map(entries.map(e => [e.id, e]));
-        const pathMap = new Map<string, string>();
-
-        const getPath = (id: string): string => {
-          const entry = entryMap.get(id);
-          if (!entry) return '';
-          const parentPath = entry.parent_id ? getPath(entry.parent_id) : '';
-          return parentPath ? `${parentPath} > ${entry.name.toLowerCase()}` : entry.name.toLowerCase();
-        }
-        
-        entries.forEach(entry => {
-          if (entry.type === 'category') {
-            pathMap.set(getPath(entry.id), entry.id);
+      const buildCategoryPathMap = (entries: {id: string, name: string, parent_id: string | null, type: string}[]) => {
+          const entryMap = new Map(entries.map(e => [e.id, e]));
+          const pathMap = new Map<string, string>();
+  
+          const getPath = (id: string): string => {
+              const entry = entryMap.get(id);
+              if (!entry) return '';
+              const parentPath = entry.parent_id ? getPath(entry.parent_id) : '';
+              return parentPath ? `${parentPath} > ${entry.name.toLowerCase()}` : entry.name.toLowerCase();
           }
-        });
-        return pathMap;
+          
+          entries.forEach(entry => {
+              if (entry.type === 'category') {
+                  pathMap.set(getPath(entry.id), entry.id);
+              }
+          });
+          return pathMap;
       }
 
       const categoryPathMap = buildCategoryPathMap(existingData || []);
+      const existingItems = new Set<string>();
       existingData?.forEach(e => {
         if(e.type === 'item') {
           existingItems.add(`${e.parent_id}_${e.name.toLowerCase()}`);
@@ -315,10 +313,9 @@ export function CatalogManagementTab() {
         const showColor = row['Showcolo']?.toString().trim().toLowerCase();
         const stubsToPrint = parseInt(row['Stubprint']?.toString().trim(), 10);
         
-        // Temporarily store with category name, will resolve to ID after categories are created
         itemsToCreate.push({
           name: itemName,
-          parent_id: categoryName.toLowerCase(), // Placeholder
+          parent_id: categoryName.toLowerCase(), // Placeholder, will be replaced with ID
           type: 'item' as CatalogEntryType,
           price: price,
           has_color_identifier: showColor === '1' || showColor === 'true',
@@ -340,7 +337,7 @@ export function CatalogManagementTab() {
 
       const finalItemsToInsert = itemsToCreate.map(item => {
         const parentId = categoryPathMap.get(item.parent_id as string);
-        if (!parentId) return null; // Category was not found or created
+        if (!parentId) return null;
         
         if (existingItems.has(`${parentId}_${item.name.toLowerCase()}`)) {
           skippedCount++;
@@ -373,7 +370,7 @@ export function CatalogManagementTab() {
       console.error("Error during bulk import process:", error);
       toast({ title: "Import Failed", description: error.message || "An unexpected error occurred.", variant: "destructive" });
     } finally {
-      setRefreshTrigger(prev => prev + 1); // This will trigger the useEffect
+      setRefreshTrigger(prev => prev + 1);
     }
   };
 
@@ -516,8 +513,10 @@ export function CatalogManagementTab() {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        File Import: Expects columns like 'Menu1', 'Title', 'Pricelevel', etc. Supports CSV, XLS, and XLSX formats.
+        File Import: Expects columns like 'Menu1', 'Title', 'Pricelevel1', etc. Supports CSV, XLS, and XLSX formats.
       </p>
     </div>
   );
 }
+
+    
