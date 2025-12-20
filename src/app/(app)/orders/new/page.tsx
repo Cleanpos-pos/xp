@@ -521,15 +521,17 @@ export default function NewOrderPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>)}
+      
       <div className="lg:col-span-2 space-y-6">
+        {stage === "form" && renderOrderFormCard()}
+        {stage === "paymentOptions" && renderPaymentOptionsCard()}
+      </div>
+
+      <div className="lg:col-span-1 space-y-6">
         <Card className="shadow-lg">
           <CardHeader><CardTitle className="font-headline text-2xl">Select Services for {isLoadingSpecificCustomer ? <Skeleton className="h-7 w-32 inline-block" /> : selectedCustomerName || 'Customer'}</CardTitle><CardDescription>Choose category, then click service to add.</CardDescription></CardHeader>
           <CardContent>{isLoadingServices ? (<div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>) : serviceCategoryNames.length > 0 ? (<Tabs defaultValue={serviceCategoryNames[0]} className="w-full"><TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">{serviceCategoryNames.map((category) => (<TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">{category}</TabsTrigger>))}</TabsList>{serviceCategoryNames.map((category) => (<TabsContent key={category} value={category}><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">{servicesByCategory[category]?.map((service) => (<Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}><span className="font-medium text-sm">{service.name}</span><span className="text-xs text-primary">${service.price.toFixed(2)}</span></Button>))}</div></TabsContent>))}</Tabs>) : (<p>No services available. Add items in Settings.</p>)}</CardContent>
         </Card>
-      </div>
-      <div className="lg:col-span-1 space-y-6">
-        {stage === "form" && renderOrderFormCard()}
-        {stage === "paymentOptions" && renderPaymentOptionsCard()}
       </div>
     </div>
   );
