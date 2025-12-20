@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -30,7 +29,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface RenderNodeProps {
   node: CatalogHierarchyNode;
-  onAddEntry: (parent_id: string | null, type: CatalogEntryType) => void;
+  onAddEntry: () => void; // Changed to a simple callback
   onEditEntry: (entry: CatalogHierarchyNode) => void;
   onDeleteEntry: (entry: CatalogHierarchyNode) => void;
   level: number;
@@ -49,7 +48,7 @@ function CatalogNodeDisplay({ node, onAddEntry, onEditEntry, onDeleteEntry, leve
   const handleAddSuccess = () => {
     setIsAddFormOpen(false);
     toast({ title: "Success", description: `${addFormType === "category" ? "Category" : "Item"} added.`});
-    onAddEntry(node.id, addFormType); 
+    onAddEntry(); // Call the passed-in refresh function
   };
 
   return (
