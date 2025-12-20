@@ -40,6 +40,7 @@ import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-mod
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Link from 'next/link';
+import { recordPaymentAction } from "../payment-actions"; // Import the new action (adjust path if needed)
 
 interface ServicesByCategory {
   [category: string]: ServiceItem[];
@@ -310,11 +311,45 @@ export default function NewOrderPage() {
     }
   }
 
-  const handleConfirmPayment = () => {
-    if (!createdOrderDetails) return; let paymentDetailsMessage = ""; const numericTotalAmount = createdOrderDetails.totalAmount; const numericAmountTendered = parseFloat(amountTendered) || 0;
-    if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Card" || selectedPaymentMethod === "Part Pay") { const paymentType = selectedPaymentMethod; let paymentSummary = `Paid ${currencySymbol}${numericAmountTendered.toFixed(2)} by ${paymentType}.`; if (numericAmountTendered < numericTotalAmount) paymentSummary += ` (Partial - ${currencySymbol}${(numericTotalAmount - numericAmountTendered).toFixed(2)} remaining).`; else if (numericAmountTendered > numericTotalAmount && selectedPaymentMethod === "Cash") paymentSummary += ` Change: ${currencySymbol}${(numericAmountTendered - numericTotalAmount).toFixed(2)}.`; paymentDetailsMessage = `Payment for order ${createdOrderDetails.id}: ${paymentSummary}`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
-    else { paymentDetailsMessage = `Order ${createdOrderDetails.id} processed.`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
-    toast({ title: "Payment Processed (Mocked)", description: paymentDetailsMessage }); setPrintType(null); setShowPrintDialog(true);
+  const handleConfirmPayment = async () => {
+    if (!createdOrderDetails) return;
+    
+    const numericTotalAmount = createdOrderDetails.totalAmount;
+    let numericAmountTendered = parseFloat(amountTendered) || 0;
+
+    // If Cash, we only record up to the total amount (no tip tracking yet) or the exact part-pay amount
+    // For this logic, we'll assume the amount entered is what we want to record.
+    const paymentAmount = numericAmountTendered;
+
+    if (!selectedPaymentMethod) {
+        toast({ title: "Error", description: "Please select a payment method.", variant: "destructive" });
+        return;
+    }
+
+    // Call the Server Action
+    const result = await recordPaymentAction(
+        createdOrderDetails.id,
+        paymentAmount,
+        selectedPaymentMethod,
+        paymentNote
+    );
+
+    if (result.success) {
+        let paymentDetailsMessage = `Payment of ${currencySymbol}${paymentAmount.toFixed(2)} recorded.`;
+        
+        if (numericAmountTendered < numericTotalAmount) {
+             paymentDetailsMessage += ` Remaining Balance: ${currencySymbol}${(numericTotalAmount - numericAmountTendered).toFixed(2)}`;
+        } else if (numericAmountTendered > numericTotalAmount && selectedPaymentMethod === "Cash") {
+             paymentDetailsMessage += ` Change Due: ${currencySymbol}${(numericAmountTendered - numericTotalAmount).toFixed(2)}`;
+        }
+
+        toast({ title: "Payment Successful", description: paymentDetailsMessage });
+        
+        setPrintType(null); 
+        setShowPrintDialog(true);
+    } else {
+        toast({ title: "Payment Failed", description: result.message, variant: "destructive" });
+    }
   };
 
   const handlePrintSelection = (selectedType: string) => {

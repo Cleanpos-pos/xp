@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, use } from 'react';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert, Zap, Percent } from 'lucide-react';
+import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert, Zap, Percent, CircleDollarSign } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -36,20 +37,10 @@ const statusColors: Record<OrderStatus, string> = {
   Cancelled: "bg-red-100 text-red-700 border-red-300",
 };
 
-function getPaymentStatusBadgeVariant(status?: PaymentStatus): "default" | "secondary" | "destructive" | "outline" {
-  if (!status) return "outline";
-  switch (status) {
-    case 'Paid': return 'default';
-    case 'Unpaid': return 'destructive';
-    case 'Processing Payment': return 'secondary';
-    case 'Refunded': return 'outline';
-    default: return 'outline';
-  }
-}
-
 const paymentStatusColors: Record<PaymentStatus, string> = {
   Paid: "bg-green-100 text-green-700 border-green-300",
   Unpaid: "bg-red-100 text-red-700 border-red-300",
+  "Partially Paid": "bg-yellow-100 text-yellow-700 border-yellow-300",
   "Processing Payment": "bg-yellow-100 text-yellow-700 border-yellow-300",
   Refunded: "bg-gray-100 text-gray-700 border-gray-300",
 };
@@ -57,8 +48,35 @@ const paymentStatusColors: Record<PaymentStatus, string> = {
 const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
   Paid: ShieldCheck,
   Unpaid: ShieldAlert,
+  "Partially Paid": CircleDollarSign,
   "Processing Payment": CreditCard,
   Refunded: DollarSign,
+}
+
+function getPaymentStatusBadge(status?: PaymentStatus): JSX.Element {
+    let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+    let text = status || "N/A";
+    let Icon = status ? paymentStatusIcons[status] : ShieldAlert;
+
+    switch (status) {
+        case 'Paid':
+            variant = 'default';
+            break;
+        case 'Unpaid':
+            variant = 'destructive';
+            break;
+        case 'Partially Paid':
+            variant = 'secondary';
+            break;
+        case 'Processing Payment':
+            variant = 'outline';
+            text = 'Processing';
+            break;
+        case 'Refunded':
+            variant = 'outline';
+            break;
+    }
+    return <Badge variant={variant} className={`${status ? paymentStatusColors[status] : ''} text-xs px-2 py-0.5`}><Icon className="mr-1 h-3 w-3" />{text}</Badge>;
 }
 
 interface OrderDetailsPageProps {
@@ -154,6 +172,7 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
     );
   }
 
+  // FIX: Updated check to handle both null and undefined (!order covers both)
   if (error || !order) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
@@ -178,17 +197,15 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
     );
   }
 
-  const PaymentIcon = order.paymentStatus ? paymentStatusIcons[order.paymentStatus] : ShieldAlert;
-
   const handlePrint = (printType: string = "default") => {
     const queryParams = `?autoprint=true&printType=${printType}${effectiveIsExpress ? '&express=true' : ''}`;
     router.push(`/orders/${params.id}${queryParams}`);
   };
 
-  const subTotal = order.totalAmount;
+  const subTotal = order.subtotalAmount ?? order.items.reduce((acc, item) => acc + item.totalPrice, 0);
   const vatAmount = isVatEnabled ? subTotal * vatRate : 0;
   const grandTotal = isVatEnabled ? subTotal + vatAmount : subTotal;
-
+  const amountRemaining = grandTotal - (order.amount_paid || 0);
 
   return (
     <div id="orderDetailsPrintSection" className="space-y-6">
@@ -222,16 +239,11 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
               <Badge variant={getStatusBadgeVariant(order.status)} className={`${statusColors[order.status]} text-sm px-3 py-1`}>
                 {order.status}
               </Badge>
-              {order.paymentStatus && (
-                <Badge variant={getPaymentStatusBadgeVariant(order.paymentStatus)} className={`${paymentStatusColors[order.paymentStatus]} text-xs px-2 py-0.5`}>
-                   <PaymentIcon className="mr-1 h-3 w-3" />
-                  {order.paymentStatus}
-                </Badge>
-              )}
+              {getPaymentStatusBadge(order.paymentStatus)}
             </div>
           </div>
         </CardHeader>
-        <CardContent className="grid md:grid-cols-3 gap-6">
+        <CardContent className="grid md:grid-cols-4 gap-6">
           <div className="space-y-1">
             <h4 className="text-sm font-medium flex items-center text-muted-foreground"><User className="mr-2 h-4 w-4" /> Customer</h4>
             <p className="text-base">{order.customerName}</p>
@@ -241,8 +253,12 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
             <p className="text-base">{order.dueDate ? format(new Date(order.dueDate), 'MMMM dd, yyyy') : 'N/A'}</p>
           </div>
           <div className="space-y-1">
-            <h4 className="text-sm font-medium flex items-center text-muted-foreground"><DollarSign className="mr-2 h-4 w-4" /> Total Amount</h4>
+            <h4 className="text-sm font-medium flex items-center text-muted-foreground"><DollarSign className="mr-2 h-4 w-4" /> Grand Total</h4>
             <p className="text-base font-semibold">${grandTotal.toFixed(2)}</p>
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-sm font-medium flex items-center text-muted-foreground"><CircleDollarSign className="mr-2 h-4 w-4" /> Amount Due</h4>
+            <p className="text-base font-bold text-destructive">${amountRemaining.toFixed(2)}</p>
           </div>
         </CardContent>
       </Card>
@@ -275,32 +291,36 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
                 </TableRow>
               ))}
             </TableBody>
-             {isVatEnabled && (
-              <TableBody>
+             <TableBody>
                 <TableRow>
                   <TableCell colSpan={3} className="text-right font-medium">Subtotal (after discounts):</TableCell>
                   <TableCell className="text-right font-semibold">${subTotal.toFixed(2)}</TableCell>
                 </TableRow>
-                <TableRow>
-                  <TableCell colSpan={3} className="text-right font-medium flex items-center justify-end">
-                     <Percent className="mr-1 h-3 w-3 text-muted-foreground"/> VAT @ {(vatRate * 100).toFixed(0)}%:
-                  </TableCell>
-                  <TableCell className="text-right font-semibold">${vatAmount.toFixed(2)}</TableCell>
-                </TableRow>
+                {isVatEnabled && (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-right font-medium flex items-center justify-end">
+                      <Percent className="mr-1 h-3 w-3 text-muted-foreground"/> VAT @ {(vatRate * 100).toFixed(0)}%:
+                    </TableCell>
+                    <TableCell className="text-right font-semibold">${vatAmount.toFixed(2)}</TableCell>
+                  </TableRow>
+                )}
                 <TableRow className="border-t-2 border-foreground">
                   <TableCell colSpan={3} className="text-right text-lg font-bold">Grand Total:</TableCell>
                   <TableCell className="text-right text-lg font-bold">${grandTotal.toFixed(2)}</TableCell>
                 </TableRow>
-              </TableBody>
-            )}
-             {!isVatEnabled && (
-                <TableBody>
-                    <TableRow className="border-t-2 border-foreground">
-                    <TableCell colSpan={3} className="text-right text-lg font-bold">Grand Total:</TableCell>
-                    <TableCell className="text-right text-lg font-bold">${order.totalAmount.toFixed(2)}</TableCell>
+                {order.amount_paid && order.amount_paid > 0 && (
+                  <>
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-right font-medium text-green-600">Amount Paid:</TableCell>
+                      <TableCell className="text-right font-semibold text-green-600">-${order.amount_paid.toFixed(2)}</TableCell>
                     </TableRow>
-                </TableBody>
-             )}
+                    <TableRow className="border-t-2 border-destructive">
+                      <TableCell colSpan={3} className="text-right text-xl font-bold text-destructive">Amount Due:</TableCell>
+                      <TableCell className="text-right text-xl font-bold text-destructive">${amountRemaining.toFixed(2)}</TableCell>
+                    </TableRow>
+                  </>
+                )}
+              </TableBody>
           </Table>
         </CardContent>
       </Card>

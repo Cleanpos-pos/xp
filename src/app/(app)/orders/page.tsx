@@ -7,8 +7,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { getAllOrdersDb } from '@/lib/data'; 
-import type { Order, OrderStatus } from '@/types';
-import { Eye, Pencil, MoreHorizontal, Zap, Printer, CalendarIcon, CheckCircle, TrendingUp, TrendingDown, DollarSign, ListChecks, Clock4 } from 'lucide-react';
+import type { Order, OrderStatus, PaymentStatus } from '@/types';
+import { Eye, Pencil, MoreHorizontal, Zap, Printer, CalendarIcon, CheckCircle, TrendingUp, TrendingDown, DollarSign, ListChecks, Clock4, CircleDollarSign } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -18,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { updateOrderStatusAction } from './actions'; 
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Label } from "@/components/ui/label"; // <<<<------ THE CRITICAL IMPORT
+import { Label } from "@/components/ui/label";
 
 function getStatusBadgeVariant(status: OrderStatus): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
@@ -39,6 +39,32 @@ const statusColors: Record<OrderStatus, string> = {
   Completed: "bg-gray-200 text-gray-800 border-gray-400", 
   Cancelled: "bg-red-100 text-red-700 border-red-300", 
 };
+
+function getPaymentStatusBadge(status?: PaymentStatus): JSX.Element {
+    let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
+    let text = status || "N/A";
+    let icon = <CircleDollarSign className="mr-1 h-3 w-3" />;
+
+    switch (status) {
+        case 'Paid':
+            variant = 'default';
+            break;
+        case 'Unpaid':
+            variant = 'destructive';
+            break;
+        case 'Partially Paid':
+            variant = 'secondary';
+            break;
+        case 'Processing Payment':
+            variant = 'outline';
+            text = 'Processing';
+            break;
+        case 'Refunded':
+            variant = 'outline';
+            break;
+    }
+    return <Badge variant={variant} className="flex items-center w-fit">{icon}{text}</Badge>;
+}
 
 
 export default function OrderTrackingPage() {
@@ -88,9 +114,10 @@ export default function OrderTrackingPage() {
   const summaryStats = useMemo(() => {
     const total = filteredOrders.length;
     const paid = filteredOrders.filter(o => o.paymentStatus === 'Paid').length;
-    const toPay = filteredOrders.filter(o => o.paymentStatus === 'Unpaid' || o.paymentStatus === 'Processing Payment').length;
+    const toPay = filteredOrders.filter(o => o.paymentStatus === 'Unpaid' || o.paymentStatus === 'Partially Paid' || o.paymentStatus === 'Processing Payment').length;
     return { total, paid, toPay };
   }, [filteredOrders]);
+
 
   const handleSetDateRange = (start?: Date, end?: Date) => {
     setStartDate(start);
@@ -262,6 +289,7 @@ export default function OrderTrackingPage() {
                 <TableHead>Due Date</TableHead>
                 <TableHead>Total</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Payment</TableHead>
                 <TableHead className="text-right print-hidden">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -280,6 +308,9 @@ export default function OrderTrackingPage() {
                     <Badge variant={getStatusBadgeVariant(order.status)} className={`${statusColors[order.status]} transition-all duration-300 ease-in-out`}>
                       {order.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {getPaymentStatusBadge(order.paymentStatus)}
                   </TableCell>
                   <TableCell className="text-right space-x-1 print-hidden">
                      <Button 
@@ -328,5 +359,3 @@ export default function OrderTrackingPage() {
     </div>
   );
 }
-
-    

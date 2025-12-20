@@ -1,5 +1,4 @@
 
-
 export type UserRole = 'clerk' | 'admin' | 'super_admin';
 
 export type Customer = {
@@ -57,6 +56,7 @@ export type OrderStatus =
 export type PaymentStatus =
   | "Paid"
   | "Unpaid"
+  | "Partially Paid"
   | "Processing Payment"
   | "Refunded";
 
@@ -71,6 +71,7 @@ export type Order = {
   cartDiscountPercentage?: number;
   cartPriceOverride?: number; // If set, this is the final price
   totalAmount: number; // Final amount due after all calculations
+  amount_paid?: number; // Amount already paid
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   created_at: string;
