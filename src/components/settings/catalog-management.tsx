@@ -10,7 +10,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { PlusCircle, Edit3, Trash2, Tag, Upload } from "lucide-react";
-import type { CatalogHierarchyNode, CatalogEntryType } from "@/types";
+import type { CatalogHierarchyNode, CatalogEntry, CatalogEntryType } from "@/types";
 import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
 import { EditCatalogEntryDialog } from "./edit-catalog-entry-dialog";
@@ -29,6 +29,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
+import { supabase } from "@/lib/supabase";
 
 interface RenderNodeProps {
   node: CatalogHierarchyNode;
@@ -242,107 +243,93 @@ export function CatalogManagementTab() {
     setEntryToDelete(null);
   };
 
- const processImportData = async (data: any[]) => {
+  const processImportData = async (data: any[]) => {
     console.log("Parsed Data to Process:", data);
+    toast({ title: "Pre-processing file...", description: `Found ${data.length} rows.` });
 
     const requiredHeaders = ["menu1", "title", "pricelevel1"];
     const fileHeaders = Object.keys(data[0] || {}).map(h => h.trim().toLowerCase());
-
     const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
 
     if (missingHeaders.length > 0) {
-      toast({
-        title: "Invalid File Format",
-        description: `File is missing required columns: ${missingHeaders.join(", ")}. Please check the file and try again.`,
-        variant: "destructive",
-      });
+      toast({ title: "Invalid File Format", description: `File is missing columns: ${missingHeaders.join(", ")}.`, variant: "destructive" });
       return;
     }
 
-    toast({ title: "Importing...", description: `Found ${data.length} rows to process.` });
-
-    let successCount = 0;
-    let errorCount = 0;
-    
-    let localCatalogCache: CatalogHierarchyNode[] = JSON.parse(JSON.stringify(catalogHierarchy));
-
-    const findOrCreateCategory = async (categoryName: string): Promise<string | null> => {
-        if (!categoryName) return null;
-        const trimmedName = categoryName.trim();
-
-        let categoryNode = localCatalogCache.find(
-          (node) => node.name.toLowerCase() === trimmedName.toLowerCase() && node.type === "category"
-        );
-
-        if (categoryNode) {
-          return categoryNode.id;
-        } else {
-          const newCategoryResult = await addCatalogEntryAction({
-            name: trimmedName,
-            type: "category",
-            parent_id: null,
-          });
-          if (newCategoryResult.success && newCategoryResult.newEntry) {
-            const newNode: CatalogHierarchyNode = { ...newCategoryResult.newEntry, children: [] };
-            localCatalogCache.push(newNode);
-            return newNode.id;
-          } else {
-            console.error("Failed to create category:", trimmedName, newCategoryResult.message);
-            return null;
-          }
-        }
-    };
-
-    let rowIndex = 0;
-    for (const row of data) {
-      rowIndex++;
-      toast({
-        title: "Processing Import...",
-        description: `Processing row ${rowIndex} of ${data.length}...`,
+    try {
+      // Step 1: Pre-process all data to find unique categories to create
+      const categoriesToCreate = new Map<string, { name: string; parentId: string | null }>();
+      const existingCategories = new Map<string, string>();
+      catalogHierarchy.forEach(node => {
+          if (node.type === 'category') existingCategories.set(node.name.toLowerCase(), node.id);
       });
-      try {
-        const getVal = (key: string) => {
-          const actualKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
-          return actualKey ? row[actualKey] : undefined;
-        }
 
-        const categoryName = getVal("menu1");
-        const itemName = getVal("title");
+      data.forEach(row => {
+        const categoryName = row['Menu1']?.trim();
+        if (categoryName && !existingCategories.has(categoryName.toLowerCase()) && !categoriesToCreate.has(categoryName.toLowerCase())) {
+          categoriesToCreate.set(categoryName.toLowerCase(), { name: categoryName, parentId: null });
+        }
+      });
+
+      // Step 2: Bulk insert new categories
+      const newCategoryInserts = Array.from(categoriesToCreate.values()).map(cat => ({
+        name: cat.name,
+        parent_id: cat.parentId,
+        type: 'category' as CatalogEntryType,
+        sort_order: 0, // Simplified sort_order for bulk insert
+      }));
+
+      if (newCategoryInserts.length > 0) {
+        toast({ title: "Importing...", description: `Creating ${newCategoryInserts.length} new categories...` });
+        const { data: newCategories, error: catError } = await supabase
+          .from('catalog_entries')
+          .insert(newCategoryInserts)
+          .select('id, name');
+
+        if (catError) throw new Error(`Failed to bulk insert categories: ${catError.message}`);
         
-        if (!itemName) {
-          console.warn("Skipping row due to missing Title:", row);
-          errorCount++;
-          continue;
-        }
-
-        const parentCategoryId = await findOrCreateCategory(categoryName);
-
-        const price = parseFloat(getVal("pricelevel1"));
-        if (isNaN(price)) {
-          console.warn("Skipping item due to invalid price:", row);
-          errorCount++;
-          continue;
-        }
-
-        await addCatalogEntryAction({
-          name: itemName.trim(),
-          type: "item",
-          parent_id: parentCategoryId,
-          price: price,
-        });
-        successCount++;
-
-      } catch (error) {
-        console.error("Error processing row:", row, error);
-        errorCount++;
+        newCategories?.forEach(nc => existingCategories.set(nc.name.toLowerCase(), nc.id));
       }
-    }
 
-    toast({
-      title: "Import Complete",
-      description: `${successCount} items processed successfully. ${errorCount} rows failed. Refreshing catalog...`,
-    });
-    await fetchCatalog();
+      // Step 3: Prepare all items for bulk insert
+      const itemsToInsert = data
+        .map(row => {
+          const categoryName = row['Menu1']?.trim();
+          const itemName = row['Title']?.trim();
+          const price = parseFloat(row['Pricelevel1']);
+
+          if (!itemName || isNaN(price)) return null;
+
+          const parentId = categoryName ? existingCategories.get(categoryName.toLowerCase()) || null : null;
+
+          return {
+            name: itemName,
+            parent_id: parentId,
+            type: 'item' as CatalogEntryType,
+            price: price,
+            sort_order: 0,
+          };
+        })
+        .filter(Boolean);
+
+      // Step 4: Bulk insert new items
+      if (itemsToInsert.length > 0) {
+        toast({ title: "Importing...", description: `Creating ${itemsToInsert.length} new items...` });
+        const { error: itemError } = await supabase.from('catalog_entries').insert(itemsToInsert as any);
+        if (itemError) throw new Error(`Failed to bulk insert items: ${itemError.message}`);
+      }
+
+      toast({
+        title: "Import Complete",
+        description: `Successfully processed ${itemsToInsert.length} items and ${newCategoryInserts.length} new categories. Refreshing catalog...`,
+      });
+
+    } catch (error: any) {
+      console.error("Error during bulk import process:", error);
+      toast({ title: "Import Failed", description: error.message || "An unexpected error occurred.", variant: "destructive" });
+    } finally {
+      await fetchCatalog();
+    }
   };
 
 
@@ -484,7 +471,7 @@ export function CatalogManagementTab() {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        File Import: Expects columns 'Menu1', 'Title', and 'Pricelevel1'. Supports CSV, XLS, and XLSX formats.
+        File Import: Expects columns 'Menu1' (Category), 'Title' (Item Name), and 'Pricelevel1' (Price). Supports CSV, XLS, and XLSX formats.
       </p>
     </div>
   );
