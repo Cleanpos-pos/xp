@@ -158,7 +158,8 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
                     <Skeleton className="h-8 w-1/2 mb-2" />
                     <Skeleton className="h-4 w-3/4" />
                 </CardHeader>
-                <CardContent className="grid md:grid-cols-3 gap-6">
+                <CardContent className="grid md:grid-cols-4 gap-6">
+                    <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
@@ -308,7 +309,7 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
                   <TableCell colSpan={3} className="text-right text-lg font-bold">Grand Total:</TableCell>
                   <TableCell className="text-right text-lg font-bold">£{grandTotal.toFixed(2)}</TableCell>
                 </TableRow>
-                {order.amount_paid && order.amount_paid > 0 && (
+                {Boolean(order.amount_paid && order.amount_paid > 0) && (
                   <>
                     <TableRow>
                       <TableCell colSpan={3} className="text-right font-medium text-green-600">Amount Paid:</TableCell>
