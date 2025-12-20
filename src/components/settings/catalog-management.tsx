@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -244,7 +243,6 @@ export function CatalogManagementTab() {
   };
 
   const processImportData = async (data: any[]) => {
-    console.log("Parsed Data to Process:", data);
     toast({ title: "Pre-processing file...", description: `Found ${data.length} rows.` });
 
     const requiredHeaders = ["menu1", "title", "pricelevel1", "showcolo", "stubprint"];
@@ -257,16 +255,16 @@ export function CatalogManagementTab() {
     }
 
     try {
+      // 1. Get existing catalog to build indices
       const initialCatalog = await getCatalogHierarchyAction();
-      
-      const existingCategories = new Map<string, string>();
-      const existingItems = new Set<string>();
+      const existingCategories = new Map<string, string>(); // 'path/to/cat' -> 'uuid'
+      const existingItems = new Set<string>(); // 'parent_uuid_itemname'
       
       const flattenHierarchyForIndexing = (nodes: CatalogHierarchyNode[], path: string[] = []) => {
         nodes.forEach(node => {
-          const currentPath = [...path, node.name];
+          const currentPath = [...path, node.name.toLowerCase()];
           if (node.type === 'category') {
-            existingCategories.set(currentPath.join(' > ').toLowerCase(), node.id);
+            existingCategories.set(currentPath.join(' > '), node.id);
             if (node.children) flattenHierarchyForIndexing(node.children, currentPath);
           } else {
             existingItems.add(`${node.parent_id}_${node.name.toLowerCase()}`);
@@ -275,94 +273,95 @@ export function CatalogManagementTab() {
       };
       flattenHierarchyForIndexing(initialCatalog);
 
-      const categoriesToCreate = new Map<string, { name: string; parentId: string | null; path: string }>();
-      data.forEach(row => {
+      // 2. Pre-process all rows to find new categories and items
+      const categoriesToCreate = new Map<string, { name: string; parentId: string | null }>();
+      const itemsToCreate = [];
+      let skippedCount = 0;
+
+      for (const row of data) {
         const pathParts: string[] = [];
-        for (let i = 1; i <= 5; i++) {
-          const menuKey = `Menu${i}`;
-          const categoryName = row[menuKey]?.trim();
-          if (categoryName) {
-            pathParts.push(categoryName);
-            const pathString = pathParts.join(' > ').toLowerCase();
-            if (!existingCategories.has(pathString)) {
-              categoriesToCreate.set(pathString, { name: categoryName, parentId: null, path: pathString });
-            }
-          } else {
-            break;
+        let currentParentId: string | null = null;
+        
+        // Determine category path and what needs creating
+        const menu1 = row['Menu1']?.trim();
+        if(menu1) {
+          pathParts.push(menu1.toLowerCase());
+          const pathString = pathParts.join(' > ');
+          if (!existingCategories.has(pathString)) {
+            categoriesToCreate.set(pathString, { name: menu1, parentId: null });
           }
         }
-      });
-      
-      const sortedNewCategoryPaths = Array.from(categoriesToCreate.keys()).sort((a, b) => a.length - b.length);
+        
+        const itemName = row['Title']?.trim();
+        const price = parseFloat(row['Pricelevel1']);
+        
+        if (!itemName || isNaN(price)) continue;
 
-      if (sortedNewCategoryPaths.length > 0) {
-        toast({ title: "Importing...", description: `Creating ${sortedNewCategoryPaths.length} new categories...` });
-        for (const path of sortedNewCategoryPaths) {
-          const catInfo = categoriesToCreate.get(path)!;
-          const pathParts = path.split(' > ');
-          let parentId: string | null = null;
-          if (pathParts.length > 1) {
-            const parentPath = pathParts.slice(0, -1).join(' > ');
-            parentId = existingCategories.get(parentPath) || null;
-          }
-          
-          const { data: newCategory, error: catError } = await supabase
-            .from('catalog_entries')
-            .insert({ name: catInfo.name, parent_id: parentId, type: 'category' as CatalogEntryType, sort_order: 0 })
-            .select('id')
-            .single();
-
-          if (catError) throw new Error(`Failed to create category '${catInfo.name}': ${catError.message}`);
-          existingCategories.set(path, newCategory.id);
+        // Find final parentId for item
+        if(pathParts.length > 0) {
+          const finalPath = pathParts.join(' > ');
+          currentParentId = existingCategories.get(finalPath) || null;
         }
+
+        // Check for duplicate items
+        const itemKey = `${currentParentId}_${itemName.toLowerCase()}`;
+        if (existingItems.has(itemKey)) {
+          skippedCount++;
+          continue;
+        }
+
+        const showColor = row['Showcolo']?.toString().trim().toLowerCase();
+        const stubsToPrint = parseInt(row['Stubprint']?.toString().trim(), 10);
+        
+        itemsToCreate.push({
+          name: itemName,
+          parent_path: pathParts.join(' > '), // Store path to find ID later
+          type: 'item' as CatalogEntryType,
+          price: price,
+          has_color_identifier: showColor === '1' || showColor === 'true',
+          small_tags_to_print: !isNaN(stubsToPrint) ? stubsToPrint : 1,
+          sort_order: 0,
+        });
+      }
+
+      // 3. Bulk insert new categories if any
+      if (categoriesToCreate.size > 0) {
+        toast({ title: "Importing...", description: `Creating ${categoriesToCreate.size} new categories...` });
+        const newCategoryList = Array.from(categoriesToCreate.values()).map(c => ({
+          name: c.name,
+          parent_id: c.parentId,
+          type: 'category' as CatalogEntryType,
+          sort_order: 0
+        }));
+
+        const { data: insertedCategories, error: catError } = await supabase
+          .from('catalog_entries')
+          .insert(newCategoryList)
+          .select('id, name');
+
+        if (catError) throw new Error(`Failed to create categories: ${catError.message}`);
+        
+        // Update the map with new UUIDs
+        insertedCategories.forEach(cat => {
+            existingCategories.set(cat.name.toLowerCase(), cat.id);
+        });
       }
       
-      let skippedCount = 0;
-      const itemsToInsert = data
-        .map(row => {
-          const itemName = row['Title']?.trim();
-          const price = parseFloat(row['Pricelevel1']);
-          if (!itemName || isNaN(price)) return null;
+      // 4. Bulk insert new items if any
+      if (itemsToCreate.length > 0) {
+        toast({ title: "Importing...", description: `Creating ${itemsToCreate.length} new items...` });
+        const itemsWithParentIds = itemsToCreate.map(item => ({
+            ...item,
+            parent_id: item.parent_path ? existingCategories.get(item.parent_path) : null,
+            parent_path: undefined, // remove temp field
+        }));
 
-          const pathParts: string[] = [];
-          for (let i = 1; i <= 5; i++) {
-            const menuKey = `Menu${i}`;
-            const categoryName = row[menuKey]?.trim();
-            if (categoryName) pathParts.push(categoryName);
-            else break;
-          }
-          const categoryPath = pathParts.join(' > ').toLowerCase();
-          const parentId = categoryPath ? existingCategories.get(categoryPath) || null : null;
-
-          const itemKey = `${parentId}_${itemName.toLowerCase()}`;
-          if (existingItems.has(itemKey)) {
-            skippedCount++;
-            return null;
-          }
-          
-          const showColor = row['Showcolo']?.toString().trim().toLowerCase();
-          const stubsToPrint = parseInt(row['Stubprint']?.toString().trim(), 10);
-
-          return {
-            name: itemName,
-            parent_id: parentId,
-            type: 'item' as CatalogEntryType,
-            price: price,
-            has_color_identifier: showColor === '1' || showColor === 'true',
-            small_tags_to_print: !isNaN(stubsToPrint) ? stubsToPrint : 1,
-            sort_order: 0,
-          };
-        })
-        .filter(Boolean);
-
-      if (itemsToInsert.length > 0) {
-        toast({ title: "Importing...", description: `Creating ${itemsToInsert.length} new items...` });
-        const { error: itemError } = await supabase.from('catalog_entries').insert(itemsToInsert as any);
+        const { error: itemError } = await supabase.from('catalog_entries').insert(itemsWithParentIds as any);
         if (itemError) throw new Error(`Failed to bulk insert items: ${itemError.message}`);
       }
 
-      let successMessage = `Successfully processed ${itemsToInsert.length} items`;
-      if (sortedNewCategoryPaths.length > 0) successMessage += ` and ${sortedNewCategoryPaths.length} new categories`;
+      let successMessage = `Successfully processed ${itemsToCreate.length} items`;
+      if (categoriesToCreate.size > 0) successMessage += ` and ${categoriesToCreate.size} new categories`;
       if (skippedCount > 0) successMessage += `. Skipped ${skippedCount} duplicate items`;
       successMessage += ". Refreshing catalog...";
 
