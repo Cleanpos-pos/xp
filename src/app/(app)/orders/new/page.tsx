@@ -487,9 +487,44 @@ export default function NewOrderPage() {
                 )}
             </div>
             
-            <div className="mt-auto">
-                <FormItem className="flex flex-col"><div className="flex justify-between items-center"><FormLabel>Due Date (Optional)</FormLabel>{isExpressOrder && <Badge variant="destructive" className="text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}</div><div className="mt-1 grid grid-cols-4 gap-2"><Button type="button" className="h-9 px-3 bg-red-600 hover:bg-red-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(new Date())}>Today</Button><Button type="button" className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(addDays(new Date(), 1))}>Tomorrow</Button>{weekdays.map((day, index) => (<Button key={day} type="button" variant="default" className="h-9 px-3" onClick={() => handleDueDateButtonClick(getNextOccurrenceOfWeekday(index))}>{day}</Button>))}{ <Button type="button" variant="outline" size="sm" onClick={clearDueDate} className="h-9 px-2 text-xs col-span-1 self-center">Clear</Button>}</div><div className="mt-2 flex gap-2 items-center"><Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>{watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick specific date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={watchedDueDate ? new Date(watchedDueDate) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/></PopoverContent></Popover></div><FormMessage /></FormItem>
-                <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>General Order Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Any special instructions" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+            <div className="mt-auto space-y-4">
+              <FormField
+                control={form.control}
+                name="dueDate"
+                render={() => (
+                  <FormItem className="flex flex-col">
+                    <div className="flex justify-between items-center">
+                      <FormLabel>Due Date (Optional)</FormLabel>
+                      {isExpressOrder && <Badge variant="destructive" className="text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
+                    </div>
+                    <div className="mt-1 grid grid-cols-4 gap-2">
+                      <Button type="button" className="h-9 px-3 bg-red-600 hover:bg-red-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(new Date())}>Today</Button>
+                      <Button type="button" className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(addDays(new Date(), 1))}>Tomorrow</Button>
+                      {weekdays.map((day, index) => (
+                        <Button key={day} type="button" variant="default" className="h-9 px-3" onClick={() => handleDueDateButtonClick(getNextOccurrenceOfWeekday(index))}>{day}</Button>
+                      ))}
+                      <Button type="button" variant="outline" size="sm" onClick={clearDueDate} className="h-9 px-2 text-xs col-span-1 self-center">Clear</Button>
+                    </div>
+                    <div className="mt-2 flex gap-2 items-center">
+                      <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>
+                              {watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick specific date</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={watchedDueDate ? new Date(watchedDueDate) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>General Order Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Any special instructions" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
             </div>
           </form>
         </Form>
@@ -669,7 +704,3 @@ export default function NewOrderPage() {
     </div>
   );
 }
-
-    
-
-    
