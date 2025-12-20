@@ -45,7 +45,7 @@ interface ServicesByCategory {
 
 type OrderCreationStage = "form" | "paymentOptions";
 type PaymentStep = "selectAction" | "enterPaymentDetails";
-type PaymentMethod = "Cash" | "Card" | "Part Pay" | "On Account" | null;
+type PaymentMethod = "Cash" | "Card" | "Part Pay" | null;
 
 const getNextOccurrenceOfWeekday = (targetDay: number, startDate: Date = new Date()): Date => {
   const currentDate = new Date(startDate);
@@ -312,8 +312,7 @@ export default function NewOrderPage() {
 
   const handleConfirmPayment = () => {
     if (!createdOrderDetails) return; let paymentDetailsMessage = ""; const numericTotalAmount = createdOrderDetails.totalAmount; const numericAmountTendered = parseFloat(amountTendered) || 0;
-    if (selectedPaymentMethod === "On Account") { paymentDetailsMessage = `Order ${createdOrderDetails.id} (${currencySymbol}${numericTotalAmount.toFixed(2)}) marked 'On Account'.`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
-    else if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Card" || selectedPaymentMethod === "Part Pay") { const paymentType = selectedPaymentMethod; let paymentSummary = `Paid ${currencySymbol}${numericAmountTendered.toFixed(2)} by ${paymentType}.`; if (numericAmountTendered < numericTotalAmount) paymentSummary += ` (Partial - ${currencySymbol}${(numericTotalAmount - numericAmountTendered).toFixed(2)} remaining).`; else if (numericAmountTendered > numericTotalAmount && selectedPaymentMethod === "Cash") paymentSummary += ` Change: ${currencySymbol}${(numericAmountTendered - numericTotalAmount).toFixed(2)}.`; paymentDetailsMessage = `Payment for order ${createdOrderDetails.id}: ${paymentSummary}`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
+    if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Card" || selectedPaymentMethod === "Part Pay") { const paymentType = selectedPaymentMethod; let paymentSummary = `Paid ${currencySymbol}${numericAmountTendered.toFixed(2)} by ${paymentType}.`; if (numericAmountTendered < numericTotalAmount) paymentSummary += ` (Partial - ${currencySymbol}${(numericTotalAmount - numericAmountTendered).toFixed(2)} remaining).`; else if (numericAmountTendered > numericTotalAmount && selectedPaymentMethod === "Cash") paymentSummary += ` Change: ${currencySymbol}${(numericAmountTendered - numericTotalAmount).toFixed(2)}.`; paymentDetailsMessage = `Payment for order ${createdOrderDetails.id}: ${paymentSummary}`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
     else { paymentDetailsMessage = `Order ${createdOrderDetails.id} processed.`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
     toast({ title: "Payment Processed (Mocked)", description: paymentDetailsMessage }); setPrintType(null); setShowPrintDialog(true);
   };
@@ -327,22 +326,21 @@ export default function NewOrderPage() {
   const handleCreateAnotherOrder = () => { resetFormAndStage(); };
   const handleGoToDashboard = () => router.push('/dashboard');
   const handleAmountKeypadConfirm = (value: string) => { const numValue = parseFloat(value); if (isNaN(numValue) || numValue < 0) { setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00"); toast({title: "Invalid Amount", variant: "destructive"}); } else { setAmountTendered(numValue.toFixed(2)); } };
-  const handlePayOnAccount = () => { setSelectedPaymentMethod("On Account"); if (createdOrderDetails) { setAmountTendered(createdOrderDetails.totalAmount.toFixed(2)); setPaymentNote(`Order total ${currencySymbol}${createdOrderDetails.totalAmount.toFixed(2)} to account.`); } };
-  const handleOpenAmountKeypad = React.useCallback(() => { if (selectedPaymentMethod !== "On Account") setIsKeypadOpen(true); }, [selectedPaymentMethod]);
+  const handleOpenAmountKeypad = React.useCallback(() => { setIsKeypadOpen(true); }, []);
   const handleDueDateButtonClick = (date: Date) => { form.setValue('dueDate', date, { shouldValidate: true }); setIsExpressOrder(isToday(date) || isTomorrow(date)); };
   const handleManualDateSelect = (date: Date | undefined) => { form.setValue('dueDate', date, { shouldValidate: true }); if (date) setIsExpressOrder(isToday(date) || isTomorrow(date)); else setIsExpressOrder(false); setIsDatePickerOpen(false); };
   const clearDueDate = () => { form.setValue('dueDate', undefined, { shouldValidate: true }); setIsExpressOrder(false); };
   const watchedDueDate = form.watch("dueDate"); const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const renderOrderFormCard = () => (
-    <Card className="shadow-lg">
+    <Card className="shadow-lg h-full flex flex-col">
       <CardHeader>
         <CardTitle className="font-headline text-xl flex items-center"><ShoppingCart className="mr-2 h-6 w-6" /> Current Order</CardTitle>
         {fields.length === 0 && <CardDescription>Select services to add them here.</CardDescription>}
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex-1 overflow-hidden p-0">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(proceedToPaymentSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(proceedToPaymentSubmit)} className="space-y-4 h-full flex flex-col px-6">
             
             <FormField control={form.control} name="customerId" render={({ field }) => (
                 <FormItem>
@@ -396,11 +394,11 @@ export default function NewOrderPage() {
                             )}
                        </div>
                     )}
-                     <FormDescription className="flex justify-between items-center">
-                        <span>Select an existing customer or add a new one.</span>
+                     <FormDescription className="flex justify-between items-center text-xs">
+                        <span>Select or search for a customer.</span>
                         <Link href="/customers/new" passHref>
-                           <Button variant="outline" size="sm" className="text-xs">
-                                <UserPlus className="mr-1 h-3 w-3"/> New Customer
+                           <Button variant="outline" size="sm" className="text-xs h-7">
+                                <UserPlus className="mr-1 h-3 w-3"/> New
                            </Button>
                         </Link>
                     </FormDescription>
@@ -408,127 +406,129 @@ export default function NewOrderPage() {
                 </FormItem>
             )} />
 
-            {fields.length > 0 && (
-              <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-2 scrollbar-thin">
-                {fields.map((fieldItem, index) => {
-                  const item = watchedItems[index];
-                  let itemTotal = item.unitPrice * item.quantity;
-                  if (item.itemDiscountPercentage && item.itemDiscountPercentage > 0) itemTotal -= itemTotal * (item.itemDiscountPercentage / 100);
-                  if (item.itemDiscountAmount && item.itemDiscountAmount > 0) itemTotal -= item.itemDiscountAmount;
-                  itemTotal = Math.max(0, itemTotal);
+            <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-3">
+                {fields.length > 0 ? (
+                    fields.map((fieldItem, index) => {
+                    const item = watchedItems[index];
+                    let itemTotal = item.unitPrice * item.quantity;
+                    if (item.itemDiscountPercentage && item.itemDiscountPercentage > 0) itemTotal -= itemTotal * (item.itemDiscountPercentage / 100);
+                    if (item.itemDiscountAmount && item.itemDiscountAmount > 0) itemTotal -= item.itemDiscountAmount;
+                    itemTotal = Math.max(0, itemTotal);
 
-                  return (
-                  <Card key={fieldItem.id} className="p-3 space-y-2 bg-background border rounded-md shadow-sm">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium text-sm">{item?.serviceName}</h4>
-                        <p className="text-xs text-muted-foreground">
-                          Base Price: {currencySymbol}{item?.originalUnitPrice?.toFixed(2)}
-                          {item.unitPrice !== item.originalUnitPrice && ` (Overridden: ${currencySymbol}${item.unitPrice.toFixed(2)})`}
-                        </p>
-                        {(item.itemDiscountPercentage || item.itemDiscountAmount) && (
-                          <p className="text-xs text-blue-600">
-                            Discount: 
-                            {item.itemDiscountPercentage ? ` ${item.itemDiscountPercentage}%` : ''}
-                            {item.itemDiscountPercentage && item.itemDiscountAmount ? ' + ' : ''}
-                            {item.itemDiscountAmount ? ` ${currencySymbol}${item.itemDiscountAmount.toFixed(2)}` : ''}
-                          </p>
-                        )}
-                      </div>
-                       <div className="flex items-center gap-1">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button type="button" variant="ghost" size="icon" className="text-primary hover:bg-primary/10 h-7 w-7">
-                              <Pencil className="h-4 w-4" /> <span className="sr-only">Edit Item</span>
+                    return (
+                    <Card key={fieldItem.id} className="p-3 space-y-2 bg-background border rounded-md shadow-sm">
+                        <div className="flex justify-between items-start">
+                        <div>
+                            <h4 className="font-medium text-sm">{item?.serviceName}</h4>
+                            <p className="text-xs text-muted-foreground">
+                            Base Price: {currencySymbol}{item?.originalUnitPrice?.toFixed(2)}
+                            {item.unitPrice !== item.originalUnitPrice && ` (Overridden: ${currencySymbol}${item.unitPrice.toFixed(2)})`}
+                            </p>
+                            {(item.itemDiscountPercentage || item.itemDiscountAmount) && (
+                            <p className="text-xs text-blue-600">
+                                Discount: 
+                                {item.itemDiscountPercentage ? ` ${item.itemDiscountPercentage}%` : ''}
+                                {item.itemDiscountPercentage && item.itemDiscountAmount ? ' + ' : ''}
+                                {item.itemDiscountAmount ? ` ${currencySymbol}${item.itemDiscountAmount.toFixed(2)}` : ''}
+                            </p>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Popover>
+                            <PopoverTrigger asChild>
+                                <Button type="button" variant="ghost" size="icon" className="text-primary hover:bg-primary/10 h-7 w-7">
+                                <Pencil className="h-4 w-4" /> <span className="sr-only">Edit Item</span>
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-72 space-y-3 p-4">
+                                <h5 className="text-sm font-medium">Edit: {item.serviceName}</h5>
+                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field: subField }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Override Unit Price</FormLabel>
+                                    <FormControl><Input type="number" step="0.01" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
+                                    <FormMessage className="text-xs" />
+                                </FormItem>
+                                )} />
+                                <FormField control={form.control} name={`items.${index}.itemDiscountPercentage`} render={({ field: subField }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Item Discount (%)</FormLabel>
+                                    <FormControl><Input type="number" step="0.1" min="0" max="100" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
+                                    <FormMessage className="text-xs" />
+                                </FormItem>
+                                )} />
+                                <FormField control={form.control} name={`items.${index}.itemDiscountAmount`} render={({ field: subField }) => (
+                                <FormItem>
+                                    <FormLabel className="text-xs">Item Discount ({currencySymbol})</FormLabel>
+                                    <FormControl><Input type="number" step="0.01" min="0" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
+                                    <FormMessage className="text-xs" />
+                                </FormItem>
+                                )} />
+                            </PopoverContent>
+                            </Popover>
+                            <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-7 w-7" onClick={() => remove(index)}>
+                            <Trash2 className="h-4 w-4" /> <span className="sr-only">Remove Item</span>
                             </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-72 space-y-3 p-4">
-                            <h5 className="text-sm font-medium">Edit: {item.serviceName}</h5>
-                            <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field: subField }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Override Unit Price</FormLabel>
-                                <FormControl><Input type="number" step="0.01" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
-                                <FormMessage className="text-xs" />
-                              </FormItem>
-                            )} />
-                            <FormField control={form.control} name={`items.${index}.itemDiscountPercentage`} render={({ field: subField }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Item Discount (%)</FormLabel>
-                                <FormControl><Input type="number" step="0.1" min="0" max="100" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
-                                <FormMessage className="text-xs" />
-                              </FormItem>
-                            )} />
-                            <FormField control={form.control} name={`items.${index}.itemDiscountAmount`} render={({ field: subField }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Item Discount ({currencySymbol})</FormLabel>
-                                <FormControl><Input type="number" step="0.01" min="0" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
-                                <FormMessage className="text-xs" />
-                              </FormItem>
-                            )} />
-                          </PopoverContent>
-                        </Popover>
-                        <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-7 w-7" onClick={() => remove(index)}>
-                          <Trash2 className="h-4 w-4" /> <span className="sr-only">Remove Item</span>
-                        </Button>
-                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <FormLabel className="text-xs whitespace-nowrap">Qty:</FormLabel>
-                      <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => { const q = item.quantity; if (q > 1) update(index, { ...item, quantity: q - 1 }); else remove(index); }}><MinusCircle className="h-4 w-4" /></Button>
-                      <Input type="number" readOnly value={item.quantity} className="h-7 w-12 text-center px-1" />
-                      <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => update(index, { ...item, quantity: item.quantity + 1 })}><PlusCircle className="h-4 w-4" /></Button>
-                      <FormField control={form.control} name={`items.${index}.notes`} render={({ field: subField }) => (<FormItem className="flex-grow"><FormControl><Input placeholder="Item notes..." {...subField} className="h-7 text-xs" /></FormControl><FormMessage className="text-xs" /></FormItem>)} />
-                    </div>
-                     <div className="text-right text-sm font-medium">Item Total: {currencySymbol}{itemTotal.toFixed(2)}</div>
-                     <FormField control={form.control} name={`items.${index}.quantity`} render={() => <FormMessage className="text-xs pt-1" />} />
-                  </Card>
-                );
-              })}
-              </div>
-            )}
-            {form.formState.errors.items && !form.formState.errors.items.root && !Array.isArray(form.formState.errors.items) && (<FormMessage>{form.formState.errors.items.message}</FormMessage>)}
-            
-            <FormItem className="flex flex-col"><div className="flex justify-between items-center"><FormLabel>Due Date (Optional)</FormLabel>{isExpressOrder && <Badge variant="destructive" className="text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}</div><div className="mt-1 grid grid-cols-4 gap-2"><Button type="button" className="h-9 px-3 bg-red-600 hover:bg-red-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(new Date())}>Today</Button><Button type="button" className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(addDays(new Date(), 1))}>Tomorrow</Button>{weekdays.map((day, index) => (<Button key={day} type="button" variant="default" className="h-9 px-3" onClick={() => handleDueDateButtonClick(getNextOccurrenceOfWeekday(index))}>{day}</Button>))}{ <Button type="button" variant="outline" size="sm" onClick={clearDueDate} className="h-9 px-2 text-xs col-span-1 self-center">Clear</Button>}</div><div className="mt-2 flex gap-2 items-center"><Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>{watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick specific date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={watchedDueDate ? new Date(watchedDueDate) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/></PopoverContent></Popover></div><FormMessage /></FormItem>
-            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>General Order Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Any special instructions" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
-            
-            <Separator />
-            <div className="space-y-3 pt-2">
-                <h3 className="text-md font-medium text-muted-foreground">Discounts & Overrides</h3>
-                <FormField control={form.control} name="cartDiscountPercentage" render={({ field }) => (
-                    <FormItem><FormLabel>Cart Discount (%)</FormLabel><FormControl><Input type="number" step="0.1" min="0" max="100" placeholder="e.g., 10" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="cartDiscountAmount" render={({ field }) => (
-                    <FormItem><FormLabel>Cart Discount ({currencySymbol})</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 5.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="cartPriceOverride" render={({ field }) => (
-                    <FormItem><FormLabel>Cart Total Price Override ({currencySymbol})</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 50.00 (leave blank if no override)" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormDescription className="text-xs">If set, this becomes the final price regardless of other calculations.</FormDescription><FormMessage /></FormItem>
-                )} />
+                        </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                        <FormLabel className="text-xs whitespace-nowrap">Qty:</FormLabel>
+                        <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => { const q = item.quantity; if (q > 1) update(index, { ...item, quantity: q - 1 }); else remove(index); }}><MinusCircle className="h-4 w-4" /></Button>
+                        <Input type="number" readOnly value={item.quantity} className="h-7 w-12 text-center px-1" />
+                        <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => update(index, { ...item, quantity: item.quantity + 1 })}><PlusCircle className="h-4 w-4" /></Button>
+                        <FormField control={form.control} name={`items.${index}.notes`} render={({ field: subField }) => (<FormItem className="flex-grow"><FormControl><Input placeholder="Item notes..." {...subField} className="h-7 text-xs" /></FormControl><FormMessage className="text-xs" /></FormItem>)} />
+                        </div>
+                        <div className="text-right text-sm font-medium">Item Total: {currencySymbol}{itemTotal.toFixed(2)}</div>
+                        <FormField control={form.control} name={`items.${index}.quantity`} render={() => <FormMessage className="text-xs pt-1" />} />
+                    </Card>
+                    );
+                    })
+                ) : (
+                    <div className="text-center text-muted-foreground p-4">Your cart is empty.</div>
+                )}
             </div>
-            <Separator />
-
-            <div className="border-t pt-4 space-y-2">
-              <div className="flex justify-between items-center text-md"><span>Subtotal:</span><span>{currencySymbol}{calculatedTotals.subtotal.toFixed(2)}</span></div>
-              {(watchedCartDiscountPercentage || watchedCartDiscountAmount) && (
-                <div className="flex justify-between items-center text-sm text-blue-600">
-                    <span>Cart Discount Applied:</span>
-                    <span>
-                        - {currencySymbol}
-                        {(
-                            calculatedTotals.subtotal - 
-                            ( (watchedCartPriceOverride !== undefined && watchedCartPriceOverride >= 0) ? watchedCartPriceOverride : calculatedTotals.grandTotal )
-                        ).toFixed(2)}
-                    </span>
-                </div>
-              )}
-              <div className="flex justify-between items-center font-semibold text-lg"><span>Grand Total:</span><span>{currencySymbol}{calculatedTotals.grandTotal.toFixed(2)}</span></div>
-              <div className="space-y-2">
-                <Button type="submit" disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : isLoadingSpecificCustomer ? "Loading Customer..." : isLoadingAllCustomers ? "Loading..." : isLoadingServices ? "Loading Services..." : !watchedCustomerId ? "Select Customer First" : selectedCustomerName ? `Create & Proceed to Payment for ${selectedCustomerName.split(' ')[0]}`: `Create & Proceed to Payment`}<ArrowRight className="ml-2 h-4 w-4" /></Button>
-                <Button type="button" variant="outline" onClick={handleCreateAndPayLater} disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : `Create Order & Pay Later`}<Clock className="ml-2 h-4 w-4" /></Button>
-              </div>
+            
+            <div className="mt-auto">
+                <FormItem className="flex flex-col"><div className="flex justify-between items-center"><FormLabel>Due Date (Optional)</FormLabel>{isExpressOrder && <Badge variant="destructive" className="text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}</div><div className="mt-1 grid grid-cols-4 gap-2"><Button type="button" className="h-9 px-3 bg-red-600 hover:bg-red-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(new Date())}>Today</Button><Button type="button" className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(addDays(new Date(), 1))}>Tomorrow</Button>{weekdays.map((day, index) => (<Button key={day} type="button" variant="default" className="h-9 px-3" onClick={() => handleDueDateButtonClick(getNextOccurrenceOfWeekday(index))}>{day}</Button>))}{ <Button type="button" variant="outline" size="sm" onClick={clearDueDate} className="h-9 px-2 text-xs col-span-1 self-center">Clear</Button>}</div><div className="mt-2 flex gap-2 items-center"><Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>{watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick specific date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={watchedDueDate ? new Date(watchedDueDate) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/></PopoverContent></Popover></div><FormMessage /></FormItem>
+                <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>General Order Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Any special instructions" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
             </div>
           </form>
         </Form>
       </CardContent>
+      <CardFooter className="flex-col items-stretch space-y-2 pt-4 border-t">
+        <div className="space-y-3 pt-2">
+            <h3 className="text-md font-medium text-muted-foreground">Discounts & Overrides</h3>
+            <FormField control={form.control} name="cartDiscountPercentage" render={({ field }) => (
+                <FormItem><FormLabel>Cart Discount (%)</FormLabel><FormControl><Input type="number" step="0.1" min="0" max="100" placeholder="e.g., 10" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="cartDiscountAmount" render={({ field }) => (
+                <FormItem><FormLabel>Cart Discount ({currencySymbol})</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 5.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="cartPriceOverride" render={({ field }) => (
+                <FormItem><FormLabel>Cart Total Price Override ({currencySymbol})</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 50.00 (leave blank if no override)" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormDescription className="text-xs">If set, this becomes the final price regardless of other calculations.</FormDescription><FormMessage /></FormItem>
+            )} />
+        </div>
+        <Separator />
+        <div className="space-y-2">
+            <div className="flex justify-between items-center text-md"><span>Subtotal:</span><span>{currencySymbol}{calculatedTotals.subtotal.toFixed(2)}</span></div>
+            {(watchedCartDiscountPercentage || watchedCartDiscountAmount) && (
+            <div className="flex justify-between items-center text-sm text-blue-600">
+                <span>Cart Discount Applied:</span>
+                <span>
+                    - {currencySymbol}
+                    {(
+                        calculatedTotals.subtotal - 
+                        ( (watchedCartPriceOverride !== undefined && watchedCartPriceOverride >= 0) ? watchedCartPriceOverride : calculatedTotals.grandTotal )
+                    ).toFixed(2)}
+                </span>
+            </div>
+            )}
+            <div className="flex justify-between items-center font-semibold text-lg"><span>Grand Total:</span><span>{currencySymbol}{calculatedTotals.grandTotal.toFixed(2)}</span></div>
+            <div className="space-y-2 pt-2">
+            <Button onClick={form.handleSubmit(proceedToPaymentSubmit)} disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : isLoadingSpecificCustomer ? "Loading Customer..." : isLoadingAllCustomers ? "Loading..." : isLoadingServices ? "Loading Services..." : !watchedCustomerId ? "Select Customer First" : selectedCustomerName ? `Create & Proceed to Payment for ${selectedCustomerName.split(' ')[0]}`: `Create & Proceed to Payment`}<ArrowRight className="ml-2 h-4 w-4" /></Button>
+            <Button type="button" variant="outline" onClick={handleCreateAndPayLater} disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : `Create Order & Pay Later`}<Clock className="ml-2 h-4 w-4" /></Button>
+            </div>
+        </div>
+      </CardFooter>
     </Card>
   );
 
@@ -569,7 +569,7 @@ export default function NewOrderPage() {
               <div>
                 <div className="text-sm font-medium mb-1">Amount Tendered</div>
                 <div className="flex items-center space-x-2 cursor-pointer" onClick={handleOpenAmountKeypad}>
-                    <Input id="amountTenderedInput" type="text" value={selectedPaymentMethod === "On Account" ? numericTotalAmount.toFixed(2) : amountTendered} readOnly placeholder={selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Part Pay" ? "Tap to enter amount" : numericTotalAmount.toFixed(2) } className="cursor-pointer flex-grow" disabled={selectedPaymentMethod === "On Account" || selectedPaymentMethod === "Card"} />
+                    <Input id="amountTenderedInput" type="text" value={amountTendered} readOnly placeholder={selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Part Pay" ? "Tap to enter amount" : numericTotalAmount.toFixed(2) } className="cursor-pointer flex-grow" disabled={selectedPaymentMethod === "Card"} />
                     <Grid className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                 </div>
               </div>
@@ -578,11 +578,10 @@ export default function NewOrderPage() {
                 <Button variant={selectedPaymentMethod === "Card" ? "default" : "outline"} onClick={() => { setSelectedPaymentMethod("Card"); setPaymentNote(""); setAmountTendered(numericTotalAmount.toFixed(2)); }}><WalletCards className="mr-2 h-4 w-4"/> Card</Button>
                 <Button variant={selectedPaymentMethod === "Part Pay" ? "default" : "outline"} onClick={() => { setSelectedPaymentMethod("Part Pay"); setPaymentNote("Deposit Paid."); setAmountTendered(""); setIsKeypadOpen(true); }}>Part Pay</Button>
               </div>
-               <Button variant={selectedPaymentMethod === "On Account" ? "default" : "outline"} onClick={handlePayOnAccount} className="w-full">Pay on Account</Button>
               {paymentNote && <p className="text-sm text-muted-foreground">{paymentNote}</p>}
               {changeDue !== null && (<p className="text-md font-semibold text-green-600">Change Due: {currencySymbol}{changeDue}</p>)}
               <div className="space-y-2 border-t pt-4">
-                <Button onClick={handleConfirmPayment} className="w-full" disabled={!selectedPaymentMethod || (selectedPaymentMethod !== "On Account" && (amountTendered === "" || parseFloat(amountTendered) < 0 ) && numericTotalAmount > 0)}>Confirm Payment & Print Options</Button>
+                <Button onClick={handleConfirmPayment} className="w-full" disabled={!selectedPaymentMethod || ((amountTendered === "" || parseFloat(amountTendered) < 0 ) && numericTotalAmount > 0)}>Confirm Payment & Print Options</Button>
                 <Button variant="ghost" onClick={() => setActivePaymentStep("selectAction")} className="w-full text-sm">Back</Button>
               </div>
             </div>
@@ -638,7 +637,7 @@ export default function NewOrderPage() {
           </Card>
       </div>
 
-      <div className="lg:col-span-1 sticky top-6">
+      <div className="lg:col-span-1 sticky top-6 h-[calc(100vh-3.5rem-2rem)]">
           {stage === "form" && renderOrderFormCard()}
           {stage === "paymentOptions" && renderPaymentOptionsCard()}
       </div>
@@ -670,5 +669,7 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
+    
 
     
