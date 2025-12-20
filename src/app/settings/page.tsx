@@ -52,6 +52,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SpecialOffersManagementTab } from "@/components/settings/special-offers-management";
 
 
 const FormLabel = RHFFormLabel;
@@ -1036,204 +1037,17 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="specialOffers" className="mt-6 space-y-6">
-          {isLoadingSpecialOffers ? (
-            <div className="space-y-4">
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-48 w-full" />
-                <Skeleton className="h-48 w-full" />
-            </div>
-          ) : (
-            <>
-            <Card className="shadow-xl">
-                <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center">
-                    <Gift className="mr-2 h-5 w-5 text-green-600" /> "Buy X Get Y (Cheapest Free)" Offer
-                </CardTitle>
-                <CardDescription>Configure a "cheapest item free" type of promotion. Saved to Supabase.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                    <Label htmlFor="buyXgetY-X">Items to Buy (X)</Label>
-                    <Input id="buyXgetY-X" type="number" value={buyXgetY_X} onChange={(e) => setBuyXgetY_X(e.target.value)} placeholder="e.g., 3" className="mt-1" />
-                    </div>
-                    <div>
-                    <Label htmlFor="buyXgetY-Y">Items to Pay For (Y)</Label>
-                    <Input id="buyXgetY-Y" type="number" value={buyXgetY_Y} onChange={(e) => setBuyXgetY_Y(e.target.value)} placeholder="e.g., 2" className="mt-1" />
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                    <Label htmlFor="buyXgetY-validFrom">Valid From</Label>
-                    <Popover open={isBuyXgetYFromCalendarOpen} onOpenChange={setIsBuyXgetYFromCalendarOpen}>
-                        <PopoverTrigger asChild>
-                        <Button id="buyXgetY-validFrom" variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !buyXgetY_ValidFrom && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {buyXgetY_ValidFrom ? format(buyXgetY_ValidFrom, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={buyXgetY_ValidFrom} onSelect={(date) => { setBuyXgetY_ValidFrom(date || undefined); setIsBuyXgetYFromCalendarOpen(false);}} initialFocus />
-                        </PopoverContent>
-                    </Popover>
-                    </div>
-                    <div>
-                    <Label htmlFor="buyXgetY-validTo">Valid To</Label>
-                    <Popover open={isBuyXgetYToCalendarOpen} onOpenChange={setIsBuyXgetYToCalendarOpen}>
-                        <PopoverTrigger asChild>
-                        <Button id="buyXgetY-validTo" variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !buyXgetY_ValidTo && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {buyXgetY_ValidTo ? format(buyXgetY_ValidTo, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={buyXgetY_ValidTo} onSelect={(date) => { setBuyXgetY_ValidTo(date || undefined); setIsBuyXgetYToCalendarOpen(false);}} disabled={(date) => buyXgetY_ValidFrom ? date < buyXgetY_ValidFrom : false} initialFocus />
-                        </PopoverContent>
-                    </Popover>
-                    </div>
-                </div>
-                <div>
-                    <Label htmlFor="buyXgetY-notes">Applicable Items/Categories (Notes)</Label>
-                    <Textarea id="buyXgetY-notes" value={buyXgetY_Notes} onChange={(e) => setBuyXgetY_Notes(e.target.value)} placeholder="e.g., Applies to all shirts. Cheapest of the X items is free." className="mt-1" rows={2} />
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Switch id="buyXgetY-active" checked={buyXgetY_Active} onCheckedChange={setBuyXgetY_Active} />
-                    <Label htmlFor="buyXgetY-active">Offer Active</Label>
-                </div>
-                <Button onClick={() => handleSaveSpecialOffer('BUY_X_GET_Y')} disabled={isSavingBuyXGetYOffer}>
-                    {isSavingBuyXGetYOffer ? "Saving..." : "Save 'Buy X Get Y' Settings"}
-                </Button>
-                </CardContent>
-            </Card>
-
-            <Card className="shadow-xl">
-                <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center">
-                    <Percent className="mr-2 h-5 w-5 text-blue-600" /> "Bundle Deal (X Items for Price Y)"
-                </CardTitle>
-                <CardDescription>Set a fixed price for a bundle of items. Saved to Supabase.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                    <Label htmlFor="bundle-items">Number of Items in Bundle</Label>
-                    <Input id="bundle-items" type="number" value={bundle_Items} onChange={(e) => setBundle_Items(e.target.value)} placeholder="e.g., 3" className="mt-1" />
-                    </div>
-                    <div>
-                    <Label htmlFor="bundle-price">Fixed Price for Bundle ({selectedCurrency})</Label>
-                    <Input id="bundle-price" type="number" step="0.01" value={bundle_Price} onChange={(e) => setBundle_Price(e.target.value)} placeholder="e.g., 15.00" className="mt-1" />
-                    </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                    <Label htmlFor="bundle-validFrom">Valid From</Label>
-                    <Popover open={isBundleFromCalendarOpen} onOpenChange={setIsBundleFromCalendarOpen}>
-                        <PopoverTrigger asChild>
-                        <Button id="bundle-validFrom" variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !bundle_ValidFrom && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {bundle_ValidFrom ? format(bundle_ValidFrom, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={bundle_ValidFrom} onSelect={(date) => { setBundle_ValidFrom(date || undefined); setIsBundleFromCalendarOpen(false);}} initialFocus />
-                        </PopoverContent>
-                    </Popover>
-                    </div>
-                    <div>
-                    <Label htmlFor="bundle-validTo">Valid To</Label>
-                    <Popover open={isBundleToCalendarOpen} onOpenChange={setIsBundleToCalendarOpen}>
-                        <PopoverTrigger asChild>
-                        <Button id="bundle-validTo" variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !bundle_ValidTo && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {bundle_ValidTo ? format(bundle_ValidTo, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={bundle_ValidTo} onSelect={(date) => { setBundle_ValidTo(date || undefined); setIsBundleToCalendarOpen(false);}} disabled={(date) => bundle_ValidFrom ? date < bundle_ValidFrom : false} initialFocus />
-                        </PopoverContent>
-                    </Popover>
-                    </div>
-                </div>
-                <div>
-                    <Label htmlFor="bundle-notes">Applicable Items/Categories (Notes)</Label>
-                    <Textarea id="bundle-notes" value={bundle_Notes} onChange={(e) => setBundle_Notes(e.target.value)} placeholder="e.g., Mix and match any 3 standard shirts." className="mt-1" rows={2} />
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Switch id="bundle-active" checked={bundle_Active} onCheckedChange={setBundle_Active} />
-                    <Label htmlFor="bundle-active">Offer Active</Label>
-                </div>
-                <Button onClick={() => handleSaveSpecialOffer('BUNDLE_DEAL')} disabled={isSavingBundleOffer}>
-                    {isSavingBundleOffer ? "Saving..." : "Save 'Bundle Deal' Settings"}
-                </Button>
-                </CardContent>
-            </Card>
-
-            <Card className="shadow-xl">
-                <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center">
-                    <DollarSign className="mr-2 h-5 w-5 text-yellow-500" /> "Spend &amp; Get Free Item" Offer
-                </CardTitle>
-                <CardDescription>Offer a free item when a customer spends a certain amount. Saved to Supabase.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                <div>
-                    <Label htmlFor="spendGet-threshold">Spend Threshold ({selectedCurrency})</Label>
-                    <Input id="spendGet-threshold" type="number" step="0.01" value={spendGet_Threshold} onChange={(e) => setSpendGet_Threshold(e.target.value)} placeholder="e.g., 50.00" className="mt-1" />
-                </div>
-                <div>
-                    <Label htmlFor="spendGet-freeItem">Description of Free Item</Label>
-                    <Input id="spendGet-freeItem" value={spendGet_FreeItemDesc} onChange={(e) => setSpendGet_FreeItemDesc(e.target.value)} placeholder="e.g., 1 Free Tie Clean, Cheapest item up to value X" className="mt-1" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                    <Label htmlFor="spendGet-validFrom">Valid From</Label>
-                    <Popover open={isSpendGetFromCalendarOpen} onOpenChange={setIsSpendGetFromCalendarOpen}>
-                        <PopoverTrigger asChild>
-                        <Button id="spendGet-validFrom" variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !spendGet_ValidFrom && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {spendGet_ValidFrom ? format(spendGet_ValidFrom, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={spendGet_ValidFrom} onSelect={(date) => { setSpendGet_ValidFrom(date || undefined); setIsSpendGetFromCalendarOpen(false);}} initialFocus />
-                        </PopoverContent>
-                    </Popover>
-                    </div>
-                    <div>
-                    <Label htmlFor="spendGet-validTo">Valid To</Label>
-                    <Popover open={isSpendGetToCalendarOpen} onOpenChange={setIsSpendGetToCalendarOpen}>
-                        <PopoverTrigger asChild>
-                        <Button id="spendGet-validTo" variant="outline" className={cn("w-full justify-start text-left font-normal mt-1", !spendGet_ValidTo && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {spendGet_ValidTo ? format(spendGet_ValidTo, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={spendGet_ValidTo} onSelect={(date) => { setSpendGet_ValidTo(date || undefined); setIsSpendGetToCalendarOpen(false);}} disabled={(date) => spendGet_ValidFrom ? date < spendGet_ValidFrom : false} initialFocus />
-                        </PopoverContent>
-                    </Popover>
-                    </div>
-                </div>
-                <div>
-                    <Label htmlFor="spendGet-notes">Additional Offer Details/Exclusions (Notes)</Label>
-                    <Textarea id="spendGet-notes" value={spendGet_Notes} onChange={(e) => setSpendGet_Notes(e.target.value)} placeholder="e.g., Not valid with other offers. Excludes leather items." className="mt-1" rows={2} />
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Switch id="spendGet-active" checked={spendGet_Active} onCheckedChange={setSpendGet_Active} />
-                    <Label htmlFor="spendGet-active">Offer Active</Label>
-                </div>
-                <Button onClick={() => handleSaveSpecialOffer('SPEND_GET_FREE_ITEM')} disabled={isSavingSpendGetOffer}>
-                    {isSavingSpendGetOffer ? "Saving..." : "Save 'Spend & Get' Settings"}
-                </Button>
-                </CardContent>
-                <CardFooter>
-                    <p className={cn("text-muted-foreground", "text-xs")}>
-                        Note: The parameters set here are for configuration purposes. Applying these offers to orders requires additional logic in the order creation process.
-                    </p>
-                </CardFooter>
-            </Card>
-            </>
-          )}
+           <Card className="shadow-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl flex items-center">
+                <Percent className="mr-2 h-6 w-6 text-primary" /> Special Offers & Promotions
+              </CardTitle>
+              <CardDescription>Create and manage discounts and bundle deals.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <SpecialOffersManagementTab />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="cashUp" className="mt-6 print-this-specific-area">

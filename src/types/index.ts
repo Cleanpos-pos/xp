@@ -25,6 +25,7 @@ export type ServiceItem = {
   description?: string;
   price: number;
   category: string;
+  categoryId?: string | null; // <--- ADD THIS
   has_color_identifier?: boolean;
 };
 
@@ -230,6 +231,11 @@ export interface SpecialOffer {
   // Fields for "Spend & Get"
   spend_threshold?: number | null;
   free_item_description?: string | null;
+  
+  // <--- ADD THESE TWO:
+  eligible_items?: string[]; 
+  eligible_categories?: string[];
+
   created_at?: string;
   updated_at?: string;
 }

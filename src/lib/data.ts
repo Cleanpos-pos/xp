@@ -703,6 +703,9 @@ async function getServiceItemsFromCatalog(): Promise<ServiceItem[]> {
       price: item.price!,
       description: item.description || undefined,
       category: item.parent_id ? (categoryMap.get(item.parent_id) || 'General Services') : 'General Services',
+      
+      categoryId: item.parent_id || null, // <--- ADD THIS LINE
+      
       has_color_identifier: item.has_color_identifier ?? false,
     }));
 }

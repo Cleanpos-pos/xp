@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { getCustomers, getCustomerById, getServices } from "@/lib/data";
 import { getCompanySettingsAction } from "@/app/(auth)/settings/company-settings-actions";
-import type { ServiceItem, Customer, CompanySettings } from "@/types";
+import type { ServiceItem, Customer, CompanySettings, SpecialOffer } from "@/types";
 import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "@/app/(app)/orders/actions";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Link from 'next/link';
 import { recordPaymentAction } from "../payment-actions"; // Import the new action (adjust path if needed)
+import { getSpecialOffersAction } from "@/app/(auth)/settings/special-offers-actions"; // Import this
 
 interface ServicesByCategory {
   [category: string]: ServiceItem[];
@@ -110,6 +111,28 @@ export default function NewOrderPage() {
   // Modal states
   const [isOrderSettingsOpen, setIsOrderSettingsOpen] = React.useState(false);
   const [isDiscountModalOpen, setIsDiscountModalOpen] = React.useState(false);
+
+  const [activeOffers, setActiveOffers] = React.useState<SpecialOffer[]>([]);
+
+  React.useEffect(() => {
+    getSpecialOffersAction().then(data => {
+      // Only keep active offers
+      setActiveOffers(data.filter(o => o.is_active));
+    });
+  }, []);
+
+  // Helper to check if item is in an offer
+  const getOfferForItem = (serviceId: string, categoryId?: string | null) => {
+    return activeOffers.find(offer => {
+      const itemMatch = offer.eligible_items?.includes(serviceId);
+      const catMatch = categoryId && offer.eligible_categories?.includes(categoryId);
+      
+      // Spend offers apply to whole cart, not specific items usually, so ignore here
+      if (offer.offer_type_identifier === 'SPEND_GET_FREE_ITEM') return false;
+      
+      return itemMatch || catMatch;
+    });
+  };
 
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
@@ -455,83 +478,90 @@ export default function NewOrderPage() {
                             if (item.itemDiscountPercentage && item.itemDiscountPercentage > 0) itemTotal -= itemTotal * (item.itemDiscountPercentage / 100);
                             if (item.itemDiscountAmount && item.itemDiscountAmount > 0) itemTotal -= item.itemDiscountAmount;
                             itemTotal = Math.max(0, itemTotal);
+                            const serviceDetails = allServices.find(s => s.id === item.serviceItemId);
+                            const activeOffer = getOfferForItem(item.serviceItemId, serviceDetails?.categoryId);
 
                             return (
-                            <Card key={fieldItem.id} className="p-2 space-y-2 bg-background border rounded-md shadow-sm">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                        <h4 className="font-medium text-sm line-clamp-1">{item?.serviceName}</h4>
-                                        <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
-                                             <span>{currencySymbol}{item?.originalUnitPrice?.toFixed(2)}</span>
-                                             {item.unitPrice !== item.originalUnitPrice && <span className="text-amber-600 font-bold">(Set: {currencySymbol}{item.unitPrice.toFixed(2)})</span>}
+                                <Card key={fieldItem.id} className={`p-2 space-y-2 bg-background border rounded-md shadow-sm ${activeOffer ? 'border-l-4 border-l-green-500' : ''}`}>
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                            <h4 className="font-medium text-sm line-clamp-1 flex items-center gap-2">
+                                                {item?.serviceName}
+                                                {activeOffer && (
+                                                    <Badge variant="outline" className="text-[10px] h-4 px-1 bg-green-50 text-green-700 border-green-200">
+                                                        {activeOffer.offer_type_identifier === 'BUY_X_GET_Y' ? 'Promo' : 'Bundle'}
+                                                    </Badge>
+                                                )}
+                                            </h4>
+                                            <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
+                                                <span>{currencySymbol}{item?.originalUnitPrice?.toFixed(2)}</span>
+                                                {item.unitPrice !== item.originalUnitPrice && <span className="text-amber-600 font-bold">(Set: {currencySymbol}{item.unitPrice.toFixed(2)})</span>}
+                                            </div>
+                                            {(item.itemDiscountPercentage || item.itemDiscountAmount) && (
+                                                <p className="text-xs text-blue-600">
+                                                    Disc: {item.itemDiscountPercentage ? `${item.itemDiscountPercentage}%` : ''}
+                                                    {item.itemDiscountAmount ? ` -${currencySymbol}${item.itemDiscountAmount.toFixed(2)}` : ''}
+                                                </p>
+                                            )}
                                         </div>
-                                         {(item.itemDiscountPercentage || item.itemDiscountAmount) && (
-                                            <p className="text-xs text-blue-600">
-                                                Disc: {item.itemDiscountPercentage ? `${item.itemDiscountPercentage}%` : ''}
-                                                {item.itemDiscountAmount ? ` -${currencySymbol}${item.itemDiscountAmount.toFixed(2)}` : ''}
-                                            </p>
-                                        )}
+                                        <div className="text-right font-semibold text-sm">
+                                            {currencySymbol}{itemTotal.toFixed(2)}
+                                        </div>
                                     </div>
-                                    <div className="text-right font-semibold text-sm">
-                                        {currencySymbol}{itemTotal.toFixed(2)}
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between gap-2 mt-2">
-                                     {/* Qty Controls */}
-                                    <div className="flex items-center bg-secondary/50 rounded-md p-0.5">
-                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-white" onClick={() => { const q = item.quantity; if (q > 1) update(index, { ...item, quantity: q - 1 }); else remove(index); }}>
-                                            <MinusCircle className="h-3.5 w-3.5" />
-                                        </Button>
-                                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-white" onClick={() => update(index, { ...item, quantity: item.quantity + 1 })}>
-                                            <PlusCircle className="h-3.5 w-3.5" />
-                                        </Button>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="flex gap-1">
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10">
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-72 space-y-3 p-4">
-                                                <h5 className="text-sm font-medium">Edit Item: {item.serviceName}</h5>
-                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field: subField }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">Override Unit Price</FormLabel>
-                                                    <FormControl><Input type="number" step="0.01" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
-                                                </FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.itemDiscountPercentage`} render={({ field: subField }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">Item Discount (%)</FormLabel>
-                                                    <FormControl><Input type="number" step="0.1" min="0" max="100" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
-                                                </FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.itemDiscountAmount`} render={({ field: subField }) => (
-                                                <FormItem>
-                                                    <FormLabel className="text-xs">Item Discount ({currencySymbol})</FormLabel>
-                                                    <FormControl><Input type="number" step="0.01" min="0" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
-                                                </FormItem>
-                                                )} />
-                                                <FormField control={form.control} name={`items.${index}.notes`} render={({ field: subField }) => (
+                                    <div className="flex items-center justify-between gap-2 mt-2">
+                                        {/* Qty Controls */}
+                                        <div className="flex items-center bg-secondary/50 rounded-md p-0.5">
+                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-white" onClick={() => { const q = item.quantity; if (q > 1) update(index, { ...item, quantity: q - 1 }); else remove(index); }}>
+                                                <MinusCircle className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-white" onClick={() => update(index, { ...item, quantity: item.quantity + 1 })}>
+                                                <PlusCircle className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                        {/* Actions */}
+                                        <div className="flex gap-1">
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10">
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-72 space-y-3 p-4">
+                                                    <h5 className="text-sm font-medium">Edit Item: {item.serviceName}</h5>
+                                                    <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field: subField }) => (
                                                     <FormItem>
-                                                        <FormLabel className="text-xs">Item Note</FormLabel>
-                                                        <FormControl><Input placeholder="Add note..." {...subField} className="h-8" /></FormControl>
+                                                        <FormLabel className="text-xs">Override Unit Price</FormLabel>
+                                                        <FormControl><Input type="number" step="0.01" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
                                                     </FormItem>
-                                                )} />
-                                            </PopoverContent>
-                                        </Popover>
-                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                                    )} />
+                                                    <FormField control={form.control} name={`items.${index}.itemDiscountPercentage`} render={({ field: subField }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs">Item Discount (%)</FormLabel>
+                                                        <FormControl><Input type="number" step="0.1" min="0" max="100" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
+                                                    </FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name={`items.${index}.itemDiscountAmount`} render={({ field: subField }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs">Item Discount ({currencySymbol})</FormLabel>
+                                                        <FormControl><Input type="number" step="0.01" min="0" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
+                                                    </FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name={`items.${index}.notes`} render={({ field: subField }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-xs">Item Note</FormLabel>
+                                                            <FormControl><Input placeholder="Add note..." {...subField} className="h-8" /></FormControl>
+                                                        </FormItem>
+                                                    )} />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
-                                <FormField control={form.control} name={`items.${index}.quantity`} render={() => <FormMessage className="text-xs pt-1" />} />
-                            </Card>
+                                    <FormField control={form.control} name={`items.${index}.quantity`} render={() => <FormMessage className="text-xs pt-1" />} />
+                                </Card>
                             );
                             })
                         ) : (
