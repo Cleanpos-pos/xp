@@ -39,28 +39,16 @@ export async function createOrderAction(data: CreateOrderInput) {
 }
 
 export async function updateOrderStatusAction(orderId: string, newStatus: OrderStatus) {
-  if (!orderId || !newStatus) {
-    return {
-      success: false,
-      message: "Order ID and new status are required.",
-    };
-  }
-
   try {
-    const updatedOrder = await updateOrderStatusDb(orderId, newStatus);
-    revalidatePath('/orders'); // Revalidate orders list page
-    revalidatePath(`/orders/${orderId}`); // Revalidate specific order page
-    return {
-      success: true,
-      message: `Order ${updatedOrder.orderNumber} status updated to ${newStatus}.`,
-      order: updatedOrder,
-    };
+    const { error } = await updateOrderStatusDb(orderId, newStatus);
+
+    if (error) throw error;
+
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath('/orders');
+    return { success: true, message: `Order marked as ${newStatus}` };
   } catch (error: any) {
-    console.error(`Error updating order status for ${orderId} to ${newStatus}:`, error);
-    return {
-      success: false,
-      message: error.message || "Failed to update order status.",
-    };
+    return { success: false, message: error.message };
   }
 }
     
