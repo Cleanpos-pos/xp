@@ -27,8 +27,7 @@ import {
   endOfQuarter, 
   subQuarters, 
   startOfYear, 
-  endOfYear, 
-  subYears
+  endOfYear
 } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -37,6 +36,7 @@ import { cn } from '@/lib/utils';
 import type { OrderStatus, Order } from '@/types';
 import { getSalesOverview, getServicePopularity, getCategorySales, getOrdersForReport } from './report-actions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 
 // Chart Configs
 const chartConfigSales = { sales: { label: "Sales (£)", color: "hsl(var(--primary))" }, orders: { label: "Orders", color: "hsl(var(--accent))"} };
