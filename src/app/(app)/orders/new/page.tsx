@@ -24,7 +24,7 @@ import { CreateOrderSchema, type CreateOrderInput, type OrderItemInput } from ".
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer, Zap, PlusCircle, MinusCircle, Pencil } from "lucide-react";
+import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer, Zap, PlusCircle, MinusCircle, Pencil, UserPlus, Search, User, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -35,6 +35,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-modal";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import Link from 'next/link';
 
 
 interface ServicesByCategory {
@@ -43,7 +44,7 @@ interface ServicesByCategory {
 
 type OrderCreationStage = "form" | "paymentOptions";
 type PaymentStep = "selectAction" | "enterPaymentDetails";
-type PaymentMethod = "Cash" | "Card" | "On Account" | null;
+type PaymentMethod = "Cash" | "Card" | "On Account" | "Part Pay" | null;
 
 const getNextOccurrenceOfWeekday = (targetDay: number, startDate: Date = new Date()): Date => {
   const currentDate = new Date(startDate);
@@ -70,6 +71,11 @@ export default function NewOrderPage() {
   const [isLoadingAllCustomers, setIsLoadingAllCustomers] = React.useState(false);
   const [isLoadingSpecificCustomer, setIsLoadingSpecificCustomer] = React.useState(false);
   const [selectedCustomerName, setSelectedCustomerName] = React.useState<string | null>(null);
+
+  // New states for customer search
+  const [customerSearchTerm, setCustomerSearchTerm] = React.useState("");
+  const [isCustomerListVisible, setIsCustomerListVisible] = React.useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   const [allServices, setAllServices] = React.useState<ServiceItem[]>([]);
   const [isLoadingServices, setIsLoadingServices] = React.useState(true);
@@ -105,16 +111,19 @@ export default function NewOrderPage() {
   const customerIdFromQueryRaw = searchParams.get('customerId');
   const customerIdFromQuery = customerIdFromQueryRaw?.trim();
 
+  // This effect fetches all customers for the search functionality
   React.useEffect(() => {
+    // Only fetch all customers if we are NOT loading a specific one from query params
     if (!customerIdFromQuery) {
-      setIsLoadingAllCustomers(true);
-      getCustomers().then(setAllCustomers).catch(err => console.error("[NewOrderPage] Failed to fetch customers:", err)).finally(() => setIsLoadingAllCustomers(false));
-    } else {
-      setAllCustomers([]);
-      setIsLoadingAllCustomers(false);
+        setIsLoadingAllCustomers(true);
+        getCustomers()
+            .then(setAllCustomers)
+            .catch(err => console.error("[NewOrderPage] Failed to fetch customers for search:", err))
+            .finally(() => setIsLoadingAllCustomers(false));
     }
   }, [customerIdFromQuery]);
 
+  // This effect handles loading a specific customer if an ID is in the URL
   React.useEffect(() => {
     if (customerIdFromQuery) {
       setIsLoadingSpecificCustomer(true);
@@ -135,16 +144,34 @@ export default function NewOrderPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerIdFromQuery, toast]);
   
+  // This effect handles hiding the customer search results when clicking outside
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchInputRef.current && !searchInputRef.current.contains(event.target as Node)) {
+        setIsCustomerListVisible(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [searchInputRef]);
+
+  const handleSelectCustomer = (customer: Customer) => {
+    form.setValue("customerId", customer.id, { shouldValidate: true });
+    setSelectedCustomerName(customer.name);
+    setCustomerSearchTerm("");
+    setIsCustomerListVisible(false);
+  };
+  
   const watchedCustomerId = form.watch("customerId");
 
-  React.useEffect(() => {
-    if (isLoadingSpecificCustomer || (isLoadingAllCustomers && !watchedCustomerId && !customerIdFromQuery)) return;
-    if (watchedCustomerId) {
-      const customer = allCustomers.find(c => c.id === watchedCustomerId);
-      if (customer) setSelectedCustomerName(customer.name);
-      else if (!customerIdFromQuery) setSelectedCustomerName(null);
-    } else if (!customerIdFromQuery) setSelectedCustomerName(null);
-  }, [watchedCustomerId, allCustomers, customerIdFromQuery, isLoadingAllCustomers, isLoadingSpecificCustomer]);
+  const filteredCustomers = React.useMemo(() => {
+    if (!customerSearchTerm) return [];
+    return allCustomers.filter(c =>
+      c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+      c.phone?.includes(customerSearchTerm)
+    );
+  }, [customerSearchTerm, allCustomers]);
+
 
   React.useEffect(() => {
     async function fetchServicesData() { // Renamed from fetchServices to avoid conflict
@@ -190,8 +217,6 @@ export default function NewOrderPage() {
         notes: "",
         itemDiscountAmount: undefined,
         itemDiscountPercentage: undefined,
-        has_color_identifier: service.has_color_identifier, // Pass this from service
-        color_value: "", // Default color value
       });
     }
   };
@@ -234,8 +259,12 @@ export default function NewOrderPage() {
   const resetFormAndStage = React.useCallback(() => {
     form.reset({ customerId: "", items: [], dueDate: undefined, notes: "", isExpress: false, cartDiscountAmount: undefined, cartDiscountPercentage: undefined, cartPriceOverride: undefined });
     setStage("form"); setCreatedOrderDetails(null); setActivePaymentStep("selectAction"); setAmountTendered(""); setSelectedPaymentMethod(null); setIsKeypadOpen(false); setPaymentNote(""); setShowPrintDialog(false); setPrintType(null); setIsExpressOrder(false); setIsDatePickerOpen(false);
-    if (!searchParams.get('customerId')) { setSelectedCustomerName(null); setIsLoadingAllCustomers(true); getCustomers().then(setAllCustomers).finally(() => setIsLoadingAllCustomers(false)); }
-  }, [form, searchParams]);
+    setSelectedCustomerName(null);
+    setCustomerSearchTerm("");
+    // Re-fetch all customers for the next search
+    setIsLoadingAllCustomers(true);
+    getCustomers().then(setAllCustomers).finally(() => setIsLoadingAllCustomers(false));
+  }, [form]);
 
   async function proceedToPaymentSubmit(data: CreateOrderInput) {
     const submissionData = { ...data, isExpress: isExpressOrder };
@@ -265,7 +294,7 @@ export default function NewOrderPage() {
   const handleConfirmPayment = () => {
     if (!createdOrderDetails) return; let paymentDetailsMessage = ""; const numericTotalAmount = createdOrderDetails.totalAmount; const numericAmountTendered = parseFloat(amountTendered) || 0;
     if (selectedPaymentMethod === "On Account") { paymentDetailsMessage = `Order ${createdOrderDetails.id} ($${numericTotalAmount.toFixed(2)}) marked 'On Account'.`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
-    else if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Card") { const paymentType = selectedPaymentMethod; let paymentSummary = `Paid ${numericAmountTendered.toFixed(2)} by ${paymentType}.`; if (numericAmountTendered < numericTotalAmount) paymentSummary += ` (Partial - $${(numericTotalAmount - numericAmountTendered).toFixed(2)} remaining).`; else if (numericAmountTendered > numericTotalAmount && selectedPaymentMethod === "Cash") paymentSummary += ` Change: $${(numericAmountTendered - numericTotalAmount).toFixed(2)}.`; paymentDetailsMessage = `Payment for order ${createdOrderDetails.id}: ${paymentSummary}`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
+    else if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Card" || selectedPaymentMethod === "Part Pay") { const paymentType = selectedPaymentMethod; let paymentSummary = `Paid ${numericAmountTendered.toFixed(2)} by ${paymentType}.`; if (numericAmountTendered < numericTotalAmount) paymentSummary += ` (Partial - $${(numericTotalAmount - numericAmountTendered).toFixed(2)} remaining).`; else if (numericAmountTendered > numericTotalAmount && selectedPaymentMethod === "Cash") paymentSummary += ` Change: $${(numericAmountTendered - numericTotalAmount).toFixed(2)}.`; paymentDetailsMessage = `Payment for order ${createdOrderDetails.id}: ${paymentSummary}`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
     else { paymentDetailsMessage = `Order ${createdOrderDetails.id} processed.`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
     toast({ title: "Payment Processed (Mocked)", description: paymentDetailsMessage }); setPrintType(null); setShowPrintDialog(true);
   };
@@ -276,7 +305,7 @@ export default function NewOrderPage() {
   };
 
   const handlePayLaterAndNav = () => { if (!createdOrderDetails) return; const queryParams = createdOrderDetails.isExpress ? '?express=true' : ''; router.push(`/orders/${createdOrderDetails.id}${queryParams}`); resetFormAndStage(); };
-  const handleCreateAnotherOrder = () => { resetFormAndStage(); router.push('/find-or-add-customer'); };
+  const handleCreateAnotherOrder = () => { resetFormAndStage(); };
   const handleGoToDashboard = () => router.push('/dashboard');
   const handleAmountKeypadConfirm = (value: string) => { const numValue = parseFloat(value); if (isNaN(numValue) || numValue < 0) { setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00"); toast({title: "Invalid Amount", variant: "destructive"}); } else { setAmountTendered(numValue.toFixed(2)); } };
   const handlePayOnAccount = () => { setSelectedPaymentMethod("On Account"); if (createdOrderDetails) { setAmountTendered(createdOrderDetails.totalAmount.toFixed(2)); setPaymentNote(`Order total $${createdOrderDetails.totalAmount.toFixed(2)} to account.`); } };
@@ -295,13 +324,76 @@ export default function NewOrderPage() {
       <CardContent className="space-y-4">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(proceedToPaymentSubmit)} className="space-y-6">
-            <FormField control={form.control} name="customerId" render={({ field }) => ( <FormItem> <div className="text-sm font-medium mb-1">Customer</div> {(isLoadingAllCustomers && !customerIdFromQuery && !selectedCustomerName && !field.value) || (isLoadingSpecificCustomer && !selectedCustomerName && customerIdFromQuery) ? <Skeleton className="h-10 w-full" /> : <Select onValueChange={(value) => { field.onChange(value); const customer = allCustomers.find(c => c.id === value); setSelectedCustomerName(customer ? customer.name : null); }} value={field.value} disabled={!!customerIdFromQuery || isLoadingAllCustomers || isLoadingSpecificCustomer}> <FormControl><SelectTrigger><SelectValue placeholder={ isLoadingSpecificCustomer ? "Loading customer..." : (isLoadingAllCustomers && !field.value && !customerIdFromQuery) ? "Loading list..." : "Select a customer" }>{selectedCustomerName || (field.value && !isLoadingSpecificCustomer && !selectedCustomerName && "Select a customer")}</SelectValue></SelectTrigger></FormControl> <SelectContent>{allCustomers.map((customer) => (<SelectItem key={customer.id} value={customer.id}>{customer.name} ({customer.phone || 'No phone'})</SelectItem>))}</SelectContent></Select>} <FormDescription>{isLoadingSpecificCustomer ? 'Loading pre-selected customer...' : customerIdFromQuery && selectedCustomerName ? `Selected: ${selectedCustomerName}. To change, go back.` : customerIdFromQuery && !selectedCustomerName && !isLoadingSpecificCustomer ? `Failed to load customer (ID: ${customerIdFromQuery}). Select manually.` : isLoadingAllCustomers && !watchedCustomerId && !selectedCustomerName ? 'Loading customers...' : !watchedCustomerId && !customerIdFromQuery ? 'Select a customer.' : selectedCustomerName ? `Selected: ${selectedCustomerName}.` : ''}</FormDescription> <FormMessage /> </FormItem> )} />
+            
+            {/* --- Customer Search Section --- */}
+            <FormField control={form.control} name="customerId" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Customer</FormLabel>
+                    {selectedCustomerName && field.value ? (
+                        <div className="flex items-center justify-between p-3 border rounded-md bg-muted/50">
+                            <div className="flex items-center gap-2">
+                                <User className="h-5 w-5 text-primary" />
+                                <span className="font-medium">{selectedCustomerName}</span>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                                form.setValue("customerId", "");
+                                setSelectedCustomerName(null);
+                                setCustomerSearchTerm("");
+                            }}><X className="h-4 w-4" /></Button>
+                        </div>
+                    ) : (
+                       <div className="relative" ref={searchInputRef}>
+                            <FormControl>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search for customer by name or phone..."
+                                        value={customerSearchTerm}
+                                        onChange={(e) => {
+                                            setCustomerSearchTerm(e.target.value);
+                                            setIsCustomerListVisible(true);
+                                        }}
+                                        onFocus={() => setIsCustomerListVisible(true)}
+                                        className="pl-9"
+                                    />
+                                </div>
+                            </FormControl>
+                            {isCustomerListVisible && (isLoadingAllCustomers || filteredCustomers.length > 0) && (
+                                <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    {isLoadingAllCustomers ? (
+                                        <div className="p-3 text-sm text-muted-foreground">Loading customers...</div>
+                                    ) : (
+                                        filteredCustomers.map(customer => (
+                                            <div
+                                                key={customer.id}
+                                                className="p-3 hover:bg-accent cursor-pointer"
+                                                onClick={() => handleSelectCustomer(customer)}
+                                            >
+                                                <p className="font-medium">{customer.name}</p>
+                                                <p className="text-sm text-muted-foreground">{customer.phone}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
+                       </div>
+                    )}
+                     <FormDescription className="flex justify-between items-center">
+                        <span>Select an existing customer or add a new one.</span>
+                        <Link href="/customers/new" passHref>
+                           <Button variant="outline" size="sm" className="text-xs">
+                                <UserPlus className="mr-1 h-3 w-3"/> New Customer
+                           </Button>
+                        </Link>
+                    </FormDescription>
+                    <FormMessage />
+                </FormItem>
+            )} />
 
             {fields.length > 0 && (
               <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-2 scrollbar-thin">
                 {fields.map((fieldItem, index) => {
                   const item = watchedItems[index];
-                  let itemEffectivePrice = item.unitPrice;
                   let itemTotal = item.unitPrice * item.quantity;
                   if (item.itemDiscountPercentage && item.itemDiscountPercentage > 0) itemTotal -= itemTotal * (item.itemDiscountPercentage / 100);
                   if (item.itemDiscountAmount && item.itemDiscountAmount > 0) itemTotal -= item.itemDiscountAmount;
@@ -369,19 +461,6 @@ export default function NewOrderPage() {
                       <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => update(index, { ...item, quantity: item.quantity + 1 })}><PlusCircle className="h-4 w-4" /></Button>
                       <FormField control={form.control} name={`items.${index}.notes`} render={({ field: subField }) => (<FormItem className="flex-grow"><FormControl><Input placeholder="Item notes..." {...subField} className="h-7 text-xs" /></FormControl><FormMessage className="text-xs" /></FormItem>)} />
                     </div>
-                     {item.has_color_identifier && (
-                        <FormField
-                            control={form.control}
-                            name={`items.${index}.color_value`}
-                            render={({ field: subField }) => (
-                            <FormItem>
-                                <FormLabel className="text-xs">Color</FormLabel>
-                                <FormControl><Input placeholder="e.g., Red, Blue Pattern" {...subField} className="h-7 text-xs" /></FormControl>
-                                <FormMessage className="text-xs" />
-                            </FormItem>
-                            )}
-                        />
-                    )}
                      <div className="text-right text-sm font-medium">Item Total: ${itemTotal.toFixed(2)}</div>
                      <FormField control={form.control} name={`items.${index}.quantity`} render={() => <FormMessage className="text-xs pt-1" />} />
                   </Card>
@@ -394,7 +473,6 @@ export default function NewOrderPage() {
             <FormItem className="flex flex-col"><div className="flex justify-between items-center"><FormLabel>Due Date (Optional)</FormLabel>{isExpressOrder && <Badge variant="destructive" className="text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}</div><div className="mt-1 grid grid-cols-4 gap-2"><Button type="button" className="h-9 px-3 bg-red-600 hover:bg-red-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(new Date())}>Today</Button><Button type="button" className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(addDays(new Date(), 1))}>Tomorrow</Button>{weekdays.map((day, index) => (<Button key={day} type="button" variant="default" className="h-9 px-3" onClick={() => handleDueDateButtonClick(getNextOccurrenceOfWeekday(index))}>{day}</Button>))}{ <Button type="button" variant="outline" size="sm" onClick={clearDueDate} className="h-9 px-2 text-xs col-span-1 self-center">Clear</Button>}</div><div className="mt-2 flex gap-2 items-center"><Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}><PopoverTrigger asChild><FormControl><Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>{watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick specific date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={watchedDueDate ? new Date(watchedDueDate) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/></PopoverContent></Popover></div><FormMessage /></FormItem>
             <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>General Order Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Any special instructions" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
             
-            {/* Discount and Override Section */}
             <Separator />
             <div className="space-y-3 pt-2">
                 <h3 className="text-md font-medium text-muted-foreground">Discounts & Overrides</h3>
@@ -426,8 +504,8 @@ export default function NewOrderPage() {
               )}
               <div className="flex justify-between items-center font-semibold text-lg"><span>Grand Total:</span><span>${calculatedTotals.grandTotal.toFixed(2)}</span></div>
               <div className="space-y-2">
-                <Button type="submit" disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingSpecificCustomer || (isLoadingAllCustomers && !watchedCustomerId && !selectedCustomerName) || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : isLoadingSpecificCustomer ? "Loading Customer..." : (isLoadingAllCustomers && !watchedCustomerId && !selectedCustomerName && !customerIdFromQuery) ? "Loading List..." : isLoadingServices ? "Loading Services..." : !watchedCustomerId ? "Select Customer First" : selectedCustomerName ? `Create & Proceed to Payment for ${selectedCustomerName.split(' ')[0]}`: `Create & Proceed to Payment`}<ArrowRight className="ml-2 h-4 w-4" /></Button>
-                <Button type="button" variant="outline" onClick={handleCreateAndPayLater} disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingSpecificCustomer || (isLoadingAllCustomers && !watchedCustomerId && !selectedCustomerName) || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : `Create Order & Pay Later`}<Clock className="ml-2 h-4 w-4" /></Button>
+                <Button type="submit" disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : isLoadingSpecificCustomer ? "Loading Customer..." : isLoadingAllCustomers ? "Loading..." : isLoadingServices ? "Loading Services..." : !watchedCustomerId ? "Select Customer First" : selectedCustomerName ? `Create & Proceed to Payment for ${selectedCustomerName.split(' ')[0]}`: `Create & Proceed to Payment`}<ArrowRight className="ml-2 h-4 w-4" /></Button>
+                <Button type="button" variant="outline" onClick={handleCreateAndPayLater} disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : `Create Order & Pay Later`}<Clock className="ml-2 h-4 w-4" /></Button>
               </div>
             </div>
           </form>
@@ -473,13 +551,14 @@ export default function NewOrderPage() {
               <div>
                 <div className="text-sm font-medium mb-1">Amount Tendered</div>
                 <div className="flex items-center space-x-2 cursor-pointer" onClick={handleOpenAmountKeypad}>
-                    <Input id="amountTenderedInput" type="text" value={selectedPaymentMethod === "On Account" ? numericTotalAmount.toFixed(2) : amountTendered} readOnly placeholder={selectedPaymentMethod === "Cash" ? "Tap to enter cash amount" : numericTotalAmount.toFixed(2) } className="cursor-pointer flex-grow" disabled={selectedPaymentMethod === "On Account" || selectedPaymentMethod === "Card"} />
+                    <Input id="amountTenderedInput" type="text" value={selectedPaymentMethod === "On Account" ? numericTotalAmount.toFixed(2) : amountTendered} readOnly placeholder={selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Part Pay" ? "Tap to enter amount" : numericTotalAmount.toFixed(2) } className="cursor-pointer flex-grow" disabled={selectedPaymentMethod === "On Account" || selectedPaymentMethod === "Card"} />
                     <Grid className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button variant={selectedPaymentMethod === "Cash" ? "default" : "outline"} onClick={() => { setSelectedPaymentMethod("Cash"); setPaymentNote(""); if (numericTotalAmount > 0) setAmountTendered(""); else setAmountTendered("0.00"); setIsKeypadOpen(true); }}><Banknote className="mr-2 h-4 w-4"/> Cash</Button>
                 <Button variant={selectedPaymentMethod === "Card" ? "default" : "outline"} onClick={() => { setSelectedPaymentMethod("Card"); setPaymentNote(""); setAmountTendered(numericTotalAmount.toFixed(2)); }}><WalletCards className="mr-2 h-4 w-4"/> Card</Button>
+                <Button variant={selectedPaymentMethod === "Part Pay" ? "default" : "outline"} onClick={() => { setSelectedPaymentMethod("Part Pay"); setPaymentNote("Deposit Paid."); setAmountTendered(""); setIsKeypadOpen(true); }}>Part Pay</Button>
               </div>
                <Button variant={selectedPaymentMethod === "On Account" ? "default" : "outline"} onClick={handlePayOnAccount} className="w-full"><Archive className="mr-2 h-4 w-4" /> Pay on Account</Button>
               {paymentNote && <p className="text-sm text-muted-foreground">{paymentNote}</p>}
@@ -499,6 +578,11 @@ export default function NewOrderPage() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="lg:col-span-2 space-y-6">
+          {stage === "form" && renderOrderFormCard()}
+          {stage === "paymentOptions" && renderPaymentOptionsCard()}
+      </div>
+
       <AlphanumericKeypadModal isOpen={isKeypadOpen} onOpenChange={setIsKeypadOpen} inputValue={amountTendered} onInputChange={setAmountTendered} onConfirm={handleAmountKeypadConfirm} title="Enter Amount Tendered" numericOnly={true} />
       {createdOrderDetails && (<Dialog open={showPrintDialog} onOpenChange={(isOpen) => { setShowPrintDialog(isOpen); if (!isOpen && !printType && createdOrderDetails) { handlePayLaterAndNav(); } }}>
         <DialogContent>
@@ -522,11 +606,6 @@ export default function NewOrderPage() {
         </DialogContent>
       </Dialog>)}
       
-      <div className="lg:col-span-2 space-y-6">
-        {stage === "form" && renderOrderFormCard()}
-        {stage === "paymentOptions" && renderPaymentOptionsCard()}
-      </div>
-
       <div className="lg:col-span-1 space-y-6">
         <Card className="shadow-lg">
           <CardHeader><CardTitle className="font-headline text-2xl">Select Services for {isLoadingSpecificCustomer ? <Skeleton className="h-7 w-32 inline-block" /> : selectedCustomerName || 'Customer'}</CardTitle><CardDescription>Choose category, then click service to add.</CardDescription></CardHeader>
@@ -536,3 +615,5 @@ export default function NewOrderPage() {
     </div>
   );
 }
+
+    
