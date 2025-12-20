@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -20,7 +21,7 @@ import { getCustomers, getCustomerById, getServices } from "@/lib/data";
 import { getCompanySettingsAction } from "@/app/(auth)/settings/company-settings-actions";
 import type { ServiceItem, Customer, CompanySettings } from "@/types";
 import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
-import { createOrderAction } from "./actions";
+import { createOrderAction } from "@/app/(app)/orders/actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -575,6 +576,7 @@ export default function NewOrderPage() {
                                 <DialogTitle>Discounts & Overrides</DialogTitle>
                                 <DialogDescription>Apply global discounts to the entire cart.</DialogDescription>
                             </DialogHeader>
+                            <Form {...form}>
                             <div className="space-y-4 py-2">
                                 <FormField control={form.control} name="cartDiscountPercentage" render={({ field }) => (
                                     <FormItem>
@@ -596,6 +598,7 @@ export default function NewOrderPage() {
                                     </FormItem>
                                 )} />
                             </div>
+                            </Form>
                              <DialogFooter>
                                 <Button type="button" onClick={() => setIsDiscountModalOpen(false)}>Done</Button>
                             </DialogFooter>

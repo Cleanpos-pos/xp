@@ -19,8 +19,11 @@ export async function createOrderAction(data: CreateOrderInput) {
 
   try {
     const newOrder = await createOrderDb(validationResult.data);
-    revalidatePath('/orders'); // Revalidate orders list page
-    revalidatePath(`/orders/${newOrder.id}`); // Revalidate specific order page
+    
+    // Invalidate caches for the orders list and the new order's detail page
+    revalidatePath('/orders');
+    revalidatePath(`/orders/${newOrder.id}`);
+
     return {
       success: true,
       message: `Order ${newOrder.orderNumber} ${newOrder.isExpress ? '(Express) ' : ''}created successfully!`,
