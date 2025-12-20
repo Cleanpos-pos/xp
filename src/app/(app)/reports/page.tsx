@@ -104,8 +104,8 @@ export default function ReportsPage() {
         categorySales: categoryData,
         keyOrders: ordersData,
       });
-    } catch (error) {
-      console.error("Failed to fetch report data:", error);
+    } catch (error: any) {
+      console.error("Failed to fetch report data:", error.message || error);
       toast({ title: "Error", description: "Could not load report data from the database.", variant: "destructive" });
     } finally {
       setIsLoading(false);
