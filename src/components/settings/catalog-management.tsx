@@ -242,7 +242,7 @@ export function CatalogManagementTab() {
     setEntryToDelete(null);
   };
 
-  const processImportData = async (data: any[]) => {
+ const processImportData = async (data: any[]) => {
     console.log("Parsed Data to Process:", data);
 
     const requiredHeaders = ["menu1", "title", "pricelevel1"];
@@ -264,7 +264,6 @@ export function CatalogManagementTab() {
     let successCount = 0;
     let errorCount = 0;
     
-    // Create a mutable copy of the current hierarchy to simulate real-time updates without re-fetching on every loop
     let localCatalogCache: CatalogHierarchyNode[] = JSON.parse(JSON.stringify(catalogHierarchy));
 
     const findOrCreateCategory = async (categoryName: string): Promise<string | null> => {
@@ -278,15 +277,14 @@ export function CatalogManagementTab() {
         if (categoryNode) {
           return categoryNode.id;
         } else {
-          // Category not found, create it
           const newCategoryResult = await addCatalogEntryAction({
             name: trimmedName,
             type: "category",
-            parent_id: null, // This simplified logic only creates top-level categories
+            parent_id: null,
           });
           if (newCategoryResult.success && newCategoryResult.newEntry) {
             const newNode: CatalogHierarchyNode = { ...newCategoryResult.newEntry, children: [] };
-            localCatalogCache.push(newNode); // Add to local cache for subsequent lookups
+            localCatalogCache.push(newNode);
             return newNode.id;
           } else {
             console.error("Failed to create category:", trimmedName, newCategoryResult.message);
@@ -295,7 +293,13 @@ export function CatalogManagementTab() {
         }
     };
 
+    let rowIndex = 0;
     for (const row of data) {
+      rowIndex++;
+      toast({
+        title: "Processing Import...",
+        description: `Processing row ${rowIndex} of ${data.length}...`,
+      });
       try {
         const getVal = (key: string) => {
           const actualKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
@@ -320,7 +324,6 @@ export function CatalogManagementTab() {
           continue;
         }
 
-        // Add the item
         await addCatalogEntryAction({
           name: itemName.trim(),
           type: "item",
@@ -339,7 +342,7 @@ export function CatalogManagementTab() {
       title: "Import Complete",
       description: `${successCount} items processed successfully. ${errorCount} rows failed. Refreshing catalog...`,
     });
-    fetchCatalog(); // Final refresh from DB
+    await fetchCatalog();
   };
 
 
