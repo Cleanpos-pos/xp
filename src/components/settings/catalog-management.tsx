@@ -245,14 +245,14 @@ export function CatalogManagementTab() {
 
   const processImportData = async (data: any[]) => {
     toast({ title: "Processing file...", description: `Found ${data.length} rows.` });
-    
+
     // Normalize header keys to lowercase
     const normalizedData = data.map(row => {
-      const newRow: { [key: string]: any } = {};
-      for (const key in row) {
-        newRow[key.trim().toLowerCase()] = row[key];
-      }
-      return newRow;
+        const newRow: { [key: string]: any } = {};
+        for (const key in row) {
+            newRow[key.trim().toLowerCase()] = row[key];
+        }
+        return newRow;
     });
 
     const requiredHeaders = ["department", "group", "title", "pricelevel1"];
@@ -260,8 +260,8 @@ export function CatalogManagementTab() {
     const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
 
     if (missingHeaders.length > 0) {
-      toast({ title: "Invalid File Format", description: `File is missing required columns: ${missingHeaders.join(", ")}.`, variant: "destructive" });
-      return;
+        toast({ title: "Invalid File Format", description: `File is missing required columns: ${missingHeaders.join(", ")}.`, variant: "destructive" });
+        return;
     }
 
     try {
@@ -294,17 +294,14 @@ export function CatalogManagementTab() {
             }
         });
 
-        const newCategories = new Map<string, { name: string; parentPath: string | null; sort_order: number }>();
+        const newCategories = new Map<string, { name: string; parentPath: string | null; }>();
         const itemsToCreate = [];
-        let departmentSortOrder = Math.max(0, ...Array.from(categoryPathMap.keys()).filter(k => !k.includes('>')).map(k => k.length));
 
         for (const row of normalizedData) {
             const department = row['department']?.trim();
             const group = row['group']?.trim();
             const itemName = row['title']?.trim();
             const price = parseFloat(row['pricelevel1']);
-            const showColor = row['showcolo']?.toString().trim().toLowerCase();
-            const stubsToPrint = parseInt(row['stubprint']?.toString().trim(), 10);
 
             if (!department || !group || !itemName || isNaN(price)) continue;
 
@@ -312,17 +309,15 @@ export function CatalogManagementTab() {
             const groupPath = `${departmentPath} > ${group.toLowerCase()}`;
 
             if (!categoryPathMap.has(departmentPath) && !newCategories.has(departmentPath)) {
-                newCategories.set(departmentPath, { name: department, parentPath: null, sort_order: departmentSortOrder++ });
+                newCategories.set(departmentPath, { name: department, parentPath: null });
             }
             if (!categoryPathMap.has(groupPath) && !newCategories.has(groupPath)) {
-                newCategories.set(groupPath, { name: group, parentPath: departmentPath, sort_order: 0 }); // sort order within group can be refined
+                newCategories.set(groupPath, { name: group, parentPath: departmentPath });
             }
 
             itemsToCreate.push({
                 name: itemName,
                 price,
-                has_color_identifier: showColor === '1' || showColor === 'true',
-                small_tags_to_print: !isNaN(stubsToPrint) ? stubsToPrint : 1,
                 parentPath: groupPath,
             });
         }
@@ -332,7 +327,7 @@ export function CatalogManagementTab() {
             const orderedNewCategories = Array.from(newCategories.entries()).sort((a, b) => a[0].length - b[0].length);
             for (const [path, cat] of orderedNewCategories) {
                 const parentId = cat.parentPath ? categoryPathMap.get(cat.parentPath) : null;
-                const { data: created, error } = await supabase.from('catalog_entries').insert({ name: cat.name, parent_id: parentId, type: 'category', sort_order: cat.sort_order }).select('id, name').single();
+                const { data: created, error } = await supabase.from('catalog_entries').insert({ name: cat.name, parent_id: parentId, type: 'category' }).select('id, name').single();
                 if (error) throw new Error(`Failed to create category '${cat.name}': ${error.message}`);
                 categoryPathMap.set(path, created.id);
             }
@@ -502,7 +497,7 @@ export function CatalogManagementTab() {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        File Import: Expects columns like 'Department', 'Group', 'Title', 'Pricelevel1', 'Showcolo', and 'Stubprint'. Supports CSV, XLS, and XLSX formats.
+        File Import: Expects columns like 'Department', 'Group', 'Title', and 'Pricelevel1'. Supports CSV, XLS, and XLSX formats.
       </p>
     </div>
   );
