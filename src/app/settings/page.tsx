@@ -632,7 +632,7 @@ export default function SettingsPage() {
 
 
   return (
-    <div className="w-full max-w-4xl space-y-8">
+    <div className="w-full space-y-8">
       <div className="flex items-center justify-between print-hidden settings-page-title-print-hidden">
         <div className="flex items-center gap-2">
           <SettingsIcon className="h-8 w-8" />
