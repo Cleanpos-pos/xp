@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useEffect, useState, use } from 'react'; // Ensure 'use' is imported
+import React, { useEffect, useState, use } from 'react';
 import { getOrderByIdDb } from '@/lib/data';
 import type { Order, OrderItem, OrderStatus, PaymentStatus } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -62,13 +61,11 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
   Refunded: DollarSign,
 }
 
-// Updated props type to expect params as a Promise
 interface OrderDetailsPageProps {
   params: Promise<{ id: string }>;
 }
 
 export default function OrderDetailsPage({ params: paramsPromise }: OrderDetailsPageProps) {
-  // Unwrap the params Promise using React.use()
   const params = use(paramsPromise);
 
   const searchParams = useSearchParams();
@@ -94,7 +91,12 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
       setError(null);
       try {
         const fetchedOrder = await getOrderByIdDb(params.id);
-        setOrder(fetchedOrder);
+        if (!fetchedOrder) {
+            setOrder(null);
+            setError("Order not found.");
+        } else {
+            setOrder(fetchedOrder);
+        }
       } catch (err: any) {
         console.error("Failed to fetch order:", err);
         setError("Failed to load order details. Please try again.");
@@ -104,11 +106,11 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
       }
     }
     fetchOrder();
-  }, [params.id]); // Now params.id is from the resolved params object
+  }, [params.id]);
 
 
   useEffect(() => {
-    if (order === undefined || order === null) return;
+    if (!order) return;
 
     const autoprint = searchParams.get('autoprint');
     const printTypeParam = searchParams.get('printType');
@@ -120,7 +122,7 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
       }, 100);
       return () => clearTimeout(printTimeout);
     }
-  }, [searchParams, params.id, router, order, effectiveIsExpress]); // Use resolved params.id
+  }, [searchParams, params.id, router, order, effectiveIsExpress]);
 
 
   if (isLoading) {
@@ -152,7 +154,7 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
     );
   }
 
-  if (error || order === null) {
+  if (error || !order) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
         <Card className="w-full max-w-md p-8 shadow-lg">
@@ -180,7 +182,7 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
 
   const handlePrint = (printType: string = "default") => {
     const queryParams = `?autoprint=true&printType=${printType}${effectiveIsExpress ? '&express=true' : ''}`;
-    router.push(`/orders/${params.id}${queryParams}`); // Use resolved params.id
+    router.push(`/orders/${params.id}${queryParams}`);
   };
 
   const subTotal = order.totalAmount;

@@ -1,9 +1,8 @@
-
 "use client";
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -15,21 +14,24 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { getCustomers, getCustomerById, getServices } from "@/lib/data";
 import { getCompanySettingsAction } from "@/app/(auth)/settings/company-settings-actions";
 import type { ServiceItem, Customer, CompanySettings } from "@/types";
-import { CreateOrderSchema, type CreateOrderInput, type OrderItemInput } from "./order.schema";
+import { CreateOrderSchema, type CreateOrderInput } from "./order.schema";
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Grid, Banknote, WalletCards, Printer, Zap, PlusCircle, MinusCircle, Pencil, UserPlus, Search, User, X } from "lucide-react";
+import { 
+  Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, 
+  ArrowRight, Grid, Banknote, WalletCards, Printer, Zap, PlusCircle, 
+  MinusCircle, Pencil, UserPlus, Search, User, X, Settings, Percent 
+} from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format, addDays, isToday, isTomorrow, getDay } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +39,6 @@ import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-mod
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import Link from 'next/link';
-
 
 interface ServicesByCategory {
   [category: string]: ServiceItem[];
@@ -53,7 +54,6 @@ const getNextOccurrenceOfWeekday = (targetDay: number, startDate: Date = new Dat
   const currentDay = getDay(currentDate);
   let daysToAdd = (targetDay - currentDay + 7) % 7;
   if (daysToAdd === 0 && currentDate.getTime() !== new Date(new Date().setHours(0,0,0,0)).getTime() && currentDay === targetDay) {
-      // Only advance if it's the target day but not today, for next week's occurrence.
   }
   const resultDate = addDays(currentDate, daysToAdd);
   return resultDate;
@@ -66,7 +66,6 @@ const currencySymbols: { [key: string]: string } = {
   CAD: 'C$',
   AUD: 'A$',
 };
-
 
 export default function NewOrderPage() {
   const { toast } = useToast();
@@ -94,7 +93,6 @@ export default function NewOrderPage() {
   const [isLoadingSettings, setIsLoadingSettings] = React.useState(true);
   const currencySymbol = currencySymbols[companySettings?.selected_currency || 'GBP'] || '£';
 
-
   const [activePaymentStep, setActivePaymentStep] = React.useState<PaymentStep>("selectAction");
   const [amountTendered, setAmountTendered] = React.useState<string>("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = React.useState<PaymentMethod>(null);
@@ -106,6 +104,10 @@ export default function NewOrderPage() {
 
   const [isExpressOrder, setIsExpressOrder] = React.useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
+
+  // Modal states
+  const [isOrderSettingsOpen, setIsOrderSettingsOpen] = React.useState(false);
+  const [isDiscountModalOpen, setIsDiscountModalOpen] = React.useState(false);
 
   const form = useForm<CreateOrderInput>({
     resolver: zodResolver(CreateOrderSchema),
@@ -134,7 +136,6 @@ export default function NewOrderPage() {
           getCompanySettingsAction(),
         ]);
         
-        // Process services
         setAllServices(servicesData);
         const groupedServices = servicesData.reduce((acc, service) => {
           const category = service.category || "Other";
@@ -145,7 +146,6 @@ export default function NewOrderPage() {
         setServicesByCategory(groupedServices);
         setServiceCategoryNames(Object.keys(groupedServices));
         
-        // Process settings
         setCompanySettings(settingsData);
 
       } catch (err) {
@@ -186,8 +186,7 @@ export default function NewOrderPage() {
         toast({ title: "Error Loading Customer by ID", description: `Could not load details for pre-selected customer (ID: '${customerIdFromQuery}').`, variant: "destructive" });
       }).finally(() => setIsLoadingSpecificCustomer(false));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerIdFromQuery, toast]);
+  }, [customerIdFromQuery, toast, form]);
   
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -330,283 +329,312 @@ export default function NewOrderPage() {
   const handleDueDateButtonClick = (date: Date) => { form.setValue('dueDate', date, { shouldValidate: true }); setIsExpressOrder(isToday(date) || isTomorrow(date)); };
   const handleManualDateSelect = (date: Date | undefined) => { form.setValue('dueDate', date, { shouldValidate: true }); if (date) setIsExpressOrder(isToday(date) || isTomorrow(date)); else setIsExpressOrder(false); setIsDatePickerOpen(false); };
   const clearDueDate = () => { form.setValue('dueDate', undefined, { shouldValidate: true }); setIsExpressOrder(false); };
-  const watchedDueDate = form.watch("dueDate"); const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
+  
   const renderOrderFormCard = () => {
     return (
-      <Card className="shadow-lg h-full flex flex-col">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl flex items-center"><ShoppingCart className="mr-2 h-6 w-6" /> Current Order</CardTitle>
-          {fields.length === 0 && <CardDescription>Select services to add them here.</CardDescription>}
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(proceedToPaymentSubmit)} className="flex-1 flex flex-col overflow-hidden px-6 space-y-4">
-              
-              <FormField control={form.control} name="customerId" render={({ field }) => (
-                  <FormItem>
-                      <FormLabel>Customer</FormLabel>
-                      {selectedCustomerName && field.value ? (
-                          <div className="flex items-center justify-between p-3 border rounded-md bg-muted/50">
-                              <div className="flex items-center gap-2">
-                                  <User className="h-5 w-5 text-primary" />
-                                  <span className="font-medium">{selectedCustomerName}</span>
-                              </div>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
-                                  form.setValue("customerId", "");
-                                  setSelectedCustomerName(null);
-                                  setCustomerSearchTerm("");
-                              }}><X className="h-4 w-4" /></Button>
-                          </div>
-                      ) : (
-                         <div className="relative" ref={searchInputRef}>
-                              <FormControl>
-                                  <div className="relative">
-                                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                      <Input
-                                          placeholder="Search for customer by name or phone..."
-                                          value={customerSearchTerm}
-                                          onChange={(e) => {
-                                              setCustomerSearchTerm(e.target.value);
-                                              setIsCustomerListVisible(true);
-                                          }}
-                                          onFocus={() => setIsCustomerListVisible(true)}
-                                          className="pl-9"
-                                      />
-                                  </div>
-                              </FormControl>
-                              {isCustomerListVisible && (isLoadingAllCustomers || filteredCustomers.length > 0) && (
-                                  <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                      {isLoadingAllCustomers ? (
-                                          <div className="p-3 text-sm text-muted-foreground">Loading customers...</div>
-                                      ) : (
-                                          filteredCustomers.map(customer => (
-                                              <div
-                                                  key={customer.id}
-                                                  className="p-3 hover:bg-accent cursor-pointer"
-                                                  onClick={() => handleSelectCustomer(customer)}
-                                              >
-                                                  <p className="font-medium">{customer.name}</p>
-                                                  <p className="text-sm text-muted-foreground">{customer.phone}</p>
-                                              </div>
-                                          ))
-                                      )}
-                                  </div>
-                              )}
-                         </div>
-                      )}
-                       <FormDescription className="flex justify-between items-center text-xs">
-                          <span>Select or search for a customer.</span>
-                          <Link href="/customers/new" passHref>
-                             <Button variant="outline" size="sm" className="text-xs h-7">
-                                  <UserPlus className="mr-1 h-3 w-3"/> New
-                             </Button>
-                          </Link>
-                      </FormDescription>
-                      <FormMessage />
-                  </FormItem>
-              )} />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(proceedToPaymentSubmit)} className="h-full flex flex-col">
+            <Card className="shadow-lg h-full flex flex-col">
+            <CardHeader className="py-4">
+                <CardTitle className="font-headline text-xl flex items-center justify-between">
+                    <div className="flex items-center"><ShoppingCart className="mr-2 h-6 w-6" /> Current Order</div>
+                    <Badge variant="outline" className="ml-2 font-mono text-sm">
+                        {fields.length} Item{fields.length !== 1 && 's'}
+                    </Badge>
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
+                <div className="flex-1 flex flex-col overflow-hidden px-4 space-y-3">
+                    {/* Customer Selection */}
+                    <div className="pt-2">
+                         <FormField control={form.control} name="customerId" render={({ field }) => (
+                            <FormItem className="space-y-1">
+                                {selectedCustomerName && field.value ? (
+                                    <div className="flex items-center justify-between p-2 border rounded-md bg-muted/50">
+                                        <div className="flex items-center gap-2">
+                                            <User className="h-5 w-5 text-primary" />
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-sm">{selectedCustomerName}</span>
+                                            </div>
+                                        </div>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                                            form.setValue("customerId", "");
+                                            setSelectedCustomerName(null);
+                                            setCustomerSearchTerm("");
+                                        }}><X className="h-4 w-4" /></Button>
+                                    </div>
+                                ) : (
+                                    <div className="relative" ref={searchInputRef}>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    placeholder="Search customer..."
+                                                    value={customerSearchTerm}
+                                                    onChange={(e) => {
+                                                        setCustomerSearchTerm(e.target.value);
+                                                        setIsCustomerListVisible(true);
+                                                    }}
+                                                    onFocus={() => setIsCustomerListVisible(true)}
+                                                    className="pl-9 h-9"
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        {isCustomerListVisible && (isLoadingAllCustomers || filteredCustomers.length > 0) && (
+                                            <div className="absolute z-10 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                {isLoadingAllCustomers ? (
+                                                    <div className="p-3 text-sm text-muted-foreground">Loading...</div>
+                                                ) : (
+                                                    filteredCustomers.map(customer => (
+                                                        <div
+                                                            key={customer.id}
+                                                            className="p-3 hover:bg-accent cursor-pointer"
+                                                            onClick={() => handleSelectCustomer(customer)}
+                                                        >
+                                                            <p className="font-medium">{customer.name}</p>
+                                                            <p className="text-sm text-muted-foreground">{customer.phone}</p>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+                                        <div className="flex justify-end mt-1">
+                                             <Link href="/customers/new" passHref>
+                                                <span className="text-xs text-primary flex items-center cursor-pointer hover:underline"><UserPlus className="mr-1 h-3 w-3"/> New Customer</span>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                )}
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
 
-              <div className="flex-1 overflow-y-auto pr-2 -mr-2 space-y-3">
-                  {fields.length > 0 ? (
-                      fields.map((fieldItem, index) => {
-                      const item = watchedItems[index];
-                      let itemTotal = item.unitPrice * item.quantity;
-                      if (item.itemDiscountPercentage && item.itemDiscountPercentage > 0) itemTotal -= itemTotal * (item.itemDiscountPercentage / 100);
-                      if (item.itemDiscountAmount && item.itemDiscountAmount > 0) itemTotal -= item.itemDiscountAmount;
-                      itemTotal = Math.max(0, itemTotal);
+                    {/* Scrollable Item List */}
+                    <div className="flex-1 overflow-y-auto pr-1 space-y-2 pb-2">
+                        {fields.length > 0 ? (
+                            fields.map((fieldItem, index) => {
+                            const item = watchedItems[index];
+                            let itemTotal = item.unitPrice * item.quantity;
+                            if (item.itemDiscountPercentage && item.itemDiscountPercentage > 0) itemTotal -= itemTotal * (item.itemDiscountPercentage / 100);
+                            if (item.itemDiscountAmount && item.itemDiscountAmount > 0) itemTotal -= item.itemDiscountAmount;
+                            itemTotal = Math.max(0, itemTotal);
 
-                      return (
-                      <Card key={fieldItem.id} className="p-3 space-y-2 bg-background border rounded-md shadow-sm">
-                          <div className="flex justify-between items-start">
-                          <div>
-                              <h4 className="font-medium text-sm">{item?.serviceName}</h4>
-                              <p className="text-xs text-muted-foreground">
-                              Base Price: {currencySymbol}{item?.originalUnitPrice?.toFixed(2)}
-                              {item.unitPrice !== item.originalUnitPrice && ` (Overridden: ${currencySymbol}${item.unitPrice.toFixed(2)})`}
-                              </p>
-                              {(item.itemDiscountPercentage || item.itemDiscountAmount) && (
-                              <p className="text-xs text-blue-600">
-                                  Discount: 
-                                  {item.itemDiscountPercentage ? ` ${item.itemDiscountPercentage}%` : ''}
-                                  {item.itemDiscountPercentage && item.itemDiscountAmount ? ' + ' : ''}
-                                  {item.itemDiscountAmount ? ` ${currencySymbol}${item.itemDiscountAmount.toFixed(2)}` : ''}
-                              </p>
-                              )}
-                          </div>
-                          <div className="flex items-center gap-1">
-                              <Popover>
-                              <PopoverTrigger asChild>
-                                  <Button type="button" variant="ghost" size="icon" className="text-primary hover:bg-primary/10 h-7 w-7">
-                                  <Pencil className="h-4 w-4" /> <span className="sr-only">Edit Item</span>
-                                  </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-72 space-y-3 p-4">
-                                  <h5 className="text-sm font-medium">Edit: {item.serviceName}</h5>
-                                  <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field: subField }) => (
-                                  <FormItem>
-                                      <FormLabel className="text-xs">Override Unit Price</FormLabel>
-                                      <FormControl><Input type="number" step="0.01" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
-                                      <FormMessage className="text-xs" />
-                                  </FormItem>
-                                  )} />
-                                  <FormField control={form.control} name={`items.${index}.itemDiscountPercentage`} render={({ field: subField }) => (
-                                  <FormItem>
-                                      <FormLabel className="text-xs">Item Discount (%)</FormLabel>
-                                      <FormControl><Input type="number" step="0.1" min="0" max="100" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
-                                      <FormMessage className="text-xs" />
-                                  </FormItem>
-                                  )} />
-                                  <FormField control={form.control} name={`items.${index}.itemDiscountAmount`} render={({ field: subField }) => (
-                                  <FormItem>
-                                      <FormLabel className="text-xs">Item Discount ({currencySymbol})</FormLabel>
-                                      <FormControl><Input type="number" step="0.01" min="0" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
-                                      <FormMessage className="text-xs" />
-                                  </FormItem>
-                                  )} />
-                              </PopoverContent>
-                              </Popover>
-                              <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 h-7 w-7" onClick={() => remove(index)}>
-                              <Trash2 className="h-4 w-4" /> <span className="sr-only">Remove Item</span>
-                              </Button>
-                          </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                          <FormLabel className="text-xs whitespace-nowrap">Qty:</FormLabel>
-                          <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => { const q = item.quantity; if (q > 1) update(index, { ...item, quantity: q - 1 }); else remove(index); }}><MinusCircle className="h-4 w-4" /></Button>
-                          <Input type="number" readOnly value={item.quantity} className="h-7 w-12 text-center px-1" />
-                          <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => update(index, { ...item, quantity: item.quantity + 1 })}><PlusCircle className="h-4 w-4" /></Button>
-                          <FormField control={form.control} name={`items.${index}.notes`} render={({ field: subField }) => (<FormItem className="flex-grow"><FormControl><Input placeholder="Item notes..." {...subField} className="h-7 text-xs" /></FormControl><FormMessage className="text-xs" /></FormItem>)} />
-                          </div>
-                          <div className="text-right text-sm font-medium">Item Total: {currencySymbol}{itemTotal.toFixed(2)}</div>
-                          <FormField control={form.control} name={`items.${index}.quantity`} render={() => <FormMessage className="text-xs pt-1" />} />
-                      </Card>
-                      );
-                      })
-                  ) : (
-                      <div className="text-center text-muted-foreground p-4">Your cart is empty.</div>
-                  )}
-              </div>
-              
-              <div className="mt-auto space-y-4">
-                <FormField
-                  control={form.control}
-                  name="dueDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Due Date (Optional)</FormLabel>
-                      {isExpressOrder && <Badge variant="destructive" className="text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
-                      <div className="mt-1 grid grid-cols-4 gap-2">
-                        <Button type="button" className="h-9 px-3 bg-red-600 hover:bg-red-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(new Date())}>Today</Button>
-                        <Button type="button" className="h-9 px-3 bg-green-600 hover:bg-green-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(addDays(new Date(), 1))}>Tomorrow</Button>
-                        {weekdays.map((day, index) => (
-                          <Button key={day} type="button" variant="default" className="h-9 px-3" onClick={() => handleDueDateButtonClick(getNextOccurrenceOfWeekday(index))}>{day}</Button>
-                        ))}
-                        <Button type="button" variant="outline" size="sm" onClick={clearDueDate} className="h-9 px-2 text-xs col-span-1 self-center">Clear</Button>
-                      </div>
-                      <div className="mt-2 flex gap-2 items-center">
-                        <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !field.value && "text-muted-foreground")}>
-                                {field.value ? format(new Date(field.value), "PPP") : <span>Pick specific date</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>General Order Notes (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Any special instructions" {...field} rows={2} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-        <CardFooter className="flex-col items-stretch space-y-2 pt-4 border-t">
-          <div className="space-y-3 pt-2">
-              <h3 className="text-md font-medium text-muted-foreground">Discounts & Overrides</h3>
-              <FormField
-                control={form.control}
-                name="cartDiscountPercentage"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Cart Discount (%)</FormLabel>
-                        <FormControl>
-                            <Input type="number" step="0.1" min="0" max="100" placeholder="e.g., 10" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/>
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="cartDiscountAmount"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Cart Discount ({currencySymbol})</FormLabel>
-                        <FormControl>
-                            <Input type="number" step="0.01" min="0" placeholder="e.g., 5.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/>
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="cartPriceOverride"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Cart Total Price Override ({currencySymbol})</FormLabel>
-                        <FormControl>
-                            <Input type="number" step="0.01" min="0" placeholder="e.g., 50.00 (leave blank if no override)" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/>
-                        </FormControl>
-                        <FormDescription className="text-xs">If set, this becomes the final price regardless of other calculations.</FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                )}
-              />
-          </div>
-          <Separator />
-          <div className="space-y-2">
-              <div className="flex justify-between items-center text-md"><span>Subtotal:</span><span>{currencySymbol}{calculatedTotals.subtotal.toFixed(2)}</span></div>
-              {(watchedCartDiscountPercentage || watchedCartDiscountAmount) && (
-              <div className="flex justify-between items-center text-sm text-blue-600">
-                  <span>Cart Discount Applied:</span>
-                  <span>
-                      - {currencySymbol}
-                      {(
-                          calculatedTotals.subtotal - 
-                          ( (watchedCartPriceOverride !== undefined && watchedCartPriceOverride >= 0) ? watchedCartPriceOverride : calculatedTotals.grandTotal )
-                      ).toFixed(2)}
-                  </span>
-              </div>
-              )}
-              <div className="flex justify-between items-center font-semibold text-lg"><span>Grand Total:</span><span>{currencySymbol}{calculatedTotals.grandTotal.toFixed(2)}</span></div>
-              <div className="space-y-2 pt-2">
-              <Button onClick={form.handleSubmit(proceedToPaymentSubmit)} disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : isLoadingSpecificCustomer ? "Loading Customer..." : isLoadingAllCustomers ? "Loading..." : isLoadingServices ? "Loading Services..." : !watchedCustomerId ? "Select Customer First" : selectedCustomerName ? `Create & Proceed to Payment for ${selectedCustomerName.split(' ')[0]}`: `Create & Proceed to Payment`}<ArrowRight className="ml-2 h-4 w-4" /></Button>
-              <Button type="button" variant="outline" onClick={handleCreateAndPayLater} disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : `Create Order & Pay Later`}<Clock className="ml-2 h-4 w-4" /></Button>
-              </div>
-          </div>
-        </CardFooter>
-      </Card>
+                            return (
+                            <Card key={fieldItem.id} className="p-2 space-y-2 bg-background border rounded-md shadow-sm">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <h4 className="font-medium text-sm line-clamp-1">{item?.serviceName}</h4>
+                                        <div className="flex gap-2 text-xs text-muted-foreground mt-0.5">
+                                             <span>{currencySymbol}{item?.originalUnitPrice?.toFixed(2)}</span>
+                                             {item.unitPrice !== item.originalUnitPrice && <span className="text-amber-600 font-bold">(Set: {currencySymbol}{item.unitPrice.toFixed(2)})</span>}
+                                        </div>
+                                         {(item.itemDiscountPercentage || item.itemDiscountAmount) && (
+                                            <p className="text-xs text-blue-600">
+                                                Disc: {item.itemDiscountPercentage ? `${item.itemDiscountPercentage}%` : ''}
+                                                {item.itemDiscountAmount ? ` -${currencySymbol}${item.itemDiscountAmount.toFixed(2)}` : ''}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="text-right font-semibold text-sm">
+                                        {currencySymbol}{itemTotal.toFixed(2)}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2 mt-2">
+                                     {/* Qty Controls */}
+                                    <div className="flex items-center bg-secondary/50 rounded-md p-0.5">
+                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-white" onClick={() => { const q = item.quantity; if (q > 1) update(index, { ...item, quantity: q - 1 }); else remove(index); }}>
+                                            <MinusCircle className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6 hover:bg-white" onClick={() => update(index, { ...item, quantity: item.quantity + 1 })}>
+                                            <PlusCircle className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex gap-1">
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10">
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-72 space-y-3 p-4">
+                                                <h5 className="text-sm font-medium">Edit Item: {item.serviceName}</h5>
+                                                <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field: subField }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs">Override Unit Price</FormLabel>
+                                                    <FormControl><Input type="number" step="0.01" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
+                                                </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.itemDiscountPercentage`} render={({ field: subField }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs">Item Discount (%)</FormLabel>
+                                                    <FormControl><Input type="number" step="0.1" min="0" max="100" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
+                                                </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.itemDiscountAmount`} render={({ field: subField }) => (
+                                                <FormItem>
+                                                    <FormLabel className="text-xs">Item Discount ({currencySymbol})</FormLabel>
+                                                    <FormControl><Input type="number" step="0.01" min="0" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
+                                                </FormItem>
+                                                )} />
+                                                <FormField control={form.control} name={`items.${index}.notes`} render={({ field: subField }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-xs">Item Note</FormLabel>
+                                                        <FormControl><Input placeholder="Add note..." {...subField} className="h-8" /></FormControl>
+                                                    </FormItem>
+                                                )} />
+                                            </PopoverContent>
+                                        </Popover>
+                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <FormField control={form.control} name={`items.${index}.quantity`} render={() => <FormMessage className="text-xs pt-1" />} />
+                            </Card>
+                            );
+                            })
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground border-2 border-dashed rounded-lg">
+                                <ShoppingCart className="h-10 w-10 mb-2 opacity-20" />
+                                <p className="text-sm">Cart is empty</p>
+                                <p className="text-xs">Select services to start</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </CardContent>
+
+            <CardFooter className="flex-col items-stretch space-y-0 pt-2 pb-4 border-t px-4">
+                {/* --- Action Buttons for Modals --- */}
+                <div className="flex gap-2 py-2">
+                    <Dialog open={isOrderSettingsOpen} onOpenChange={setIsOrderSettingsOpen}>
+                        <DialogTrigger asChild>
+                            <Button type="button" variant="outline" size="sm" className="flex-1 h-9 text-xs">
+                                <Settings className="mr-2 h-3.5 w-3.5" /> Order Settings
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Order Settings</DialogTitle>
+                                <DialogDescription>Manage due dates and notes for this order.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-2">
+                                 <FormField control={form.control} name="dueDate" render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                    <FormLabel>Due Date</FormLabel>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        <Button type="button" size="sm" className="bg-red-600 hover:bg-red-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(new Date())}>Today</Button>
+                                        <Button type="button" size="sm" className="bg-green-600 hover:bg-green-700 text-white col-span-2" onClick={() => handleDueDateButtonClick(addDays(new Date(), 1))}>Tomorrow</Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={clearDueDate} className="col-span-4">Clear Date</Button>
+                                    </div>
+                                    <div className="mt-2">
+                                        <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                            <Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                                                {field.value ? format(new Date(field.value), "PPP") : <span>Pick specific date</span>}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/>
+                                        </PopoverContent>
+                                        </Popover>
+                                    </div>
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="notes" render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Order Notes</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Special instructions..." {...field} rows={3} />
+                                    </FormControl>
+                                    </FormItem>
+                                )} />
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" onClick={() => setIsOrderSettingsOpen(false)}>Done</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isDiscountModalOpen} onOpenChange={setIsDiscountModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button type="button" variant="outline" size="sm" className="flex-1 h-9 text-xs">
+                                <Percent className="mr-2 h-3.5 w-3.5" /> Discounts
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Discounts & Overrides</DialogTitle>
+                                <DialogDescription>Apply global discounts to the entire cart.</DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-2">
+                                <FormField control={form.control} name="cartDiscountPercentage" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Cart Discount (%)</FormLabel>
+                                        <FormControl><Input type="number" step="0.1" min="0" max="100" placeholder="e.g. 10" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="cartDiscountAmount" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Cart Discount ({currencySymbol})</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" min="0" placeholder="e.g. 5.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <FormField control={form.control} name="cartPriceOverride" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Total Price Override ({currencySymbol})</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" min="0" placeholder="e.g. 50.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl>
+                                        <FormDescription>Overrides the final calculated total.</FormDescription>
+                                    </FormItem>
+                                )} />
+                            </div>
+                             <DialogFooter>
+                                <Button type="button" onClick={() => setIsDiscountModalOpen(false)}>Done</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
+
+                <Separator className="mb-2" />
+                
+                {/* --- Totals & Main Actions --- */}
+                <div className="space-y-2">
+                    <div className="flex justify-between items-center text-md"><span>Subtotal:</span><span>{currencySymbol}{calculatedTotals.subtotal.toFixed(2)}</span></div>
+                    {(watchedCartDiscountPercentage || watchedCartDiscountAmount) && (
+                    <div className="flex justify-between items-center text-sm text-blue-600">
+                        <span>Discount:</span>
+                        <span>
+                            - {currencySymbol}
+                            {(
+                                calculatedTotals.subtotal - 
+                                ( (watchedCartPriceOverride !== undefined && watchedCartPriceOverride >= 0) ? watchedCartPriceOverride : calculatedTotals.grandTotal )
+                            ).toFixed(2)}
+                        </span>
+                    </div>
+                    )}
+                    <div className="flex justify-between items-center font-bold text-xl py-1"><span>Total:</span><span>{currencySymbol}{calculatedTotals.grandTotal.toFixed(2)}</span></div>
+                    
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                         <Button type="button" variant="outline" onClick={handleCreateAndPayLater} disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full text-xs h-10">
+                            {form.formState.isSubmitting ? "..." : `Pay Later`} <Clock className="ml-1 h-3 w-3" />
+                         </Button>
+                         <Button type="submit" disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full text-xs h-10 font-bold">
+                            {form.formState.isSubmitting ? "..." : `PAY NOW`} <ArrowRight className="ml-1 h-3 w-3" />
+                         </Button>
+                    </div>
+                </div>
+            </CardFooter>
+            </Card>
+        </form>
+      </Form>
     );
   };
 
