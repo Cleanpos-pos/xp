@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -176,7 +177,7 @@ export function CatalogManagementTab() {
 
 
   const fetchCatalog = useCallback(async () => {
-    setIsLoading(true);
+    // No need to set isLoading(true) here if we want a silent refresh
     try {
       const hierarchy = await getCatalogHierarchyAction();
       setCatalogHierarchy(hierarchy);
@@ -184,11 +185,12 @@ export function CatalogManagementTab() {
       console.error("Failed to fetch catalog:", error);
       toast({ title: "Error", description: "Could not load catalog data.", variant: "destructive" });
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Always set loading to false
     }
   }, [toast]);
 
   useEffect(() => {
+    setIsLoading(true);
     fetchCatalog();
   }, [fetchCatalog]);
 
@@ -273,7 +275,7 @@ export function CatalogManagementTab() {
       </AddDialog>
 
       {catalogHierarchy.length === 0 ? (
-        <p className="text-muted-foreground">No categories found. Start by adding a top-level category.</p>
+        <p className="text-muted-foreground mt-4">No categories found. Start by adding a top-level category.</p>
       ) : (
         <Accordion type="multiple" className="w-full space-y-1">
           {catalogHierarchy.map(node => (
