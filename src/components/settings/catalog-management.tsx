@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -30,7 +31,7 @@ import Papa from "papaparse";
 
 interface RenderNodeProps {
   node: CatalogHierarchyNode;
-  onAddEntry: () => void; // Changed to a simple callback
+  onAddEntry: () => void;
   onEditEntry: (entry: CatalogHierarchyNode) => void;
   onDeleteEntry: (entry: CatalogHierarchyNode) => void;
   level: number;
@@ -242,98 +243,120 @@ export function CatalogManagementTab() {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const { data } = results;
+        const data = results.data as any[];
         console.log("Parsed CSV data:", data);
 
-        // Basic validation
-        if (!data.length || !('Category' in data[0] && 'ItemName' in data[0] && 'Price' in data[0])) {
-            toast({
-                title: "Invalid CSV Format",
-                description: "CSV must have 'Category', 'ItemName', and 'Price' columns.",
-                variant: "destructive",
-            });
-            return;
+        const requiredHeaders = ["Menu1", "Title", "Pricelevel", "Stubprint", "Showcolo"];
+        const missingHeaders = requiredHeaders.filter(h => !(h in data[0]));
+
+        if (missingHeaders.length > 0) {
+          toast({
+            title: "Invalid CSV Format",
+            description: `CSV is missing required columns: ${missingHeaders.join(", ")}.`,
+            variant: "destructive",
+          });
+          return;
         }
 
-        toast({ title: "Importing...", description: `Found ${data.length} rows to process.`});
+        toast({ title: "Importing...", description: `Found ${data.length} rows to process.` });
 
         let successCount = 0;
         let errorCount = 0;
+        let localCatalogCache: CatalogHierarchyNode[] = [...catalogHierarchy];
+
+        const findOrCreateCategory = async (
+          categoryNames: string[]
+        ): Promise<string | null> => {
+          let parentId: string | null = null;
+          let currentLevelNodes: CatalogHierarchyNode[] = localCatalogCache;
+
+          for (const name of categoryNames) {
+            if (!name) continue;
+            const trimmedName = name.trim();
+            let categoryNode = currentLevelNodes.find(
+              (node) => node.name.toLowerCase() === trimmedName.toLowerCase() && node.type === "category"
+            );
+
+            if (categoryNode) {
+              parentId = categoryNode.id;
+              currentLevelNodes = categoryNode.children || [];
+            } else {
+              const newCategoryResult = await addCatalogEntryAction({
+                name: trimmedName,
+                type: "category",
+                parent_id: parentId,
+              });
+              if (newCategoryResult.success && newCategoryResult.newEntry) {
+                const newNode: CatalogHierarchyNode = { ...newCategoryResult.newEntry, children: [] };
+                currentLevelNodes.push(newNode);
+                parentId = newNode.id;
+                currentLevelNodes = newNode.children;
+              } else {
+                console.error("Failed to create category:", trimmedName, newCategoryResult.message);
+                return null; // Stop processing this branch
+              }
+            }
+          }
+          return parentId;
+        };
+
 
         for (const row of data) {
-            const { Category, ItemName, Price } = row as { Category: string; ItemName: string; Price: string };
-            
-            if (!Category || !ItemName) {
-                console.warn("Skipping row due to missing Category or ItemName:", row);
-                errorCount++;
-                continue;
+          try {
+            const menuCols = ["Menu1", "Menu2", "Menu3", "Menu4", "Menu5"];
+            const categoryPath = menuCols.map(col => row[col]).filter(Boolean);
+
+            if (!row.Title) {
+              console.warn("Skipping row due to missing Title:", row);
+              errorCount++;
+              continue;
             }
 
-            try {
-                // Find or create category
-                let category = catalogHierarchy.find(c => c.name.toLowerCase() === Category.trim().toLowerCase() && c.type === 'category');
-                let categoryId: string | null = category?.id || null;
+            const parentCategoryId = await findOrCreateCategory(categoryPath);
 
-                if (!categoryId) {
-                    const newCategoryResult = await addCatalogEntryAction({ name: Category.trim(), type: 'category', parent_id: null });
-                    if (newCategoryResult.success && newCategoryResult.newEntry) {
-                        categoryId = newCategoryResult.newEntry.id;
-                    } else {
-                        console.error("Failed to create new category:", Category, newCategoryResult.message);
-                        errorCount++;
-                        continue;
-                    }
-                }
-
-                // Add item
-                const priceValue = parseFloat(Price);
-                if (isNaN(priceValue)) {
-                    console.warn("Skipping item due to invalid price:", row);
-                    errorCount++;
-                    continue;
-                }
-
-                await addCatalogEntryAction({
-                    name: ItemName.trim(),
-                    type: 'item',
-                    parent_id: categoryId,
-                    price: priceValue,
-                    description: '',
-                    has_color_identifier: false,
-                });
-                successCount++;
-            } catch (error) {
-                console.error("Error processing row:", row, error);
-                errorCount++;
+            const price = parseFloat(row.Pricelevel);
+            if (isNaN(price)) {
+              console.warn("Skipping item due to invalid price:", row);
+              errorCount++;
+              continue;
             }
+
+            await addCatalogEntryAction({
+              name: row.Title.trim(),
+              type: "item",
+              parent_id: parentCategoryId,
+              price: price,
+              description: row.Description || "",
+              has_color_identifier: row.Showcolo?.toUpperCase() === 'TRUE',
+              small_tags_to_print: parseInt(row.Stubprint, 10) || 1,
+            });
+            successCount++;
+
+          } catch (error) {
+            console.error("Error processing row:", row, error);
+            errorCount++;
+          }
         }
 
         toast({
-            title: "Import Complete",
-            description: `${successCount} items imported successfully. ${errorCount} rows failed.`,
+          title: "Import Complete",
+          description: `${successCount} items processed successfully. ${errorCount} rows failed. Refreshing catalog...`,
         });
-        fetchCatalog(); // Refresh list after import
+        fetchCatalog();
       },
       error: (error) => {
-        toast({
-            title: "CSV Parsing Error",
-            description: error.message,
-            variant: "destructive",
-        });
-      }
+        toast({ title: "CSV Parsing Error", description: error.message, variant: "destructive" });
+      },
     });
 
-    // Reset file input
-    if(fileInputRef.current) {
-        fileInputRef.current.value = "";
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -435,7 +458,7 @@ export function CatalogManagementTab() {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        CSV Import: Expects columns 'Category', 'ItemName', 'Price'. Drag & drop sorting for categories and items will be implemented in a future update.
+        CSV Import: Expects columns 'Menu1', 'Menu2'...'Menu5', 'Title', 'Pricelevel', 'Stubprint', 'Showcolo', 'Description'. Drag & drop sorting for categories and items will be implemented in a future update.
       </p>
     </div>
   );
