@@ -1,12 +1,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, ListChecks, Users, ShoppingBag, Briefcase, BarChart3, Settings } from "lucide-react"; // Added Settings icon
+import { PoundSterling, ListChecks, Users, ShoppingBag, Briefcase, BarChart3, Settings } from "lucide-react"; // Added Settings icon
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function DashboardPage() {
   const summaryStats = [
-    { title: "Today's Revenue", value: "$1,250", icon: DollarSign, description: "+15% from yesterday", color: "text-green-500" },
+    { title: "Today's Revenue", value: "£1,250", icon: PoundSterling, description: "+15% from yesterday", color: "text-green-500" },
     { title: "Orders Pending", value: "23", icon: ListChecks, description: "5 new orders today", color: "text-yellow-500" },
     { title: "Active Customers", value: "150", icon: Users, description: "+5 new this week", color: "text-blue-500" },
     { title: "Items Processed Today", value: "112", icon: ShoppingBag, description: "Includes 80 garments", color: "text-indigo-500" },
@@ -70,16 +70,16 @@ export default function DashboardPage() {
           <CardContent className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Cash Sales:</span>
-              <span className="font-semibold">${todayTakings.cash.toFixed(2)}</span>
+              <span className="font-semibold">£{todayTakings.cash.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Card Sales:</span>
-              <span className="font-semibold">${todayTakings.card.toFixed(2)}</span>
+              <span className="font-semibold">£{todayTakings.card.toFixed(2)}</span>
             </div>
             <div className="border-t my-2"></div>
             <div className="flex justify-between items-center text-lg">
               <span className="font-medium">Total Sales:</span>
-              <span className="font-bold text-primary">${todayTakings.total.toFixed(2)}</span>
+              <span className="font-bold text-primary">£{todayTakings.total.toFixed(2)}</span>
             </div>
             <p className="text-xs text-muted-foreground pt-2">Note: This is a static display. Real data would be fetched dynamically.</p>
           </CardContent>

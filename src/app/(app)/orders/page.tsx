@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { getAllOrdersDb } from '@/lib/data'; 
 import type { Order, OrderStatus, PaymentStatus } from '@/types';
-import { Eye, Pencil, MoreHorizontal, Zap, Printer, CalendarIcon, CheckCircle, TrendingUp, TrendingDown, DollarSign, ListChecks, Clock4, CircleDollarSign } from 'lucide-react';
+import { Eye, Pencil, MoreHorizontal, Zap, Printer, CalendarIcon, CheckCircle, TrendingUp, TrendingDown, PoundSterling, ListChecks, Clock4, CircleDollarSign } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -256,7 +256,7 @@ export default function OrderTrackingPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Paid Orders</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
+            <PoundSterling className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">{summaryStats.paid}</div></CardContent>
         </Card>
@@ -303,7 +303,7 @@ export default function OrderTrackingPage() {
                   <TableCell>{order.customerName}</TableCell>
                   <TableCell>{order.created_at ? format(new Date(order.created_at), 'MMM dd, yyyy') : 'N/A'}</TableCell>
                   <TableCell>{order.dueDate ? format(new Date(order.dueDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
-                  <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
+                  <TableCell>£{order.totalAmount.toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(order.status)} className={`${statusColors[order.status]} transition-all duration-300 ease-in-out`}>
                       {order.status}

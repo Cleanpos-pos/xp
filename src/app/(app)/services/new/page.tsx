@@ -83,7 +83,7 @@ export default function NewServicePage() {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price ($)</FormLabel>
+                    <FormLabel>Price (£)</FormLabel>
                     <FormControl>
                       <Input type="number" step="0.01" placeholder="e.g., 15.00" {...field} />
                     </FormControl>

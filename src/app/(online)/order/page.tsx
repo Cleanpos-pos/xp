@@ -171,7 +171,7 @@ export default function OnlineOrderPage() {
                         <CardTitle className="text-base">{service.name}</CardTitle>
                         </CardHeader>
                         <CardContent className="p-4 pt-0">
-                        <p className="text-sm text-primary font-semibold">${service.price.toFixed(2)}</p>
+                        <p className="text-sm text-primary font-semibold">£{service.price.toFixed(2)}</p>
                         </CardContent>
                     </Card>
                     ))}
@@ -328,7 +328,7 @@ export default function OnlineOrderPage() {
                   <div key={item.id} className="flex justify-between items-start">
                     <div>
                       <p className="font-medium text-sm">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">${item.price.toFixed(2)} each</p>
+                      <p className="text-xs text-muted-foreground">£{item.price.toFixed(2)} each</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)} disabled={step === 'schedule'}>
@@ -351,7 +351,7 @@ export default function OnlineOrderPage() {
             <CardFooter className="flex-col items-stretch space-y-4 pt-4 border-t">
               <div className="flex justify-between font-semibold text-lg">
                 <span>Subtotal:</span>
-                <span>${cartSubtotal.toFixed(2)}</span>
+                <span>£{cartSubtotal.toFixed(2)}</span>
               </div>
                 {step === 'basket' ? (
                     <Button onClick={handleProceedToSchedule} className="w-full">

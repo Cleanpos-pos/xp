@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getServices } from '@/lib/data'; // Use renamed getServices
 import type { ServiceItem } from '@/types';
-import { Tag, DollarSign, Edit, MoreHorizontal } from 'lucide-react';
+import { Tag, PoundSterling, Edit, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -114,7 +114,7 @@ export default function ServicesPage() {
                   <Badge variant="outline">{service.category}</Badge>
                 </TableCell>
                 <TableCell className="flex items-center">
-                  <DollarSign className="w-4 h-4 mr-1 text-muted-foreground" />
+                  <PoundSterling className="w-4 h-4 mr-1 text-muted-foreground" />
                   {service.price.toFixed(2)}
                 </TableCell>
                 <TableCell className="text-right">

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowLeft, Edit, Printer, DollarSign, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert, Zap, Percent, CircleDollarSign } from 'lucide-react';
+import { ArrowLeft, Edit, Printer, PoundSterling, CalendarDays, User, ListOrdered, Hash, CreditCard, ShieldCheck, ShieldAlert, Zap, Percent, CircleDollarSign } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -50,7 +50,7 @@ const paymentStatusIcons: Record<PaymentStatus, React.ElementType> = {
   Unpaid: ShieldAlert,
   "Partially Paid": CircleDollarSign,
   "Processing Payment": CreditCard,
-  Refunded: DollarSign,
+  Refunded: PoundSterling,
 }
 
 function getPaymentStatusBadge(status?: PaymentStatus): JSX.Element {
@@ -253,12 +253,12 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
             <p className="text-base">{order.dueDate ? format(new Date(order.dueDate), 'MMMM dd, yyyy') : 'N/A'}</p>
           </div>
           <div className="space-y-1">
-            <h4 className="text-sm font-medium flex items-center text-muted-foreground"><DollarSign className="mr-2 h-4 w-4" /> Grand Total</h4>
-            <p className="text-base font-semibold">${grandTotal.toFixed(2)}</p>
+            <h4 className="text-sm font-medium flex items-center text-muted-foreground"><PoundSterling className="mr-2 h-4 w-4" /> Grand Total</h4>
+            <p className="text-base font-semibold">£{grandTotal.toFixed(2)}</p>
           </div>
           <div className="space-y-1">
             <h4 className="text-sm font-medium flex items-center text-muted-foreground"><CircleDollarSign className="mr-2 h-4 w-4" /> Amount Due</h4>
-            <p className="text-base font-bold text-destructive">${amountRemaining.toFixed(2)}</p>
+            <p className="text-base font-bold text-destructive">£{amountRemaining.toFixed(2)}</p>
           </div>
         </CardContent>
       </Card>
@@ -286,37 +286,37 @@ export default function OrderDetailsPage({ params: paramsPromise }: OrderDetails
                     {item.notes && <div className="text-xs text-muted-foreground">Notes: {item.notes}</div>}
                   </TableCell>
                   <TableCell>{item.quantity}</TableCell>
-                  <TableCell>${item.unitPrice.toFixed(2)}</TableCell>
-                  <TableCell className="text-right">${item.totalPrice.toFixed(2)}</TableCell>
+                  <TableCell>£{item.unitPrice.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">£{item.totalPrice.toFixed(2)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
              <TableBody>
                 <TableRow>
                   <TableCell colSpan={3} className="text-right font-medium">Subtotal (after discounts):</TableCell>
-                  <TableCell className="text-right font-semibold">${subTotal.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-semibold">£{subTotal.toFixed(2)}</TableCell>
                 </TableRow>
                 {isVatEnabled && (
                   <TableRow>
                     <TableCell colSpan={3} className="text-right font-medium flex items-center justify-end">
                       <Percent className="mr-1 h-3 w-3 text-muted-foreground"/> VAT @ {(vatRate * 100).toFixed(0)}%:
                     </TableCell>
-                    <TableCell className="text-right font-semibold">${vatAmount.toFixed(2)}</TableCell>
+                    <TableCell className="text-right font-semibold">£{vatAmount.toFixed(2)}</TableCell>
                   </TableRow>
                 )}
                 <TableRow className="border-t-2 border-foreground">
                   <TableCell colSpan={3} className="text-right text-lg font-bold">Grand Total:</TableCell>
-                  <TableCell className="text-right text-lg font-bold">${grandTotal.toFixed(2)}</TableCell>
+                  <TableCell className="text-right text-lg font-bold">£{grandTotal.toFixed(2)}</TableCell>
                 </TableRow>
                 {order.amount_paid && order.amount_paid > 0 && (
                   <>
                     <TableRow>
                       <TableCell colSpan={3} className="text-right font-medium text-green-600">Amount Paid:</TableCell>
-                      <TableCell className="text-right font-semibold text-green-600">-${order.amount_paid.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-semibold text-green-600">-£{order.amount_paid.toFixed(2)}</TableCell>
                     </TableRow>
                     <TableRow className="border-t-2 border-destructive">
                       <TableCell colSpan={3} className="text-right text-xl font-bold text-destructive">Amount Due:</TableCell>
-                      <TableCell className="text-right text-xl font-bold text-destructive">${amountRemaining.toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-xl font-bold text-destructive">£{amountRemaining.toFixed(2)}</TableCell>
                     </TableRow>
                   </>
                 )}

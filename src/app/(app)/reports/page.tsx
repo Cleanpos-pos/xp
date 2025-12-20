@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { BarChart as BarChartIcon, PieChart as PieChartIcon, TrendingUp, Package, Layers, CalendarIcon, CalendarRange, Printer, ListChecks, CheckCircle, AlertTriangle, DollarSign, LineChart as LineChartIcon } from "lucide-react";
+import { BarChart as BarChartIcon, PieChart as PieChartIcon, TrendingUp, Package, Layers, CalendarIcon, CalendarRange, Printer, ListChecks, CheckCircle, AlertTriangle, PoundSterling, LineChart as LineChartIcon } from "lucide-react";
 import { AiInsights } from "@/components/reports/ai-insights";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Pie, Cell, Line, PieChart, LineChart as RechartsLineChart } from "recharts";
@@ -17,11 +17,12 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { fetchReportDataAction, type ReportData } from './actions';
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from '@/components/ui/label';
 
 // Chart Configs
-const chartConfigSales = { sales: { label: "Sales ($)", color: "hsl(var(--primary))" }, orders: { label: "Orders", color: "hsl(var(--accent))"} };
+const chartConfigSales = { sales: { label: "Sales (£)", color: "hsl(var(--primary))" }, orders: { label: "Orders", color: "hsl(var(--accent))"} };
 const chartConfigServices = { value: { label: "Services" } }; // Colors handled dynamically
-const chartConfigCategorySales = { sales: { label: "Sales ($)" } }; // Colors handled dynamically
+const chartConfigCategorySales = { sales: { label: "Sales (£)" } }; // Colors handled dynamically
 
 function getStatusBadgeVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
@@ -74,7 +75,7 @@ export default function ReportsPage() {
         setReportData(data);
       } catch (error: any) {
         console.error("Failed to load reports:", error);
-        toast({ title: "Error", description: "Failed to load report data.", variant: "destructive" });
+        toast({ title: "Error", description: error.message || "Failed to load report data.", variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
@@ -143,10 +144,10 @@ export default function ReportsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <PoundSterling className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : <div className="text-2xl font-bold">${reportData?.summary.totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
+            {isLoading ? <Skeleton className="h-8 w-20" /> : <div className="text-2xl font-bold">£{reportData?.summary.totalRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
           </CardContent>
         </Card>
         <Card>
@@ -164,7 +165,7 @@ export default function ReportsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">${reportData?.summary.avgOrderValue.toFixed(2)}</div>}
+            {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">£{reportData?.summary.avgOrderValue.toFixed(2)}</div>}
           </CardContent>
         </Card>
          <Card>
@@ -198,7 +199,7 @@ export default function ReportsPage() {
                   <BarChart accessibilityLayer data={reportData?.salesTrend || []}>
                     <CartesianGrid vertical={false} />
                     <XAxis dataKey="month" tickLine={false} tickMargin={10} axisLine={false} />
-                    <YAxis tickFormatter={(value) => `$${value}`} />
+                    <YAxis tickFormatter={(value) => `£${value}`} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Bar dataKey="sales" fill="var(--color-sales)" radius={4} />
                   </BarChart>
@@ -241,7 +242,7 @@ export default function ReportsPage() {
                  <ChartContainer config={chartConfigCategorySales} className="h-[300px] w-full">
                   <BarChart accessibilityLayer data={reportData?.categorySales || []} layout="vertical">
                     <CartesianGrid horizontal={false} />
-                    <XAxis type="number" tickFormatter={(value) => `$${value}`} />
+                    <XAxis type="number" tickFormatter={(value) => `£${value}`} />
                     <YAxis dataKey="category" type="category" tickLine={false} axisLine={false} width={100} />
                     <ChartTooltip content={<ChartTooltipContent />} />
                     <Bar dataKey="sales" radius={4}>
@@ -278,7 +279,7 @@ export default function ReportsPage() {
                         <TableRow key={order.id}>
                             <TableCell className="font-medium">{order.order_number || order.orderNumber}</TableCell>
                             <TableCell>{order.customer_name || order.customerName}</TableCell>
-                            <TableCell>${order.total_amount?.toFixed(2) || order.totalAmount?.toFixed(2)}</TableCell>
+                            <TableCell>£{order.total_amount?.toFixed(2) || order.totalAmount?.toFixed(2)}</TableCell>
                             <TableCell><Badge variant={getStatusBadgeVariant(order.status)}>{order.status}</Badge></TableCell>
                         </TableRow>
                         ))}

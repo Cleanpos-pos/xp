@@ -200,7 +200,7 @@ export default function FindTicketPage() {
                     <TableCell className="font-medium">{order.orderNumber}</TableCell>
                     <TableCell>{format(new Date(order.created_at), 'MMM dd, yyyy')}</TableCell>
                     <TableCell>{order.dueDate ? format(new Date(order.dueDate), 'MMM dd, yyyy') : 'N/A'}</TableCell>
-                    <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
+                    <TableCell>£{order.totalAmount.toFixed(2)}</TableCell>
                     <TableCell>{renderOrderStatusBadge(order.status)}</TableCell>
                     <TableCell>
                       <Badge variant={order.paymentStatus === 'Paid' ? 'default' : 'destructive'}>
