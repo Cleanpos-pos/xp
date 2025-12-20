@@ -247,7 +247,7 @@ export function CatalogManagementTab() {
     console.log("Parsed Data to Process:", data);
     toast({ title: "Pre-processing file...", description: `Found ${data.length} rows.` });
 
-    const requiredHeaders = ["menu1", "title", "pricelevel1"];
+    const requiredHeaders = ["menu1", "title", "pricelevel1", "showcolo", "stubprint"];
     const fileHeaders = Object.keys(data[0] || {}).map(h => h.trim().toLowerCase());
     const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
 
@@ -257,86 +257,104 @@ export function CatalogManagementTab() {
     }
 
     try {
-      // Step 1: Pre-process to build a complete map of existing categories and items
-      const existingCategories = new Map<string, string>(); // name_lowercase -> id
-      const existingItems = new Set<string>(); // parentId_itemName_lowercase
+      const initialCatalog = await getCatalogHierarchyAction();
       
-      const flattenHierarchy = (nodes: CatalogHierarchyNode[], path: string = '') => {
+      const existingCategories = new Map<string, string>();
+      const existingItems = new Set<string>();
+      
+      const flattenHierarchyForIndexing = (nodes: CatalogHierarchyNode[], path: string[] = []) => {
         nodes.forEach(node => {
-          const currentPath = path ? `${path} > ${node.name}` : node.name;
+          const currentPath = [...path, node.name];
           if (node.type === 'category') {
-            existingCategories.set(currentPath.toLowerCase(), node.id);
-            if (node.children) flattenHierarchy(node.children, currentPath);
+            existingCategories.set(currentPath.join(' > ').toLowerCase(), node.id);
+            if (node.children) flattenHierarchyForIndexing(node.children, currentPath);
           } else {
             existingItems.add(`${node.parent_id}_${node.name.toLowerCase()}`);
           }
         });
       };
-      
-      const initialCatalog = await getCatalogHierarchyAction();
-      flattenHierarchy(initialCatalog);
+      flattenHierarchyForIndexing(initialCatalog);
 
-
-      // Step 2: Identify NEW categories to create from the file
-      const categoriesToCreate = new Map<string, { name: string; parentId: string | null }>();
+      const categoriesToCreate = new Map<string, { name: string; parentId: string | null; path: string }>();
       data.forEach(row => {
-        const categoryName = row['Menu1']?.trim();
-        if (categoryName && !existingCategories.has(categoryName.toLowerCase())) {
-          categoriesToCreate.set(categoryName.toLowerCase(), { name: categoryName, parentId: null });
+        const pathParts: string[] = [];
+        for (let i = 1; i <= 5; i++) {
+          const menuKey = `Menu${i}`;
+          const categoryName = row[menuKey]?.trim();
+          if (categoryName) {
+            pathParts.push(categoryName);
+            const pathString = pathParts.join(' > ').toLowerCase();
+            if (!existingCategories.has(pathString)) {
+              categoriesToCreate.set(pathString, { name: categoryName, parentId: null, path: pathString });
+            }
+          } else {
+            break;
+          }
         }
       });
+      
+      const sortedNewCategoryPaths = Array.from(categoriesToCreate.keys()).sort((a, b) => a.length - b.length);
 
-      // Step 3: Bulk insert new categories
-      const newCategoryInserts = Array.from(categoriesToCreate.values()).map(cat => ({
-        name: cat.name,
-        parent_id: cat.parentId,
-        type: 'category' as CatalogEntryType,
-        sort_order: 0,
-      }));
+      if (sortedNewCategoryPaths.length > 0) {
+        toast({ title: "Importing...", description: `Creating ${sortedNewCategoryPaths.length} new categories...` });
+        for (const path of sortedNewCategoryPaths) {
+          const catInfo = categoriesToCreate.get(path)!;
+          const pathParts = path.split(' > ');
+          let parentId: string | null = null;
+          if (pathParts.length > 1) {
+            const parentPath = pathParts.slice(0, -1).join(' > ');
+            parentId = existingCategories.get(parentPath) || null;
+          }
+          
+          const { data: newCategory, error: catError } = await supabase
+            .from('catalog_entries')
+            .insert({ name: catInfo.name, parent_id: parentId, type: 'category' as CatalogEntryType, sort_order: 0 })
+            .select('id')
+            .single();
 
-      if (newCategoryInserts.length > 0) {
-        toast({ title: "Importing...", description: `Creating ${newCategoryInserts.length} new categories...` });
-        const { data: newCategories, error: catError } = await supabase
-          .from('catalog_entries')
-          .insert(newCategoryInserts)
-          .select('id, name');
-
-        if (catError) throw new Error(`Failed to bulk insert categories: ${catError.message}`);
-        
-        newCategories?.forEach(nc => existingCategories.set(nc.name.toLowerCase(), nc.id));
+          if (catError) throw new Error(`Failed to create category '${catInfo.name}': ${catError.message}`);
+          existingCategories.set(path, newCategory.id);
+        }
       }
       
-      // Step 4: Prepare all NEW items for bulk insert, skipping duplicates
       let skippedCount = 0;
       const itemsToInsert = data
         .map(row => {
-          const categoryName = row['Menu1']?.trim();
           const itemName = row['Title']?.trim();
           const price = parseFloat(row['Pricelevel1']);
-
           if (!itemName || isNaN(price)) return null;
 
-          const parentId = categoryName ? existingCategories.get(categoryName.toLowerCase()) || null : null;
+          const pathParts: string[] = [];
+          for (let i = 1; i <= 5; i++) {
+            const menuKey = `Menu${i}`;
+            const categoryName = row[menuKey]?.trim();
+            if (categoryName) pathParts.push(categoryName);
+            else break;
+          }
+          const categoryPath = pathParts.join(' > ').toLowerCase();
+          const parentId = categoryPath ? existingCategories.get(categoryPath) || null : null;
 
-          // Check for duplicates
           const itemKey = `${parentId}_${itemName.toLowerCase()}`;
           if (existingItems.has(itemKey)) {
             skippedCount++;
             return null;
           }
+          
+          const showColor = row['Showcolo']?.toString().trim().toLowerCase();
+          const stubsToPrint = parseInt(row['Stubprint']?.toString().trim(), 10);
 
           return {
             name: itemName,
             parent_id: parentId,
             type: 'item' as CatalogEntryType,
             price: price,
+            has_color_identifier: showColor === '1' || showColor === 'true',
+            small_tags_to_print: !isNaN(stubsToPrint) ? stubsToPrint : 1,
             sort_order: 0,
           };
         })
         .filter(Boolean);
 
-
-      // Step 5: Bulk insert new items
       if (itemsToInsert.length > 0) {
         toast({ title: "Importing...", description: `Creating ${itemsToInsert.length} new items...` });
         const { error: itemError } = await supabase.from('catalog_entries').insert(itemsToInsert as any);
@@ -344,7 +362,7 @@ export function CatalogManagementTab() {
       }
 
       let successMessage = `Successfully processed ${itemsToInsert.length} items`;
-      if (newCategoryInserts.length > 0) successMessage += ` and ${newCategoryInserts.length} new categories`;
+      if (sortedNewCategoryPaths.length > 0) successMessage += ` and ${sortedNewCategoryPaths.length} new categories`;
       if (skippedCount > 0) successMessage += `. Skipped ${skippedCount} duplicate items`;
       successMessage += ". Refreshing catalog...";
 
@@ -500,10 +518,8 @@ export function CatalogManagementTab() {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        File Import: Expects columns 'Menu1' (Category), 'Title' (Item Name), and 'Pricelevel1' (Price). Supports CSV, XLS, and XLSX formats.
+        File Import: Expects columns like 'Menu1', 'Title', 'Pricelevel1', etc. Supports CSV, XLS, and XLSX formats.
       </p>
     </div>
   );
 }
-
-    
