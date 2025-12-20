@@ -524,7 +524,19 @@ export default function NewOrderPage() {
                   </FormItem>
                 )}
               />
-              <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>General Order Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Any special instructions" {...field} rows={2} /></FormControl><FormMessage /></FormItem>)} />
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>General Order Notes (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Any special instructions" {...field} rows={2} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
           </form>
         </Form>
