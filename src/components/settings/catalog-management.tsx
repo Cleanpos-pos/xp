@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 
 interface RenderNodeProps {
   node: CatalogHierarchyNode;
@@ -241,119 +242,144 @@ export function CatalogManagementTab() {
     setEntryToDelete(null);
   };
 
+  const processImportData = async (data: any[]) => {
+    console.log("Parsed Data to Process:", data);
+
+    const requiredHeaders = ["Menu1", "Title", "Pricelevel", "Stubprint", "Showcolo"];
+    const fileHeaders = Object.keys(data[0] || {});
+    const missingHeaders = requiredHeaders.filter(h => !fileHeaders.some(fh => fh.toLowerCase() === h.toLowerCase()));
+
+    if (missingHeaders.length > 0) {
+      toast({
+        title: "Invalid File Format",
+        description: `File is missing required columns: ${missingHeaders.join(", ")}. Please check the file and try again.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({ title: "Importing...", description: `Found ${data.length} rows to process.` });
+
+    let successCount = 0;
+    let errorCount = 0;
+    let localCatalogCache: CatalogHierarchyNode[] = [...catalogHierarchy];
+
+    const findOrCreateCategory = async (categoryNames: string[]): Promise<string | null> => {
+      let parentId: string | null = null;
+      let currentLevelNodes: CatalogHierarchyNode[] = localCatalogCache;
+
+      for (const name of categoryNames) {
+        if (!name) continue;
+        const trimmedName = name.trim();
+        let categoryNode = currentLevelNodes.find(
+          (node) => node.name.toLowerCase() === trimmedName.toLowerCase() && node.type === "category"
+        );
+
+        if (categoryNode) {
+          parentId = categoryNode.id;
+          currentLevelNodes = categoryNode.children || [];
+        } else {
+          const newCategoryResult = await addCatalogEntryAction({
+            name: trimmedName,
+            type: "category",
+            parent_id: parentId,
+          });
+          if (newCategoryResult.success && newCategoryResult.newEntry) {
+            const newNode: CatalogHierarchyNode = { ...newCategoryResult.newEntry, children: [] };
+            currentLevelNodes.push(newNode);
+            parentId = newNode.id;
+            currentLevelNodes = newNode.children;
+          } else {
+            console.error("Failed to create category:", trimmedName, newCategoryResult.message);
+            return null;
+          }
+        }
+      }
+      return parentId;
+    };
+
+    for (const row of data) {
+      try {
+        const getVal = (key: string) => row[Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase())!];
+
+        const menuCols = ["Menu1", "Menu2", "Menu3", "Menu4", "Menu5"];
+        const categoryPath = menuCols.map(col => getVal(col)).filter(Boolean);
+
+        const title = getVal("Title");
+        if (!title) {
+          console.warn("Skipping row due to missing Title:", row);
+          errorCount++;
+          continue;
+        }
+
+        const parentCategoryId = await findOrCreateCategory(categoryPath);
+
+        const price = parseFloat(getVal("Pricelevel"));
+        if (isNaN(price)) {
+          console.warn("Skipping item due to invalid price:", row);
+          errorCount++;
+          continue;
+        }
+
+        await addCatalogEntryAction({
+          name: title.trim(),
+          type: "item",
+          parent_id: parentCategoryId,
+          price: price,
+          description: getVal("Description") || "",
+          has_color_identifier: String(getVal("Showcolo"))?.toUpperCase() === 'TRUE',
+          small_tags_to_print: parseInt(getVal("Stubprint"), 10) || 1,
+        });
+        successCount++;
+
+      } catch (error) {
+        console.error("Error processing row:", row, error);
+        errorCount++;
+      }
+    }
+
+    toast({
+      title: "Import Complete",
+      description: `${successCount} items processed successfully. ${errorCount} rows failed. Refreshing catalog...`,
+    });
+    fetchCatalog();
+  };
+
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const data = results.data as any[];
-        console.log("Parsed CSV data:", data);
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
-        const requiredHeaders = ["Menu1", "Title", "Pricelevel", "Stubprint", "Showcolo"];
-        const missingHeaders = requiredHeaders.filter(h => !(h in data[0]));
-
-        if (missingHeaders.length > 0) {
-          toast({
-            title: "Invalid CSV Format",
-            description: `CSV is missing required columns: ${missingHeaders.join(", ")}.`,
-            variant: "destructive",
-          });
-          return;
+    if (fileExtension === 'csv') {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => processImportData(results.data),
+        error: (error) => toast({ title: "CSV Parsing Error", description: error.message, variant: "destructive" }),
+      });
+    } else if (fileExtension === 'xls' || fileExtension === 'xlsx') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const json = XLSX.utils.sheet_to_json(worksheet);
+          processImportData(json);
+        } catch (error: any) {
+          toast({ title: "Excel Parsing Error", description: error.message, variant: "destructive" });
         }
-
-        toast({ title: "Importing...", description: `Found ${data.length} rows to process.` });
-
-        let successCount = 0;
-        let errorCount = 0;
-        let localCatalogCache: CatalogHierarchyNode[] = [...catalogHierarchy];
-
-        const findOrCreateCategory = async (
-          categoryNames: string[]
-        ): Promise<string | null> => {
-          let parentId: string | null = null;
-          let currentLevelNodes: CatalogHierarchyNode[] = localCatalogCache;
-
-          for (const name of categoryNames) {
-            if (!name) continue;
-            const trimmedName = name.trim();
-            let categoryNode = currentLevelNodes.find(
-              (node) => node.name.toLowerCase() === trimmedName.toLowerCase() && node.type === "category"
-            );
-
-            if (categoryNode) {
-              parentId = categoryNode.id;
-              currentLevelNodes = categoryNode.children || [];
-            } else {
-              const newCategoryResult = await addCatalogEntryAction({
-                name: trimmedName,
-                type: "category",
-                parent_id: parentId,
-              });
-              if (newCategoryResult.success && newCategoryResult.newEntry) {
-                const newNode: CatalogHierarchyNode = { ...newCategoryResult.newEntry, children: [] };
-                currentLevelNodes.push(newNode);
-                parentId = newNode.id;
-                currentLevelNodes = newNode.children;
-              } else {
-                console.error("Failed to create category:", trimmedName, newCategoryResult.message);
-                return null; // Stop processing this branch
-              }
-            }
-          }
-          return parentId;
-        };
-
-
-        for (const row of data) {
-          try {
-            const menuCols = ["Menu1", "Menu2", "Menu3", "Menu4", "Menu5"];
-            const categoryPath = menuCols.map(col => row[col]).filter(Boolean);
-
-            if (!row.Title) {
-              console.warn("Skipping row due to missing Title:", row);
-              errorCount++;
-              continue;
-            }
-
-            const parentCategoryId = await findOrCreateCategory(categoryPath);
-
-            const price = parseFloat(row.Pricelevel);
-            if (isNaN(price)) {
-              console.warn("Skipping item due to invalid price:", row);
-              errorCount++;
-              continue;
-            }
-
-            await addCatalogEntryAction({
-              name: row.Title.trim(),
-              type: "item",
-              parent_id: parentCategoryId,
-              price: price,
-              description: row.Description || "",
-              has_color_identifier: row.Showcolo?.toUpperCase() === 'TRUE',
-              small_tags_to_print: parseInt(row.Stubprint, 10) || 1,
-            });
-            successCount++;
-
-          } catch (error) {
-            console.error("Error processing row:", row, error);
-            errorCount++;
-          }
-        }
-
-        toast({
-          title: "Import Complete",
-          description: `${successCount} items processed successfully. ${errorCount} rows failed. Refreshing catalog...`,
-        });
-        fetchCatalog();
-      },
-      error: (error) => {
-        toast({ title: "CSV Parsing Error", description: error.message, variant: "destructive" });
-      },
-    });
+      };
+      reader.onerror = (error) => {
+        toast({ title: "File Reading Error", description: "Could not read the selected file.", variant: "destructive" });
+      };
+      reader.readAsBinaryString(file);
+    } else {
+      toast({ title: "Unsupported File Type", description: "Please upload a CSV, XLS, or XLSX file.", variant: "destructive" });
+    }
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -398,20 +424,20 @@ export function CatalogManagementTab() {
         </AddDialog>
         
         <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="mr-2 h-4 w-4" /> Import from CSV
+          <Upload className="mr-2 h-4 w-4" /> Import from File
         </Button>
         <input
           type="file"
           ref={fileInputRef}
           onChange={handleFileUpload}
-          accept=".csv"
+          accept=".csv,.xls,.xlsx"
           className="hidden"
         />
       </div>
 
 
       {catalogHierarchy.length === 0 ? (
-        <p className="text-muted-foreground mt-4">No categories found. Start by adding a top-level category or importing a CSV.</p>
+        <p className="text-muted-foreground mt-4">No categories found. Start by adding a top-level category or importing a file.</p>
       ) : (
         <Accordion type="multiple" className="w-full space-y-1">
           {catalogHierarchy.map(node => (
@@ -458,7 +484,7 @@ export function CatalogManagementTab() {
       )}
 
       <p className="text-xs text-muted-foreground mt-4">
-        CSV Import: Expects columns 'Menu1', 'Menu2'...'Menu5', 'Title', 'Pricelevel', 'Stubprint', 'Showcolo', 'Description'. Drag & drop sorting for categories and items will be implemented in a future update.
+        File Import: Expects columns 'Menu1', 'Menu2'...'Menu5', 'Title', 'Pricelevel', 'Stubprint', 'Showcolo', 'Description'. Supports CSV, XLS, and XLSX formats.
       </p>
     </div>
   );
