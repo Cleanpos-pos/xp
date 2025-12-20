@@ -1,4 +1,5 @@
 
+
 import type { Order, OrderItem as AppOrderItemType, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus, CatalogEntry, CatalogHierarchyNode, CatalogEntryType } from '@/types';
 import type { CreateCustomerInput } from '@/app/(app)/customers/new/customer.schema';
 import { supabase } from './supabase';
@@ -404,6 +405,7 @@ function mapSupabaseOrderToAppOrder(dbOrder: any): Order {
       notes: item.notes,
       has_color_identifier: item.has_color_identifier ?? false,
       color_value: item.color_value,
+      small_tags_to_print: item.small_tags_to_print
     })),
     subtotalAmount: dbOrder.subtotal_amount ? parseFloat(dbOrder.subtotal_amount) : 0,
     cartDiscountAmount: dbOrder.cart_discount_amount ? parseFloat(dbOrder.cart_discount_amount) : undefined,
@@ -504,7 +506,7 @@ export async function getCatalogEntries(): Promise<CatalogEntry[]> {
     ...entry,
     price: entry.price !== null && entry.price !== undefined ? parseFloat(entry.price) : undefined,
     has_color_identifier: entry.has_color_identifier ?? false,
-    small_tags_to_print: entry.small_tags_to_print !== null && entry.small_tags_to_print !== undefined ? parseInt(entry.small_tags_to_print, 10) : undefined,
+    small_tags_to_print: entry.small_tags_to_print !== null && entry.small_tags_to_print !== undefined ? parseInt(String(entry.small_tags_to_print), 10) : undefined,
     created_at: entry.created_at ? new Date(entry.created_at).toISOString() : undefined,
     updated_at: entry.updated_at ? new Date(entry.updated_at).toISOString() : undefined,
   })) as CatalogEntry[];

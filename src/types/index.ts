@@ -42,6 +42,7 @@ export type OrderItem = {
   notes?: string;
   has_color_identifier?: boolean; // From the service item
   color_value?: string; // User-entered color if has_color_identifier is true
+  small_tags_to_print?: number;
 };
 
 export type OrderStatus =
