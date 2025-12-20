@@ -338,9 +338,9 @@ export default function NewOrderPage() {
         <CardTitle className="font-headline text-xl flex items-center"><ShoppingCart className="mr-2 h-6 w-6" /> Current Order</CardTitle>
         {fields.length === 0 && <CardDescription>Select services to add them here.</CardDescription>}
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden p-0">
+      <CardContent className="flex-1 flex flex-col overflow-hidden p-0">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(proceedToPaymentSubmit)} className="space-y-4 h-full flex flex-col px-6">
+          <form onSubmit={form.handleSubmit(proceedToPaymentSubmit)} className="flex-1 flex flex-col overflow-hidden px-6 space-y-4">
             
             <FormField control={form.control} name="customerId" render={({ field }) => (
                 <FormItem>
@@ -491,7 +491,7 @@ export default function NewOrderPage() {
               <FormField
                 control={form.control}
                 name="dueDate"
-                render={() => (
+                render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <div className="flex justify-between items-center">
                       <FormLabel>Due Date (Optional)</FormLabel>
@@ -509,14 +509,14 @@ export default function NewOrderPage() {
                       <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                         <PopoverTrigger asChild>
                           <FormControl>
-                            <Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !watchedDueDate && "text-muted-foreground")}>
-                              {watchedDueDate ? format(new Date(watchedDueDate), "PPP") : <span>Pick specific date</span>}
+                            <Button variant={"outline"} className={cn("flex-1 pl-3 text-left font-normal h-9", !field.value && "text-muted-foreground")}>
+                              {field.value ? format(new Date(field.value), "PPP") : <span>Pick specific date</span>}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={watchedDueDate ? new Date(watchedDueDate) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/>
+                          <Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={handleManualDateSelect} disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))} initialFocus/>
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -636,7 +636,7 @@ export default function NewOrderPage() {
               <Button onClick={() => setActivePaymentStep("enterPaymentDetails")} className="w-full">
                 <CheckCircle className="mr-2 h-5 w-5" /> Take Payment
               </Button>
-              <Button variant="secondary" onClick={() => { setShowPrintDialog(true); }} className="w-full">
+              <Button variant="secondary" onClick={()={() => { setShowPrintDialog(true); }} className="w-full">
                 <Clock className="mr-2 h-5 w-5" /> Pay Later & Options
               </Button>
             </>
