@@ -1,8 +1,19 @@
-
+// File: src/app/(app)/reports/actions.ts
 "use server";
 
 import { supabase } from "@/lib/supabase";
-import { startOfMonth, endOfMonth } from "date-fns";
+
+// --- Types ---
+
+export interface AiInsightData {
+  id: string;
+  created_at: string;
+  summary_text: string | null;
+  trending_services: string[];
+  revenue_forecast: number | null;
+  revenue_change_percentage: number | null;
+  actionable_tips: string[];
+}
 
 export interface ReportData {
   summary: {
@@ -17,6 +28,37 @@ export interface ReportData {
   recentOrders: any[];
 }
 
+// --- AI Insights Function ---
+
+export async function getLatestAiInsight(): Promise<AiInsightData | null> {
+  try {
+    const { data, error } = await supabase
+      .from("ai_report_insights")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      // It's normal to have no insights yet, so we just return null rather than crashing
+      if (error.code === 'PGRST116') return null; 
+      console.error("Error fetching AI insights:", error);
+      return null;
+    }
+
+    return {
+      ...data,
+      trending_services: Array.isArray(data.trending_services) ? data.trending_services : [],
+      actionable_tips: Array.isArray(data.actionable_tips) ? data.actionable_tips : [],
+    };
+  } catch (error) {
+    console.error("Unexpected error in getLatestAiInsight:", error);
+    return null;
+  }
+}
+
+// --- Main Report Data Function ---
+
 export async function fetchReportDataAction(from: Date, to: Date): Promise<ReportData> {
   const startDate = from.toISOString();
   const endDate = to.toISOString();
@@ -29,7 +71,7 @@ export async function fetchReportDataAction(from: Date, to: Date): Promise<Repor
 
     if (summaryError) throw summaryError;
 
-    // 2. Fetch Sales Trend (Chart)
+    // 2. Fetch Sales Trend
     const { data: trendData, error: trendError } = await supabase
       .rpc('get_sales_trends', { start_date: startDate, end_date: endDate });
 
@@ -47,7 +89,7 @@ export async function fetchReportDataAction(from: Date, to: Date): Promise<Repor
 
     if (serviceError) throw serviceError;
 
-    // 5. Fetch Recent Orders Table (Raw query is fine here)
+    // 5. Fetch Recent Orders
     const { data: ordersData, error: ordersError } = await supabase
       .from('orders')
       .select('id, order_number, customer_name, total_amount, status, created_at')
@@ -58,9 +100,7 @@ export async function fetchReportDataAction(from: Date, to: Date): Promise<Repor
 
     if (ordersError) throw ordersError;
 
-    // --- Format Data for Charts ---
-    
-    // Colors for charts
+    // --- Format Data ---
     const colors = ["hsl(var(--chart-1))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))"];
 
     return {
@@ -82,7 +122,7 @@ export async function fetchReportDataAction(from: Date, to: Date): Promise<Repor
       })) || [],
       topServices: serviceData?.map((item: any, index: number) => ({
         name: item.service_name,
-        value: Number(item.usage_count), // Pie chart uses 'value'
+        value: Number(item.usage_count),
         fill: colors[index % colors.length]
       })) || [],
       recentOrders: ordersData || []
