@@ -495,7 +495,7 @@ export async function getInventoryItemById(id: string): Promise<InventoryItem | 
 export async function getCatalogEntries(): Promise<CatalogEntry[]> {
   const { data, error } = await supabase
     .from('catalog_entries')
-    .select('id, name, parent_id, type, price, description, sort_order, has_color_identifier, small_tags_to_print, created_at, updated_at')
+    .select('id, name, parent_id, type, price, description, sort_order, has_color_identifier, created_at, updated_at')
     .order('sort_order', { ascending: true });
 
   if (error) {
@@ -506,7 +506,6 @@ export async function getCatalogEntries(): Promise<CatalogEntry[]> {
     ...entry,
     price: entry.price !== null && entry.price !== undefined ? parseFloat(entry.price) : undefined,
     has_color_identifier: entry.has_color_identifier ?? false,
-    small_tags_to_print: entry.small_tags_to_print !== null && entry.small_tags_to_print !== undefined ? parseInt(String(entry.small_tags_to_print), 10) : undefined,
     created_at: entry.created_at ? new Date(entry.created_at).toISOString() : undefined,
     updated_at: entry.updated_at ? new Date(entry.updated_at).toISOString() : undefined,
   })) as CatalogEntry[];
@@ -682,7 +681,7 @@ export function buildCatalogHierarchy(entries: CatalogEntry[], parent_id: string
 
 export async function getFullCatalogHierarchy(): Promise<CatalogHierarchyNode[]> {
   const allEntries = await getCatalogEntries();
-  return buildCatalogHierarchy(allEntries);
+  return buildCatalogHierarchy(allEntries, null);
 }
 
 async function getServiceItemsFromCatalog(): Promise<ServiceItem[]> {
