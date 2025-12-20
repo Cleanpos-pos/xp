@@ -18,13 +18,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { getCustomers, getCustomerById, getServices } from "@/lib/data"; // Updated: getServices
-import type { ServiceItem, Customer } from "@/types";
+import { getCustomers, getCustomerById, getServices } from "@/lib/data";
+import { getCompanySettingsAction } from "@/app/(auth)/settings/company-settings-actions";
+import type { ServiceItem, Customer, CompanySettings } from "@/types";
 import { CreateOrderSchema, type CreateOrderInput, type OrderItemInput } from "./order.schema";
 import { createOrderAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Archive, Grid, Banknote, WalletCards, Printer, Zap, PlusCircle, MinusCircle, Pencil, UserPlus, Search, User, X } from "lucide-react";
+import { Trash2, CalendarIcon, ShoppingCart, CheckCircle, Clock, CreditCard, ArrowRight, Grid, Banknote, WalletCards, Printer, Zap, PlusCircle, MinusCircle, Pencil, UserPlus, Search, User, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -44,7 +45,7 @@ interface ServicesByCategory {
 
 type OrderCreationStage = "form" | "paymentOptions";
 type PaymentStep = "selectAction" | "enterPaymentDetails";
-type PaymentMethod = "Cash" | "Card" | "On Account" | "Part Pay" | null;
+type PaymentMethod = "Cash" | "Card" | "Part Pay" | "On Account" | null;
 
 const getNextOccurrenceOfWeekday = (targetDay: number, startDate: Date = new Date()): Date => {
   const currentDate = new Date(startDate);
@@ -56,6 +57,14 @@ const getNextOccurrenceOfWeekday = (targetDay: number, startDate: Date = new Dat
   }
   const resultDate = addDays(currentDate, daysToAdd);
   return resultDate;
+};
+
+const currencySymbols: { [key: string]: string } = {
+  GBP: '£',
+  USD: '$',
+  EUR: '€',
+  CAD: 'C$',
+  AUD: 'A$',
 };
 
 
@@ -72,7 +81,6 @@ export default function NewOrderPage() {
   const [isLoadingSpecificCustomer, setIsLoadingSpecificCustomer] = React.useState(false);
   const [selectedCustomerName, setSelectedCustomerName] = React.useState<string | null>(null);
 
-  // New states for customer search
   const [customerSearchTerm, setCustomerSearchTerm] = React.useState("");
   const [isCustomerListVisible, setIsCustomerListVisible] = React.useState(false);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -81,6 +89,11 @@ export default function NewOrderPage() {
   const [isLoadingServices, setIsLoadingServices] = React.useState(true);
   const [servicesByCategory, setServicesByCategory] = React.useState<ServicesByCategory>({});
   const [serviceCategoryNames, setServiceCategoryNames] = React.useState<string[]>([]);
+  
+  const [companySettings, setCompanySettings] = React.useState<CompanySettings | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = React.useState(true);
+  const currencySymbol = currencySymbols[companySettings?.selected_currency || 'GBP'] || '£';
+
 
   const [activePaymentStep, setActivePaymentStep] = React.useState<PaymentStep>("selectAction");
   const [amountTendered, setAmountTendered] = React.useState<string>("");
@@ -111,9 +124,42 @@ export default function NewOrderPage() {
   const customerIdFromQueryRaw = searchParams.get('customerId');
   const customerIdFromQuery = customerIdFromQueryRaw?.trim();
 
-  // This effect fetches all customers for the search functionality
   React.useEffect(() => {
-    // Only fetch all customers if we are NOT loading a specific one from query params
+    async function fetchInitialData() {
+      setIsLoadingServices(true);
+      setIsLoadingSettings(true);
+      try {
+        const [servicesData, settingsData] = await Promise.all([
+          getServices(),
+          getCompanySettingsAction(),
+        ]);
+        
+        // Process services
+        setAllServices(servicesData);
+        const groupedServices = servicesData.reduce((acc, service) => {
+          const category = service.category || "Other";
+          if (!acc[category]) acc[category] = [];
+          acc[category].push(service);
+          return acc;
+        }, {} as ServicesByCategory);
+        setServicesByCategory(groupedServices);
+        setServiceCategoryNames(Object.keys(groupedServices));
+        
+        // Process settings
+        setCompanySettings(settingsData);
+
+      } catch (err) {
+        console.error("[NewOrderPage] Failed to fetch initial data:", err);
+        toast({ title: "Error", description: "Could not load required services or settings.", variant: "destructive" });
+      } finally {
+        setIsLoadingServices(false);
+        setIsLoadingSettings(false);
+      }
+    }
+    fetchInitialData();
+  }, [toast]);
+
+  React.useEffect(() => {
     if (!customerIdFromQuery) {
         setIsLoadingAllCustomers(true);
         getCustomers()
@@ -123,7 +169,6 @@ export default function NewOrderPage() {
     }
   }, [customerIdFromQuery]);
 
-  // This effect handles loading a specific customer if an ID is in the URL
   React.useEffect(() => {
     if (customerIdFromQuery) {
       setIsLoadingSpecificCustomer(true);
@@ -144,7 +189,6 @@ export default function NewOrderPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerIdFromQuery, toast]);
   
-  // This effect handles hiding the customer search results when clicking outside
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchInputRef.current && !searchInputRef.current.contains(event.target as Node)) {
@@ -172,30 +216,6 @@ export default function NewOrderPage() {
     );
   }, [customerSearchTerm, allCustomers]);
 
-
-  React.useEffect(() => {
-    async function fetchServicesData() { // Renamed from fetchServices to avoid conflict
-      setIsLoadingServices(true);
-      try {
-        const servicesData = await getServices(); // Using renamed getServices
-        setAllServices(servicesData);
-        const groupedServices = servicesData.reduce((acc, service) => {
-          const category = service.category || "Other";
-          if (!acc[category]) acc[category] = [];
-          acc[category].push(service);
-          return acc;
-        }, {} as ServicesByCategory);
-        setServicesByCategory(groupedServices);
-        setServiceCategoryNames(Object.keys(groupedServices));
-      } catch (err) {
-        console.error("[NewOrderPage] Failed to fetch services:", err);
-        toast({ title: "Error", description: "Could not load services list.", variant: "destructive" });
-      } finally {
-        setIsLoadingServices(false);
-      }
-    }
-    fetchServicesData();
-  }, [toast]);
 
   const { fields, append, remove, update } = useFieldArray({
     control: form.control,
@@ -236,7 +256,7 @@ export default function NewOrderPage() {
       if (item.itemDiscountAmount && item.itemDiscountAmount > 0) {
         itemPrice -= item.itemDiscountAmount;
       }
-      subtotal += Math.max(0, itemPrice); // Ensure item price doesn't go below zero
+      subtotal += Math.max(0, itemPrice);
     });
 
     let totalAfterCartDiscounts = subtotal;
@@ -261,7 +281,6 @@ export default function NewOrderPage() {
     setStage("form"); setCreatedOrderDetails(null); setActivePaymentStep("selectAction"); setAmountTendered(""); setSelectedPaymentMethod(null); setIsKeypadOpen(false); setPaymentNote(""); setShowPrintDialog(false); setPrintType(null); setIsExpressOrder(false); setIsDatePickerOpen(false);
     setSelectedCustomerName(null);
     setCustomerSearchTerm("");
-    // Re-fetch all customers for the next search
     setIsLoadingAllCustomers(true);
     getCustomers().then(setAllCustomers).finally(() => setIsLoadingAllCustomers(false));
   }, [form]);
@@ -293,8 +312,8 @@ export default function NewOrderPage() {
 
   const handleConfirmPayment = () => {
     if (!createdOrderDetails) return; let paymentDetailsMessage = ""; const numericTotalAmount = createdOrderDetails.totalAmount; const numericAmountTendered = parseFloat(amountTendered) || 0;
-    if (selectedPaymentMethod === "On Account") { paymentDetailsMessage = `Order ${createdOrderDetails.id} ($${numericTotalAmount.toFixed(2)}) marked 'On Account'.`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
-    else if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Card" || selectedPaymentMethod === "Part Pay") { const paymentType = selectedPaymentMethod; let paymentSummary = `Paid ${numericAmountTendered.toFixed(2)} by ${paymentType}.`; if (numericAmountTendered < numericTotalAmount) paymentSummary += ` (Partial - $${(numericTotalAmount - numericAmountTendered).toFixed(2)} remaining).`; else if (numericAmountTendered > numericTotalAmount && selectedPaymentMethod === "Cash") paymentSummary += ` Change: $${(numericAmountTendered - numericTotalAmount).toFixed(2)}.`; paymentDetailsMessage = `Payment for order ${createdOrderDetails.id}: ${paymentSummary}`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
+    if (selectedPaymentMethod === "On Account") { paymentDetailsMessage = `Order ${createdOrderDetails.id} (${currencySymbol}${numericTotalAmount.toFixed(2)}) marked 'On Account'.`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
+    else if (selectedPaymentMethod === "Cash" || selectedPaymentMethod === "Card" || selectedPaymentMethod === "Part Pay") { const paymentType = selectedPaymentMethod; let paymentSummary = `Paid ${currencySymbol}${numericAmountTendered.toFixed(2)} by ${paymentType}.`; if (numericAmountTendered < numericTotalAmount) paymentSummary += ` (Partial - ${currencySymbol}${(numericTotalAmount - numericAmountTendered).toFixed(2)} remaining).`; else if (numericAmountTendered > numericTotalAmount && selectedPaymentMethod === "Cash") paymentSummary += ` Change: ${currencySymbol}${(numericAmountTendered - numericTotalAmount).toFixed(2)}.`; paymentDetailsMessage = `Payment for order ${createdOrderDetails.id}: ${paymentSummary}`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
     else { paymentDetailsMessage = `Order ${createdOrderDetails.id} processed.`; if(paymentNote) paymentDetailsMessage += ` Note: ${paymentNote}`; }
     toast({ title: "Payment Processed (Mocked)", description: paymentDetailsMessage }); setPrintType(null); setShowPrintDialog(true);
   };
@@ -308,7 +327,7 @@ export default function NewOrderPage() {
   const handleCreateAnotherOrder = () => { resetFormAndStage(); };
   const handleGoToDashboard = () => router.push('/dashboard');
   const handleAmountKeypadConfirm = (value: string) => { const numValue = parseFloat(value); if (isNaN(numValue) || numValue < 0) { setAmountTendered(createdOrderDetails?.totalAmount.toFixed(2) || "0.00"); toast({title: "Invalid Amount", variant: "destructive"}); } else { setAmountTendered(numValue.toFixed(2)); } };
-  const handlePayOnAccount = () => { setSelectedPaymentMethod("On Account"); if (createdOrderDetails) { setAmountTendered(createdOrderDetails.totalAmount.toFixed(2)); setPaymentNote(`Order total $${createdOrderDetails.totalAmount.toFixed(2)} to account.`); } };
+  const handlePayOnAccount = () => { setSelectedPaymentMethod("On Account"); if (createdOrderDetails) { setAmountTendered(createdOrderDetails.totalAmount.toFixed(2)); setPaymentNote(`Order total ${currencySymbol}${createdOrderDetails.totalAmount.toFixed(2)} to account.`); } };
   const handleOpenAmountKeypad = React.useCallback(() => { if (selectedPaymentMethod !== "On Account") setIsKeypadOpen(true); }, [selectedPaymentMethod]);
   const handleDueDateButtonClick = (date: Date) => { form.setValue('dueDate', date, { shouldValidate: true }); setIsExpressOrder(isToday(date) || isTomorrow(date)); };
   const handleManualDateSelect = (date: Date | undefined) => { form.setValue('dueDate', date, { shouldValidate: true }); if (date) setIsExpressOrder(isToday(date) || isTomorrow(date)); else setIsExpressOrder(false); setIsDatePickerOpen(false); };
@@ -316,7 +335,7 @@ export default function NewOrderPage() {
   const watchedDueDate = form.watch("dueDate"); const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const renderOrderFormCard = () => (
-    <Card className="shadow-lg sticky top-6">
+    <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="font-headline text-xl flex items-center"><ShoppingCart className="mr-2 h-6 w-6" /> Current Order</CardTitle>
         {fields.length === 0 && <CardDescription>Select services to add them here.</CardDescription>}
@@ -325,7 +344,6 @@ export default function NewOrderPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(proceedToPaymentSubmit)} className="space-y-6">
             
-            {/* --- Customer Search Section --- */}
             <FormField control={form.control} name="customerId" render={({ field }) => (
                 <FormItem>
                     <FormLabel>Customer</FormLabel>
@@ -405,15 +423,15 @@ export default function NewOrderPage() {
                       <div>
                         <h4 className="font-medium text-sm">{item?.serviceName}</h4>
                         <p className="text-xs text-muted-foreground">
-                          Base Price: ${item?.originalUnitPrice?.toFixed(2)}
-                          {item.unitPrice !== item.originalUnitPrice && ` (Overridden: $${item.unitPrice.toFixed(2)})`}
+                          Base Price: {currencySymbol}{item?.originalUnitPrice?.toFixed(2)}
+                          {item.unitPrice !== item.originalUnitPrice && ` (Overridden: ${currencySymbol}${item.unitPrice.toFixed(2)})`}
                         </p>
                         {(item.itemDiscountPercentage || item.itemDiscountAmount) && (
                           <p className="text-xs text-blue-600">
                             Discount: 
                             {item.itemDiscountPercentage ? ` ${item.itemDiscountPercentage}%` : ''}
                             {item.itemDiscountPercentage && item.itemDiscountAmount ? ' + ' : ''}
-                            {item.itemDiscountAmount ? ` $${item.itemDiscountAmount.toFixed(2)}` : ''}
+                            {item.itemDiscountAmount ? ` ${currencySymbol}${item.itemDiscountAmount.toFixed(2)}` : ''}
                           </p>
                         )}
                       </div>
@@ -442,7 +460,7 @@ export default function NewOrderPage() {
                             )} />
                             <FormField control={form.control} name={`items.${index}.itemDiscountAmount`} render={({ field: subField }) => (
                               <FormItem>
-                                <FormLabel className="text-xs">Item Discount ($)</FormLabel>
+                                <FormLabel className="text-xs">Item Discount ({currencySymbol})</FormLabel>
                                 <FormControl><Input type="number" step="0.01" min="0" {...subField} onChange={e => subField.onChange(parseFloat(e.target.value))} className="h-8" /></FormControl>
                                 <FormMessage className="text-xs" />
                               </FormItem>
@@ -461,7 +479,7 @@ export default function NewOrderPage() {
                       <Button type="button" variant="outline" size="icon" className="h-7 w-7" onClick={() => update(index, { ...item, quantity: item.quantity + 1 })}><PlusCircle className="h-4 w-4" /></Button>
                       <FormField control={form.control} name={`items.${index}.notes`} render={({ field: subField }) => (<FormItem className="flex-grow"><FormControl><Input placeholder="Item notes..." {...subField} className="h-7 text-xs" /></FormControl><FormMessage className="text-xs" /></FormItem>)} />
                     </div>
-                     <div className="text-right text-sm font-medium">Item Total: ${itemTotal.toFixed(2)}</div>
+                     <div className="text-right text-sm font-medium">Item Total: {currencySymbol}{itemTotal.toFixed(2)}</div>
                      <FormField control={form.control} name={`items.${index}.quantity`} render={() => <FormMessage className="text-xs pt-1" />} />
                   </Card>
                 );
@@ -480,21 +498,21 @@ export default function NewOrderPage() {
                     <FormItem><FormLabel>Cart Discount (%)</FormLabel><FormControl><Input type="number" step="0.1" min="0" max="100" placeholder="e.g., 10" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="cartDiscountAmount" render={({ field }) => (
-                    <FormItem><FormLabel>Cart Discount ($)</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 5.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Cart Discount ({currencySymbol})</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 5.00" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="cartPriceOverride" render={({ field }) => (
-                    <FormItem><FormLabel>Cart Total Price Override ($)</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 50.00 (leave blank if no override)" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormDescription className="text-xs">If set, this becomes the final price regardless of other calculations.</FormDescription><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Cart Total Price Override ({currencySymbol})</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="e.g., 50.00 (leave blank if no override)" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} className="h-9"/></FormControl><FormDescription className="text-xs">If set, this becomes the final price regardless of other calculations.</FormDescription><FormMessage /></FormItem>
                 )} />
             </div>
             <Separator />
 
             <div className="border-t pt-4 space-y-2">
-              <div className="flex justify-between items-center text-md"><span>Subtotal:</span><span>${calculatedTotals.subtotal.toFixed(2)}</span></div>
+              <div className="flex justify-between items-center text-md"><span>Subtotal:</span><span>{currencySymbol}{calculatedTotals.subtotal.toFixed(2)}</span></div>
               {(watchedCartDiscountPercentage || watchedCartDiscountAmount) && (
                 <div className="flex justify-between items-center text-sm text-blue-600">
                     <span>Cart Discount Applied:</span>
                     <span>
-                        - $
+                        - {currencySymbol}
                         {(
                             calculatedTotals.subtotal - 
                             ( (watchedCartPriceOverride !== undefined && watchedCartPriceOverride >= 0) ? watchedCartPriceOverride : calculatedTotals.grandTotal )
@@ -502,7 +520,7 @@ export default function NewOrderPage() {
                     </span>
                 </div>
               )}
-              <div className="flex justify-between items-center font-semibold text-lg"><span>Grand Total:</span><span>${calculatedTotals.grandTotal.toFixed(2)}</span></div>
+              <div className="flex justify-between items-center font-semibold text-lg"><span>Grand Total:</span><span>{currencySymbol}{calculatedTotals.grandTotal.toFixed(2)}</span></div>
               <div className="space-y-2">
                 <Button type="submit" disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : isLoadingSpecificCustomer ? "Loading Customer..." : isLoadingAllCustomers ? "Loading..." : isLoadingServices ? "Loading Services..." : !watchedCustomerId ? "Select Customer First" : selectedCustomerName ? `Create & Proceed to Payment for ${selectedCustomerName.split(' ')[0]}`: `Create & Proceed to Payment`}<ArrowRight className="ml-2 h-4 w-4" /></Button>
                 <Button type="button" variant="outline" onClick={handleCreateAndPayLater} disabled={form.formState.isSubmitting || fields.length === 0 || !watchedCustomerId || isLoadingServices} className="w-full">{form.formState.isSubmitting ? "Creating..." : `Create Order & Pay Later`}<Clock className="ml-2 h-4 w-4" /></Button>
@@ -525,14 +543,14 @@ export default function NewOrderPage() {
       : null;
 
     return (
-      <Card className="shadow-lg sticky top-6">
+      <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline text-xl flex items-center">
             <CreditCard className="mr-2 h-6 w-6 text-primary" />
             Order {createdOrderDetails.id}
             {createdOrderDetails.isExpress && <Badge variant="destructive" className="ml-2 text-xs"><Zap className="mr-1 h-3 w-3"/>Express</Badge>}
           </CardTitle>
-          <CardDescription>Total Amount: <strong>${numericTotalAmount.toFixed(2)}</strong></CardDescription>
+          <CardDescription>Total Amount: <strong>{currencySymbol}{numericTotalAmount.toFixed(2)}</strong></CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {activePaymentStep === "selectAction" && (
@@ -560,9 +578,9 @@ export default function NewOrderPage() {
                 <Button variant={selectedPaymentMethod === "Card" ? "default" : "outline"} onClick={() => { setSelectedPaymentMethod("Card"); setPaymentNote(""); setAmountTendered(numericTotalAmount.toFixed(2)); }}><WalletCards className="mr-2 h-4 w-4"/> Card</Button>
                 <Button variant={selectedPaymentMethod === "Part Pay" ? "default" : "outline"} onClick={() => { setSelectedPaymentMethod("Part Pay"); setPaymentNote("Deposit Paid."); setAmountTendered(""); setIsKeypadOpen(true); }}>Part Pay</Button>
               </div>
-               <Button variant={selectedPaymentMethod === "On Account" ? "default" : "outline"} onClick={handlePayOnAccount} className="w-full"><Archive className="mr-2 h-4 w-4" /> Pay on Account</Button>
+               <Button variant={selectedPaymentMethod === "On Account" ? "default" : "outline"} onClick={handlePayOnAccount} className="w-full">Pay on Account</Button>
               {paymentNote && <p className="text-sm text-muted-foreground">{paymentNote}</p>}
-              {changeDue !== null && (<p className="text-md font-semibold text-green-600">Change Due: ${changeDue}</p>)}
+              {changeDue !== null && (<p className="text-md font-semibold text-green-600">Change Due: {currencySymbol}{changeDue}</p>)}
               <div className="space-y-2 border-t pt-4">
                 <Button onClick={handleConfirmPayment} className="w-full" disabled={!selectedPaymentMethod || (selectedPaymentMethod !== "On Account" && (amountTendered === "" || parseFloat(amountTendered) < 0 ) && numericTotalAmount > 0)}>Confirm Payment & Print Options</Button>
                 <Button variant="ghost" onClick={() => setActivePaymentStep("selectAction")} className="w-full text-sm">Back</Button>
@@ -577,13 +595,56 @@ export default function NewOrderPage() {
 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-      <div className="lg:col-span-2 space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div className="lg:col-span-1 space-y-6">
+          <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl">
+                    Select Services for {isLoadingSpecificCustomer ? <Skeleton className="h-7 w-32 inline-block" /> : selectedCustomerName || 'Customer'}
+                </CardTitle>
+                <CardDescription>Choose category, then click service to add.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoadingServices ? (
+                    <div className="space-y-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-20 w-full" />
+                        <Skeleton className="h-20 w-full" />
+                    </div>
+                ) : serviceCategoryNames.length > 0 ? (
+                    <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-2 mb-4 h-auto flex-wrap justify-start">
+                            {serviceCategoryNames.map((category) => (
+                                <TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">{category}</TabsTrigger>
+                            ))}
+                        </TabsList>
+                        {serviceCategoryNames.map((category) => (
+                            <TabsContent key={category} value={category}>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
+                                    {servicesByCategory[category]?.map((service) => (
+                                        <Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}>
+                                            <span className="font-medium text-sm">{service.name}</span>
+                                            <span className="text-xs text-primary">{currencySymbol}{service.price.toFixed(2)}</span>
+                                        </Button>
+                                    ))}
+                                </div>
+                            </TabsContent>
+                        ))}
+                    </Tabs>
+                ) : (
+                    <p>No services available. Add items in Settings.</p>
+                )}
+            </CardContent>
+          </Card>
+      </div>
+
+      <div className="lg:col-span-1 sticky top-6">
           {stage === "form" && renderOrderFormCard()}
           {stage === "paymentOptions" && renderPaymentOptionsCard()}
       </div>
 
       <AlphanumericKeypadModal isOpen={isKeypadOpen} onOpenChange={setIsKeypadOpen} inputValue={amountTendered} onInputChange={setAmountTendered} onConfirm={handleAmountKeypadConfirm} title="Enter Amount Tendered" numericOnly={true} />
+      
       {createdOrderDetails && (<Dialog open={showPrintDialog} onOpenChange={(isOpen) => { setShowPrintDialog(isOpen); if (!isOpen && !printType && createdOrderDetails) { handlePayLaterAndNav(); } }}>
         <DialogContent>
           <DialogHeader>
@@ -606,12 +667,6 @@ export default function NewOrderPage() {
         </DialogContent>
       </Dialog>)}
       
-      <div className="lg:col-span-1 space-y-6">
-        <Card className="shadow-lg">
-          <CardHeader><CardTitle className="font-headline text-2xl">Select Services for {isLoadingSpecificCustomer ? <Skeleton className="h-7 w-32 inline-block" /> : selectedCustomerName || 'Customer'}</CardTitle><CardDescription>Choose category, then click service to add.</CardDescription></CardHeader>
-          <CardContent>{isLoadingServices ? (<div className="space-y-4"><Skeleton className="h-10 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>) : serviceCategoryNames.length > 0 ? (<Tabs defaultValue={serviceCategoryNames[0]} className="w-full"><TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 h-auto flex-wrap justify-start">{serviceCategoryNames.map((category) => (<TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">{category}</TabsTrigger>))}</TabsList>{serviceCategoryNames.map((category) => (<TabsContent key={category} value={category}><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">{servicesByCategory[category]?.map((service) => (<Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}><span className="font-medium text-sm">{service.name}</span><span className="text-xs text-primary">${service.price.toFixed(2)}</span></Button>))}</div></TabsContent>))}</Tabs>) : (<p>No services available. Add items in Settings.</p>)}</CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
