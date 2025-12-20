@@ -6,8 +6,6 @@ import { useRouter } from 'next/navigation'; // Import useRouter
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { SheetTrigger } from '@/components/ui/sheet'; // For mobile sidebar
-import { PanelLeft } from 'lucide-react';
 import { SidebarTrigger } from '../ui/sidebar';
 
 export function AppHeader() {
@@ -22,13 +20,19 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 print-hidden app-header-print-hidden">
       <SidebarTrigger className="sm:hidden" />
-      {/* Added Logout Button */}
-      <Button variant="ghost" size="sm" onClick={handleLogout}>
-        Logout
-      </Button>
-      <div className="flex-1">
+      
+      {/* This is the new trigger for desktop */}
+      <div className="hidden sm:flex items-center gap-2">
+        <SidebarTrigger />
         <h1 className="text-lg font-semibold font-headline">XP Clean</h1>
       </div>
+
+      <div className="flex-1 text-right">
+        <Button variant="ghost" size="sm" onClick={handleLogout}>
+          Logout
+        </Button>
+      </div>
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
