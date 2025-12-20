@@ -245,9 +245,10 @@ export function CatalogManagementTab() {
   const processImportData = async (data: any[]) => {
     console.log("Parsed Data to Process:", data);
 
-    const requiredHeaders = ["Menu1", "Title", "Pricelevel", "Stubprint", "Showcolo"];
-    const fileHeaders = Object.keys(data[0] || {});
-    const missingHeaders = requiredHeaders.filter(h => !fileHeaders.some(fh => fh.toLowerCase() === h.toLowerCase()));
+    const requiredHeaders = ["menu1", "title", "pricelevel", "stubprint", "showcolo"];
+    const fileHeaders = Object.keys(data[0] || {}).map(h => h.trim().toLowerCase());
+
+    const missingHeaders = requiredHeaders.filter(h => !fileHeaders.includes(h));
 
     if (missingHeaders.length > 0) {
       toast({
@@ -300,12 +301,15 @@ export function CatalogManagementTab() {
 
     for (const row of data) {
       try {
-        const getVal = (key: string) => row[Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase())!];
+        const getVal = (key: string) => {
+          const actualKey = Object.keys(row).find(k => k.trim().toLowerCase() === key.toLowerCase());
+          return actualKey ? row[actualKey] : undefined;
+        }
 
-        const menuCols = ["Menu1", "Menu2", "Menu3", "Menu4", "Menu5"];
+        const menuCols = ["menu1", "menu2", "menu3", "menu4", "menu5"];
         const categoryPath = menuCols.map(col => getVal(col)).filter(Boolean);
 
-        const title = getVal("Title");
+        const title = getVal("title");
         if (!title) {
           console.warn("Skipping row due to missing Title:", row);
           errorCount++;
@@ -314,7 +318,7 @@ export function CatalogManagementTab() {
 
         const parentCategoryId = await findOrCreateCategory(categoryPath);
 
-        const price = parseFloat(getVal("Pricelevel"));
+        const price = parseFloat(getVal("pricelevel"));
         if (isNaN(price)) {
           console.warn("Skipping item due to invalid price:", row);
           errorCount++;
@@ -326,9 +330,9 @@ export function CatalogManagementTab() {
           type: "item",
           parent_id: parentCategoryId,
           price: price,
-          description: getVal("Description") || "",
-          has_color_identifier: String(getVal("Showcolo"))?.toUpperCase() === 'TRUE',
-          small_tags_to_print: parseInt(getVal("Stubprint"), 10) || 1,
+          description: getVal("description") || "",
+          has_color_identifier: String(getVal("showcolo"))?.toUpperCase() === 'TRUE',
+          small_tags_to_print: parseInt(getVal("stubprint"), 10) || 1,
         });
         successCount++;
 
