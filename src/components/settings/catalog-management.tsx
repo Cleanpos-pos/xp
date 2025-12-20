@@ -257,26 +257,41 @@ export function CatalogManagementTab() {
     }
 
     try {
-      // Step 1: Pre-process all data to find unique categories to create
-      const categoriesToCreate = new Map<string, { name: string; parentId: string | null }>();
-      const existingCategories = new Map<string, string>();
-      catalogHierarchy.forEach(node => {
-          if (node.type === 'category') existingCategories.set(node.name.toLowerCase(), node.id);
-      });
+      // Step 1: Pre-process to build a complete map of existing categories and items
+      const existingCategories = new Map<string, string>(); // name_lowercase -> id
+      const existingItems = new Set<string>(); // parentId_itemName_lowercase
+      
+      const flattenHierarchy = (nodes: CatalogHierarchyNode[], path: string = '') => {
+        nodes.forEach(node => {
+          const currentPath = path ? `${path} > ${node.name}` : node.name;
+          if (node.type === 'category') {
+            existingCategories.set(currentPath.toLowerCase(), node.id);
+            if (node.children) flattenHierarchy(node.children, currentPath);
+          } else {
+            existingItems.add(`${node.parent_id}_${node.name.toLowerCase()}`);
+          }
+        });
+      };
+      
+      const initialCatalog = await getCatalogHierarchyAction();
+      flattenHierarchy(initialCatalog);
 
+
+      // Step 2: Identify NEW categories to create from the file
+      const categoriesToCreate = new Map<string, { name: string; parentId: string | null }>();
       data.forEach(row => {
         const categoryName = row['Menu1']?.trim();
-        if (categoryName && !existingCategories.has(categoryName.toLowerCase()) && !categoriesToCreate.has(categoryName.toLowerCase())) {
+        if (categoryName && !existingCategories.has(categoryName.toLowerCase())) {
           categoriesToCreate.set(categoryName.toLowerCase(), { name: categoryName, parentId: null });
         }
       });
 
-      // Step 2: Bulk insert new categories
+      // Step 3: Bulk insert new categories
       const newCategoryInserts = Array.from(categoriesToCreate.values()).map(cat => ({
         name: cat.name,
         parent_id: cat.parentId,
         type: 'category' as CatalogEntryType,
-        sort_order: 0, // Simplified sort_order for bulk insert
+        sort_order: 0,
       }));
 
       if (newCategoryInserts.length > 0) {
@@ -290,8 +305,9 @@ export function CatalogManagementTab() {
         
         newCategories?.forEach(nc => existingCategories.set(nc.name.toLowerCase(), nc.id));
       }
-
-      // Step 3: Prepare all items for bulk insert
+      
+      // Step 4: Prepare all NEW items for bulk insert, skipping duplicates
+      let skippedCount = 0;
       const itemsToInsert = data
         .map(row => {
           const categoryName = row['Menu1']?.trim();
@@ -301,6 +317,13 @@ export function CatalogManagementTab() {
           if (!itemName || isNaN(price)) return null;
 
           const parentId = categoryName ? existingCategories.get(categoryName.toLowerCase()) || null : null;
+
+          // Check for duplicates
+          const itemKey = `${parentId}_${itemName.toLowerCase()}`;
+          if (existingItems.has(itemKey)) {
+            skippedCount++;
+            return null;
+          }
 
           return {
             name: itemName,
@@ -312,16 +335,22 @@ export function CatalogManagementTab() {
         })
         .filter(Boolean);
 
-      // Step 4: Bulk insert new items
+
+      // Step 5: Bulk insert new items
       if (itemsToInsert.length > 0) {
         toast({ title: "Importing...", description: `Creating ${itemsToInsert.length} new items...` });
         const { error: itemError } = await supabase.from('catalog_entries').insert(itemsToInsert as any);
         if (itemError) throw new Error(`Failed to bulk insert items: ${itemError.message}`);
       }
 
+      let successMessage = `Successfully processed ${itemsToInsert.length} items`;
+      if (newCategoryInserts.length > 0) successMessage += ` and ${newCategoryInserts.length} new categories`;
+      if (skippedCount > 0) successMessage += `. Skipped ${skippedCount} duplicate items`;
+      successMessage += ". Refreshing catalog...";
+
       toast({
         title: "Import Complete",
-        description: `Successfully processed ${itemsToInsert.length} items and ${newCategoryInserts.length} new categories. Refreshing catalog...`,
+        description: successMessage,
       });
 
     } catch (error: any) {
@@ -476,3 +505,5 @@ export function CatalogManagementTab() {
     </div>
   );
 }
+
+    
