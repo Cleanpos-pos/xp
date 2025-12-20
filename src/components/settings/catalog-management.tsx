@@ -11,7 +11,12 @@ import {
 } from "@/components/ui/accordion";
 import { PlusCircle, Edit3, Trash2, Upload } from "lucide-react";
 import type { CatalogHierarchyNode, CatalogEntry, CatalogEntryType } from "@/types";
-import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
+import { 
+  getCatalogHierarchyAction, 
+  addCatalogEntryAction, 
+  deleteCatalogEntryAction,
+  revalidateCatalogAction // <-- Import the new action
+} from "@/app/(auth)/settings/catalog-actions";
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
 import { EditCatalogEntryDialog } from "./edit-catalog-entry-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -343,7 +348,7 @@ export function CatalogManagementTab() {
 
         if (finalItemsToInsert.length > 0) {
             toast({ title: "Importing Items...", description: `Creating ${finalItemsToInsert.length} new items.` });
-            const { error: itemError } = await supabase.from('catalog_entries').insert(finalItemsToInsert as any[]); // remove temp parentPath
+            const { error: itemError } = await supabase.from('catalog_entries').insert(finalItemsToInsert as any[]);
             if (itemError) throw new Error(`Failed to bulk insert items: ${itemError.message}`);
             createdCount = finalItemsToInsert.length;
         }
@@ -353,6 +358,7 @@ export function CatalogManagementTab() {
         console.error("Error during bulk import:", error);
         toast({ title: "Import Failed", description: error.message || "An unexpected error occurred.", variant: "destructive" });
     } finally {
+        await revalidateCatalogAction();
         setRefreshTrigger(p => p + 1);
     }
   };
@@ -501,5 +507,3 @@ export function CatalogManagementTab() {
     </div>
   );
 }
-
-    

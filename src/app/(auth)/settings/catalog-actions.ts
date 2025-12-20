@@ -6,6 +6,11 @@ import type { CatalogEntryType, CatalogHierarchyNode } from "@/types";
 import { revalidatePath } from "next/cache";
 import { type AddCatalogEntryInput, type ActionResult, AddCatalogEntrySchema, UpdateCatalogEntrySchema, type UpdateCatalogEntryData } from "./catalog.schema";
 
+// New action to revalidate the cache on the settings page.
+export async function revalidateCatalogAction() {
+  revalidatePath("/settings");
+}
+
 export async function addCatalogEntryAction(data: AddCatalogEntryInput): Promise<ActionResult> {
   const validationResult = AddCatalogEntrySchema.safeParse(data);
   if (!validationResult.success) {
