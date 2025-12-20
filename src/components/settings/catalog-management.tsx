@@ -9,7 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { PlusCircle, Edit3, Trash2, Tag, Upload } from "lucide-react";
+import { PlusCircle, Edit3, Trash2, Upload } from "lucide-react";
 import type { CatalogHierarchyNode, CatalogEntry, CatalogEntryType } from "@/types";
 import { getCatalogHierarchyAction, addCatalogEntryAction, deleteCatalogEntryAction } from "@/app/(auth)/settings/catalog-actions";
 import { AddCatalogEntryForm } from "./add-catalog-entry-form";
@@ -63,15 +63,6 @@ function CatalogNodeDisplay({ node, onAddEntry, onEditEntry, onDeleteEntry, leve
             <span className="font-medium">{node.name}</span>
             {node.type === "item" && node.price !== undefined && (
               <span className="ml-2 text-sm text-muted-foreground">£{Number(node.price).toFixed(2)}</span>
-            )}
-            {node.type === "item" && node.has_color_identifier && (
-                <span className="ml-2 text-xs text-blue-500">(Color ID)</span>
-            )}
-            {node.type === 'item' && node.small_tags_to_print !== undefined && node.small_tags_to_print > 0 && (
-                <span className="ml-2 text-xs text-purple-600 flex items-center">
-                    <Tag className="mr-1 h-3 w-3" />
-                    {node.small_tags_to_print} {node.small_tags_to_print === 1 ? 'stub' : 'stubs'}
-                </span>
             )}
           </div>
           <div className="flex items-center space-x-1">
@@ -321,6 +312,9 @@ export function CatalogManagementTab() {
                 parentPath: groupPath,
             });
         }
+        
+        let createdCount = 0;
+        let skippedCount = 0;
 
         if (newCategories.size > 0) {
             toast({ title: "Creating Categories...", description: `Adding ${newCategories.size} new categories.` });
@@ -335,9 +329,13 @@ export function CatalogManagementTab() {
 
         const finalItemsToInsert = itemsToCreate.map(item => {
             const parentId = categoryPathMap.get(item.parentPath);
-            if (!parentId || existingItems.has(`${parentId}_${item.name.toLowerCase()}`)) return null;
+            if (!parentId || existingItems.has(`${parentId}_${item.name.toLowerCase()}`)) {
+                skippedCount++;
+                return null;
+            }
             return {
-                ...item,
+                name: item.name,
+                price: item.price,
                 parent_id: parentId,
                 type: 'item' as CatalogEntryType,
             };
@@ -345,11 +343,12 @@ export function CatalogManagementTab() {
 
         if (finalItemsToInsert.length > 0) {
             toast({ title: "Importing Items...", description: `Creating ${finalItemsToInsert.length} new items.` });
-            const { error: itemError } = await supabase.from('catalog_entries').insert(finalItemsToInsert.map(({ parentPath, ...rest }) => rest)); // remove temp parentPath
+            const { error: itemError } = await supabase.from('catalog_entries').insert(finalItemsToInsert as any[]); // remove temp parentPath
             if (itemError) throw new Error(`Failed to bulk insert items: ${itemError.message}`);
+            createdCount = finalItemsToInsert.length;
         }
 
-        toast({ title: "Import Complete", description: `Successfully processed file. Created ${finalItemsToInsert.length} new items.` });
+        toast({ title: "Import Complete", description: `Successfully created ${createdCount} new items. Skipped ${skippedCount} duplicate items.` });
     } catch (error: any) {
         console.error("Error during bulk import:", error);
         toast({ title: "Import Failed", description: error.message || "An unexpected error occurred.", variant: "destructive" });
@@ -502,3 +501,5 @@ export function CatalogManagementTab() {
     </div>
   );
 }
+
+    
