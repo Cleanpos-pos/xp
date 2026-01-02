@@ -40,13 +40,11 @@ export async function createOrderAction(data: CreateOrderInput) {
 
 export async function updateOrderStatusAction(orderId: string, newStatus: OrderStatus) {
   try {
-    const { error } = await updateOrderStatusDb(orderId, newStatus);
-
-    if (error) throw error;
+    const updatedOrder = await updateOrderStatusDb(orderId, newStatus);
 
     revalidatePath(`/orders/${orderId}`);
     revalidatePath('/orders');
-    return { success: true, message: `Order marked as ${newStatus}` };
+    return { success: true, message: `Order marked as ${newStatus}`, order: updatedOrder };
   } catch (error: any) {
     return { success: false, message: error.message };
   }
