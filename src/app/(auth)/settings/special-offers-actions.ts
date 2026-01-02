@@ -36,8 +36,8 @@ export async function upsertSpecialOfferAction(
   offerData: SpecialOffer
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    // Create a copy of the data to modify
-    const { tenant_id, ...dataToUpsert } = {
+    // Create the data object without tenant_id to avoid "column does not exist" errors
+    const dataToUpsert = {
       // Basic fields
       offer_type_identifier: offerData.offer_type_identifier,
       is_active: offerData.is_active,
@@ -67,10 +67,11 @@ export async function upsertSpecialOfferAction(
     if (error) throw error;
 
     revalidatePath("/settings");
-    revalidatePath("/orders/new"); // Ensure POS gets latest offers
+    revalidatePath("/orders/new");
 
     return { success: true, message: "Offer saved successfully." };
   } catch (error: any) {
+    console.error("Upsert Special Offer Error:", error);
     return { success: false, message: error.message };
   }
 }

@@ -113,6 +113,18 @@ export default function NewOrderPage() {
   const [isDiscountModalOpen, setIsDiscountModalOpen] = React.useState(false);
 
   const [activeOffers, setActiveOffers] = React.useState<SpecialOffer[]>([]);
+  
+  const [serviceSearchTerm, setServiceSearchTerm] = React.useState('');
+
+  const filteredServices = React.useMemo(() => {
+    if (!serviceSearchTerm) {
+      return [];
+    }
+    return allServices.filter(service =>
+      service.name.toLowerCase().includes(serviceSearchTerm.toLowerCase())
+    );
+  }, [serviceSearchTerm, allServices]);
+
 
   React.useEffect(() => {
     getSpecialOffersAction().then(data => {
@@ -784,28 +796,55 @@ export default function NewOrderPage() {
                         <Skeleton className="h-20 w-full" />
                         <Skeleton className="h-20 w-full" />
                     </div>
-                ) : serviceCategoryNames.length > 0 ? (
-                    <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-2 mb-4 h-auto flex-wrap justify-start">
-                            {serviceCategoryNames.map((category) => (
-                                <TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">{category}</TabsTrigger>
-                            ))}
-                        </TabsList>
-                        {serviceCategoryNames.map((category) => (
-                            <TabsContent key={category} value={category}>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
-                                    {servicesByCategory[category]?.map((service) => (
-                                        <Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}>
-                                            <span className="font-medium text-sm">{service.name}</span>
-                                            <span className="text-xs text-primary">{currencySymbol}{service.price.toFixed(2)}</span>
-                                        </Button>
-                                    ))}
-                                </div>
-                            </TabsContent>
-                        ))}
-                    </Tabs>
                 ) : (
-                    <p>No services available. Add items in Settings.</p>
+                  <>
+                    <div className="relative mb-4">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search for a service..."
+                        value={serviceSearchTerm}
+                        onChange={(e) => setServiceSearchTerm(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+
+                    {serviceSearchTerm ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
+                        {filteredServices.length > 0 ? (
+                          filteredServices.map((service) => (
+                            <Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}>
+                                <span className="font-medium text-sm">{service.name}</span>
+                                <span className="text-xs text-primary">{currencySymbol}{service.price.toFixed(2)}</span>
+                            </Button>
+                          ))
+                        ) : (
+                          <p className="col-span-full text-center text-muted-foreground">No services found for "{serviceSearchTerm}".</p>
+                        )}
+                      </div>
+                    ) : serviceCategoryNames.length > 0 ? (
+                      <Tabs defaultValue={serviceCategoryNames[0]} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-2 mb-4 h-auto flex-wrap justify-start">
+                              {serviceCategoryNames.map((category) => (
+                                  <TabsTrigger key={category} value={category} className="text-sm px-3 py-2 h-auto">{category}</TabsTrigger>
+                              ))}
+                          </TabsList>
+                          {serviceCategoryNames.map((category) => (
+                              <TabsContent key={category} value={category}>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-1 border-t pt-4">
+                                      {servicesByCategory[category]?.map((service) => (
+                                          <Button key={service.id} variant="outline" className="h-auto p-3 flex flex-col items-start text-left justify-between min-h-[60px] shadow-sm hover:shadow-md transition-shadow border-border bg-background" onClick={() => handleServiceItemClick(service)}>
+                                              <span className="font-medium text-sm">{service.name}</span>
+                                              <span className="text-xs text-primary">{currencySymbol}{service.price.toFixed(2)}</span>
+                                          </Button>
+                                      ))}
+                                  </div>
+                              </TabsContent>
+                          ))}
+                      </Tabs>
+                    ) : (
+                        <p>No services available. Add items in Settings.</p>
+                    )}
+                  </>
                 )}
             </CardContent>
           </Card>
