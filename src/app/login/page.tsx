@@ -76,28 +76,41 @@ export default function RootLoginPage() {
 
 
   async function handleLogin(data: LoginInput) {
-    const result = await loginAction(data);
-    if (result.success) {
-      toast({
-        title: "Login Successful",
-        description: result.message,
-      });
-      // The loginAction now handles redirection, so client-side logic is simpler.
-    } else {
-      if (result.errors) {
-        if (result.errors.employeeId) form.setError("employeeId", { message: result.errors.employeeId.join(', ') });
-        if (result.errors.password) form.setError("password", { message: result.errors.password.join(', ') });
+    try {
+      const result = await loginAction(data);
+      // Server action now handles redirection on success. We only handle failure here.
+      if (result && !result.success) {
+        if (result.errors) {
+          if (result.errors.employeeId) form.setError("employeeId", { message: result.errors.employeeId.join(', ') });
+          if (result.errors.password) form.setError("password", { message: result.errors.password.join(', ') });
+        }
+        toast({
+          title: "Login Failed",
+          description: result.message || "An error occurred. Please try again.",
+          variant: "destructive",
+        });
       }
-      toast({
-        title: "Login Failed",
-        description: result.message || "An error occurred. Please try again.",
-        variant: "destructive",
-      });
+      // On success, the server action will redirect and this client code won't run further.
+    } catch (error: any) {
+      // This catch block will handle the NEXT_REDIRECT error thrown by the server action
+      // We can safely ignore it, as the browser will handle the redirection.
+      if (error.message.includes('NEXT_REDIRECT')) {
+        // This is expected, do nothing. The browser will redirect.
+      } else {
+        // Handle other unexpected errors
+        console.error("An unexpected error occurred during login:", error);
+        toast({
+          title: "Login Failed",
+          description: "An unexpected client-side error occurred.",
+          variant: "destructive",
+        });
+      }
     }
   }
   
   const handleQuickLogin = async (user: StaffCredentials) => {
     if (user.hashed_password) { 
+      // The server action will redirect, no client-side navigation needed
       await handleLogin({ employeeId: user.login_id, password: user.hashed_password });
     } else {
       toast({
@@ -274,5 +287,3 @@ export default function RootLoginPage() {
     </div>
   );
 }
-
-    

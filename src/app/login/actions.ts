@@ -44,6 +44,10 @@ export async function loginAction(data: LoginInput) {
     }
   } catch (error: any) {
     console.error("Login Action Error:", error);
+    // Avoid redirecting on unhandled errors, return an error message instead
+    if (error.message.includes('NEXT_REDIRECT')) {
+      throw error;
+    }
     return {
       success: false,
       message: error.message || "An error occurred during login.",
