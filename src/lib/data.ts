@@ -678,7 +678,7 @@ async function getServiceItemsFromCatalog(): Promise<ServiceItem[]> {
       description: item.description || undefined,
       category: item.parent_id ? (categoryMap.get(item.parent_id) || 'General Services') : 'General Services',
       
-      categoryId: item.parent_id || null, // <--- ADD THIS LINE
+      categoryId: item.parent_id || null, // &lt;--- ADD THIS LINE
       
       has_color_identifier: item.has_color_identifier ?? false,
     }));
@@ -694,4 +694,5 @@ export function getServiceById(id:string): ServiceItem | undefined {
   return undefined;
 }
 
+    
     
