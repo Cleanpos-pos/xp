@@ -1,5 +1,4 @@
 
-
 import type { Order, OrderItem as AppOrderItemType, Customer, ServiceItem, InventoryItem, OrderStatus, PaymentStatus, CatalogEntry, CatalogHierarchyNode, CatalogEntryType } from '@/types';
 import type { CreateCustomerInput } from '@/app/(app)/customers/new/customer.schema';
 import { supabase } from './supabase';
