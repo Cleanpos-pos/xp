@@ -77,7 +77,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
   } as Customer;
 }
 
-export async function createCustomer(customerData: CreateCustomerInput): Promise<Customer> {
+export async function createCustomer(customerData: Omit<CreateCustomerInput, 'tenant_id'>): Promise<Customer> {
   const customerToInsert = {
     name: customerData.name,
     phone: customerData.phone || null,
