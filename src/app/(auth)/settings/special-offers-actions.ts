@@ -36,7 +36,8 @@ export async function upsertSpecialOfferAction(
   offerData: SpecialOffer
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    const dataToUpsert = {
+    // Create a copy of the data to modify
+    const { tenant_id, ...dataToUpsert } = {
       // Basic fields
       offer_type_identifier: offerData.offer_type_identifier,
       is_active: offerData.is_active,
@@ -52,7 +53,7 @@ export async function upsertSpecialOfferAction(
       spend_threshold: offerData.spend_threshold,
       free_item_description: offerData.free_item_description,
 
-      // NEW: Assignments
+      // Assignments
       eligible_items: offerData.eligible_items || [],
       eligible_categories: offerData.eligible_categories || [],
 
