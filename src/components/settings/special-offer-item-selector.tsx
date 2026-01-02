@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -18,6 +19,29 @@ interface SpecialOfferItemSelectorProps {
   onCategoriesChange: (ids: string[]) => void;
 }
 
+// Helper to get unique items, preventing duplicate keys
+const getUniqueItems = (nodes: CatalogHierarchyNode[]): CatalogHierarchyNode[] => {
+  const allItems: CatalogHierarchyNode[] = [];
+  const visitedIds = new Set<string>();
+
+  function recurse(nodesToProcess: CatalogHierarchyNode[]) {
+    for (const node of nodesToProcess) {
+      if (node.type === "item") {
+        if (!visitedIds.has(node.id)) {
+          allItems.push(node);
+          visitedIds.add(node.id);
+        }
+      }
+      if (node.children && node.children.length > 0) {
+        recurse(node.children);
+      }
+    }
+  }
+
+  recurse(nodes);
+  return allItems;
+};
+
 export function SpecialOfferItemSelector({
   selectedItemIds,
   selectedCategoryIds,
@@ -35,20 +59,6 @@ export function SpecialOfferItemSelector({
     });
   }, []);
 
-  // Recursively extract all items from a set of nodes
-  const getItemsFromNodes = (nodes: CatalogHierarchyNode[]): CatalogHierarchyNode[] => {
-    let items: CatalogHierarchyNode[] = [];
-    for (const node of nodes) {
-      if (node.type === "item") {
-        items.push(node);
-      }
-      if (node.children && node.children.length > 0) {
-        items = items.concat(getItemsFromNodes(node.children));
-      }
-    }
-    return items;
-  };
-  
   // Find category nodes from the hierarchy based on IDs
   const findNodesByIds = (nodes: CatalogHierarchyNode[], ids: string[]): CatalogHierarchyNode[] => {
     let foundNodes: CatalogHierarchyNode[] = [];
@@ -85,10 +95,10 @@ export function SpecialOfferItemSelector({
 
   const itemsFromSelectedCategories = useMemo(() => {
     if (selectedCategoryIds.length === 0) {
-      return getItemsFromNodes(hierarchy);
+      return getUniqueItems(hierarchy);
     }
     const selectedCategoryNodes = findNodesByIds(hierarchy, selectedCategoryIds);
-    return getItemsFromNodes(selectedCategoryNodes);
+    return getUniqueItems(selectedCategoryNodes);
   }, [selectedCategoryIds, hierarchy]);
 
   const filteredItems = useMemo(() => {
