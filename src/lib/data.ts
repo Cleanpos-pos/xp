@@ -36,11 +36,7 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
     return undefined;
   }
   const trimmedId = id.trim();
-  console.log(`[getCustomerById] Attempting to fetch customer by ID from Supabase. Trimmed ID: '${trimmedId}' (length ${trimmedId.length})`);
-
-  const { data: { session } } = await supabase.auth.getSession();
-  console.log('[getCustomerById] Current Supabase auth session:', session ? `User: ${session.user.id}` : 'No session');
-
+  
   const { data, error } = await supabase
     .from('customers')
     .select('*')
@@ -61,7 +57,6 @@ export async function getCustomerById(id: string): Promise<Customer | undefined>
     return undefined;
   }
 
-  console.log(`[getCustomerById] Successfully fetched customer from Supabase: Name: ${data.name}, ID: ${data.id}`);
   return {
     ...data,
     created_at: data.created_at ? new Date(data.created_at).toISOString() : null,
@@ -202,26 +197,9 @@ export async function updateFullCustomerDb(customerId: string, customerData: Cre
 // Order Data Functions
 export async function createOrderDb(orderInput: CreateOrderInput): Promise<Order> {
   console.log('[createOrderDb] Attempting to create order. Input:', JSON.stringify(orderInput, null, 2));
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-  let token: string | undefined = undefined;
-  const headers: { [key: string]: string } = {};
-
-  if (sessionError) {
-    console.warn('[createOrderDb] Error trying to get Supabase session. Proceeding without user token for Edge Function call.', sessionError);
-  }
-
-  if (sessionData && sessionData.session) {
-    console.log('[createOrderDb] Supabase session found. Using user token for Edge Function call.');
-    token = sessionData.session.access_token;
-    headers['Authorization'] = `Bearer ${token}`;
-  } else {
-    console.log('[createOrderDb] No active Supabase user session. Proceeding with anon key for Edge Function call.');
-  }
-
+  
   const { data: functionResponseData, error: invokeError } = await supabase.functions.invoke('create-order-transactional', {
-    body: orderInput,
-    headers: headers,
+    body: orderInput
   });
 
   if (invokeError) {
