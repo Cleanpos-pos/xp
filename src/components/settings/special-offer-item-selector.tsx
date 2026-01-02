@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -34,15 +33,34 @@ export function SpecialOfferItemSelector({
     });
   }, []);
 
-  // Recursively extract all items from hierarchy for the "Garments" tab
-  const getAllItems = (nodes: CatalogHierarchyNode[]): CatalogHierarchyNode[] => {
+  // Recursively extract all items from a set of nodes
+  const getItemsFromNodes = (nodes: CatalogHierarchyNode[]): CatalogHierarchyNode[] => {
     let items: CatalogHierarchyNode[] = [];
-    nodes.forEach((node) => {
-      if (node.type === "item") items.push(node);
-      if (node.children) items = [...items, ...getAllItems(node.children)];
-    });
+    for (const node of nodes) {
+      if (node.type === "item") {
+        items.push(node);
+      }
+      if (node.children && node.children.length > 0) {
+        items = items.concat(getItemsFromNodes(node.children));
+      }
+    }
     return items;
   };
+  
+  // Find category nodes from the hierarchy based on IDs
+  const findNodesByIds = (nodes: CatalogHierarchyNode[], ids: string[]): CatalogHierarchyNode[] => {
+    let foundNodes: CatalogHierarchyNode[] = [];
+    for (const node of nodes) {
+      if (ids.includes(node.id)) {
+        foundNodes.push(node);
+      }
+      if (node.children && node.children.length > 0) {
+        foundNodes = foundNodes.concat(findNodesByIds(node.children, ids));
+      }
+    }
+    return foundNodes;
+  };
+
 
   // Recursively extract all categories
   const getAllCategories = (nodes: CatalogHierarchyNode[]): CatalogHierarchyNode[] => {
@@ -55,6 +73,18 @@ export function SpecialOfferItemSelector({
     });
     return cats;
   };
+  
+  const filteredItems = useMemo(() => {
+    // If no categories are selected, show all items.
+    if (selectedCategoryIds.length === 0) {
+      return getItemsFromNodes(hierarchy);
+    }
+    // Find the category nodes that are selected.
+    const selectedCategoryNodes = findNodesByIds(hierarchy, selectedCategoryIds);
+    // Get all descendant items from those selected category nodes.
+    return getItemsFromNodes(selectedCategoryNodes);
+  }, [selectedCategoryIds, hierarchy]);
+
 
   const toggleItem = (id: string, currentList: string[], setter: (ids: string[]) => void) => {
     if (currentList.includes(id)) {
@@ -66,7 +96,6 @@ export function SpecialOfferItemSelector({
 
   if (loading) return <div className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4"/> Loading catalog...</div>;
 
-  const allItems = getAllItems(hierarchy);
   const allCategories = getAllCategories(hierarchy);
 
   return (
@@ -107,11 +136,14 @@ export function SpecialOfferItemSelector({
           <Card>
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground mb-3">
-                Toggle specific items to include them individually.
+                {selectedCategoryIds.length > 0 
+                  ? "Showing items from selected categories. Toggle to include them individually."
+                  : "Toggle specific items to include them individually."
+                }
               </p>
               <ScrollArea className="h-[200px]">
                 <div className="space-y-4">
-                  {allItems.map((item) => (
+                  {filteredItems.map((item) => (
                     <div key={item.id} className="flex items-center justify-between">
                       <Label htmlFor={`item-${item.id}`} className="flex-1 cursor-pointer">
                         {item.name} <span className="text-xs text-muted-foreground">({item.price ? `£${item.price.toFixed(2)}` : 'N/A'})</span>
@@ -123,7 +155,7 @@ export function SpecialOfferItemSelector({
                       />
                     </div>
                   ))}
-                  {allItems.length === 0 && <p className="text-sm text-muted-foreground">No items found.</p>}
+                  {filteredItems.length === 0 && <p className="text-sm text-muted-foreground">No items found in the selected categories.</p>}
                 </div>
               </ScrollArea>
             </CardContent>
