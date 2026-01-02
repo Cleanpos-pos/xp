@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { getCatalogHierarchyAction } from "@/app/(auth)/settings/catalog-actions";
 import type { CatalogHierarchyNode } from "@/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface SpecialOfferItemSelectorProps {
   selectedItemIds: string[];
@@ -25,6 +26,7 @@ export function SpecialOfferItemSelector({
 }: SpecialOfferItemSelectorProps) {
   const [hierarchy, setHierarchy] = useState<CatalogHierarchyNode[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     getCatalogHierarchyAction().then((data) => {
@@ -74,16 +76,25 @@ export function SpecialOfferItemSelector({
     return cats;
   };
   
-  const filteredItems = useMemo(() => {
-    // If no categories are selected, show all items.
+  const allCategories = useMemo(() => getAllCategories(hierarchy), [hierarchy]);
+
+  const filteredCategories = useMemo(() => {
+    if (!searchTerm) return allCategories;
+    return allCategories.filter(cat => cat.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [allCategories, searchTerm]);
+
+  const itemsFromSelectedCategories = useMemo(() => {
     if (selectedCategoryIds.length === 0) {
       return getItemsFromNodes(hierarchy);
     }
-    // Find the category nodes that are selected.
     const selectedCategoryNodes = findNodesByIds(hierarchy, selectedCategoryIds);
-    // Get all descendant items from those selected category nodes.
     return getItemsFromNodes(selectedCategoryNodes);
   }, [selectedCategoryIds, hierarchy]);
+
+  const filteredItems = useMemo(() => {
+    if (!searchTerm) return itemsFromSelectedCategories;
+    return itemsFromSelectedCategories.filter(item => item.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [itemsFromSelectedCategories, searchTerm]);
 
 
   const toggleItem = (id: string, currentList: string[], setter: (ids: string[]) => void) => {
@@ -96,11 +107,20 @@ export function SpecialOfferItemSelector({
 
   if (loading) return <div className="flex items-center gap-2"><Loader2 className="animate-spin h-4 w-4"/> Loading catalog...</div>;
 
-  const allCategories = getAllCategories(hierarchy);
-
   return (
     <div className="space-y-4 border rounded-md p-4 bg-slate-50/50">
       <h3 className="font-medium text-sm">Assign to Products</h3>
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+            type="search"
+            placeholder="Search categories or items..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8 w-full"
+        />
+      </div>
+
       <Tabs defaultValue="categories" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="categories">Categories</TabsTrigger>
@@ -115,7 +135,7 @@ export function SpecialOfferItemSelector({
               </p>
               <ScrollArea className="h-[200px]">
                 <div className="space-y-4">
-                  {allCategories.map((cat) => (
+                  {filteredCategories.map((cat) => (
                     <div key={cat.id} className="flex items-center justify-between">
                       <Label htmlFor={`cat-${cat.id}`} className="flex-1 cursor-pointer">{cat.name}</Label>
                       <Switch
@@ -125,7 +145,7 @@ export function SpecialOfferItemSelector({
                       />
                     </div>
                   ))}
-                  {allCategories.length === 0 && <p className="text-sm text-muted-foreground">No categories found.</p>}
+                  {filteredCategories.length === 0 && <p className="text-sm text-muted-foreground">No categories match your search.</p>}
                 </div>
               </ScrollArea>
             </CardContent>
@@ -155,7 +175,7 @@ export function SpecialOfferItemSelector({
                       />
                     </div>
                   ))}
-                  {filteredItems.length === 0 && <p className="text-sm text-muted-foreground">No items found in the selected categories.</p>}
+                  {filteredItems.length === 0 && <p className="text-sm text-muted-foreground">No items match your search in the selected categories.</p>}
                 </div>
               </ScrollArea>
             </CardContent>
