@@ -7,8 +7,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '../ui/sidebar';
+import { cn } from '@/lib/utils';
 
-export function AppHeader() {
+interface AppHeaderProps {
+  className?: string;
+}
+
+export function AppHeader({ className }: AppHeaderProps) {
   const router = useRouter(); // Get the router instance
 
   const handleLogout = () => {
@@ -18,7 +23,7 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 print-hidden app-header-print-hidden">
+    <header className={cn("sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6 print-hidden app-header-print-hidden", className)}>
       <SidebarTrigger className="sm:hidden" />
       
       {/* This is the new trigger for desktop */}
