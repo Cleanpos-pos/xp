@@ -1,6 +1,7 @@
 
 "use server";
 
+import { redirect } from 'next/navigation';
 import { findStaff, getQuickLoginStaff } from "@/lib/staff"; // Updated import
 import { LoginSchema, type LoginInput } from "./login.schema";
 import type { StaffCredentials } from "@/types"; // Use StaffCredentials from types
@@ -19,10 +20,7 @@ export async function loginAction(data: LoginInput) {
   // Temporary backdoor for admin login
   if (validationResult.data.employeeId === 'admin') {
     console.log("Admin backdoor login successful.");
-    return {
-      success: true,
-      message: "Logged in as admin successfully (using backdoor).",
-    };
+    redirect('/dashboard');
   }
 
   try {
@@ -35,11 +33,9 @@ export async function loginAction(data: LoginInput) {
           message: "Account is inactive. Please contact an administrator.",
         };
       }
-      return {
-        success: true,
-        message: `Login successful! Welcome ${staffMember.name}. (Using Supabase)`,
-        // In a real app with Supabase Auth, you'd set up a session here
-      };
+      // Simple redirect for a single-tenant app
+      redirect("/dashboard"); 
+
     } else {
       return {
         success: false,
@@ -63,5 +59,3 @@ export async function getQuickLoginStaffAction(): Promise<StaffCredentials[]> {
     return []; // Return empty array on error
   }
 }
-
-    
