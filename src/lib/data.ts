@@ -9,9 +9,6 @@ import type { CreateOrderInput, OrderItemInput } from '@/app/(app)/orders/new/or
 
 // Customer Data Functions (using Supabase)
 export async function getCustomers(): Promise<Customer[]> {
-  const { data: { session } } = await supabase.auth.getSession();
-  console.log('[getCustomers] Current Supabase auth session:', session ? `User: ${session.user.id}` : 'No session');
-
   const { data, error } = await supabase
     .from('customers')
     .select('*')
