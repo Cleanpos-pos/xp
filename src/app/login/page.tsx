@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { LoginSchema, type LoginInput } from "./login.schema";
+import { loginAction, getQuickLoginStaffAction } from "./actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { LogIn, KeyRound, UserCheck, Users, Grid, Globe, Cog, Building } from "lucide-react";
@@ -22,9 +24,6 @@ import type { StaffCredentials } from "@/types";
 import Link from 'next/link';
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlphanumericKeypadModal } from "@/components/ui/alphanumeric-keypad-modal";
-import { loginAction, getQuickLoginStaffAction } from "@/app/login/actions";
-import { LoginSchema, type LoginInput } from "@/app/login/login.schema";
-
 
 export default function RootLoginPage() {
   const { toast } = useToast();
@@ -78,8 +77,13 @@ export default function RootLoginPage() {
 
   async function handleLogin(data: LoginInput) {
     const result = await loginAction(data);
-    // Server action now handles redirection on success. We only handle failure here.
-    if (result && !result.success) {
+    if (result.success) {
+      toast({
+        title: "Login Successful",
+        description: result.message,
+      });
+      // The loginAction now handles redirection, so client-side logic is simpler.
+    } else {
       if (result.errors) {
         if (result.errors.employeeId) form.setError("employeeId", { message: result.errors.employeeId.join(', ') });
         if (result.errors.password) form.setError("password", { message: result.errors.password.join(', ') });
@@ -94,7 +98,6 @@ export default function RootLoginPage() {
   
   const handleQuickLogin = async (user: StaffCredentials) => {
     if (user.hashed_password) { 
-      // The server action will redirect, no client-side navigation needed
       await handleLogin({ employeeId: user.login_id, password: user.hashed_password });
     } else {
       toast({
@@ -125,6 +128,11 @@ export default function RootLoginPage() {
             </Link>
         </div>
         <div className="absolute top-6 right-6 flex items-center gap-2">
+            <Link href="/business/signup" passHref>
+                <Button variant="outline" size="sm">
+                  <Building className="mr-2 h-4 w-4"/> Make New Store
+                </Button>
+            </Link>
             <Link href="/settings" passHref>
               <Button variant="ghost" size="icon" aria-label="Staff Management Settings">
                 <Cog className="h-8 w-8" />
@@ -266,3 +274,5 @@ export default function RootLoginPage() {
     </div>
   );
 }
+
+    
